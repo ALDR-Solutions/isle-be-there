@@ -1,0 +1,118 @@
+{% from 'bootstrap5/form.html' import render_form%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Isle Be There</title>
+    {% block styles %}
+    {{ bootstrap.load_css() }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {%endblock%}
+</head>
+<body class="login-page-body">
+    <div class="login-main-container">
+        <div class="login-container">
+            <div class="login-header">
+                <h1><i class="fas fa-umbrella-beach me-2"></i>Isle Be There</h1>
+                <p>Welcome Guest! Please login to your account</p>
+            </div>
+
+            <div class="login-body">
+                {% with messages = get_flashed_messages(with_categories=true)%}
+                {% if messages %}
+                    {% for category, msg in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ msg }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Please correct the following errors: </strong>
+                        <ul class="mb-0">
+                        {% for field, errors in form.errors.items() %}
+                            {% for error in errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('auth.login', next=next) }}">
+                    {{ form.hidden_tag()}}
+
+                    <div class="mb-3">
+                        <label for="email" class="login-form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text login-input-group-text"><i class="fas fa-envelope"></i></span>
+                            {{ form.email(class="form-control login-form-control", placeholder="Enter your email") }}
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="login-form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text login-input-group-text"><i class="fas fa-lock"></i></span>
+                            {{ form.password(class="form-control login-form-control", placeholder="Enter your password") }}
+                        </div>
+                    </div>
+
+                    <div class="remember-forgot mb-3">
+                        <div class="form-check">
+                            {{ form.remember_me(class="form-check-input login-form-check-input") }}
+                            <label class="form-check-label" for="remember_me">Remember Me</label>
+
+                        </div>
+                        <a href="{{ url_for('auth.forgot_password')}}" class="forgot-password">Forgot password?</a>
+
+                    </div>
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-login">Login to Your Account</button>  
+                    </div>
+                </form>
+
+                <div class="login-divider">
+                    <span class="login-divider-text"> Or continue with</span>
+
+                </div>
+
+                <div class="social-login">
+                    <a href="" class="social-btn facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="" class="social-btn google"><i class="fab fa-google"></i></a>
+                    <a href="" class="social-btn twitter"><i class="fab fa-twitter"></i></a>
+
+                </div>
+
+            </div>
+
+            <div class="login-footer">
+                <p class="register">
+                    Dont have an account?
+                    <a href="{{ url_for('auth.register')}}" class="register-here">Register here</a>
+                </p>
+                <p class="register">
+                    Are you a business owner?
+                    <a href="{{ url_for('auth.register_business')}}" class="register-here">Register your business</a>
+
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+
+    {% block scripts %}
+    {{ bootstrap.load_js()}}
+    {% endblock%}
+
+    
+</body>
+</html>

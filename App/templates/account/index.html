@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Isle Be There Caribbean - Account Profile{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-xl-5">
+
+      <!-- Header -->
+      <h2 class="fw-bold text-light mb-3">Account</h2>
+
+      <p class="text-light mb-4">
+        Hi <strong>{{ user.user_metadata.get("full_name") or user.email }}</strong>,  
+        you can manage your account settings from here.
+      </p>
+
+      <!-- Settings List -->
+      <div class="list-group shadow-sm mb-5">
+        <a 
+          href="{{ url_for('account.update') }}" 
+          class="list-group-item list-group-item-action py-3">
+          <i class="bi bi-person-lines-fill me-2"></i> Update Profile
+        </a>
+
+        <a 
+          href="{{ url_for('account.update_email') }}" 
+          class="list-group-item list-group-item-action py-3">
+          <i class="bi bi-envelope-at me-2"></i> Update Email
+        </a>
+
+        <a 
+          href="{{ url_for('account.update_password') }}" 
+          class="list-group-item list-group-item-action py-3">
+          <i class="bi bi-shield-lock me-2"></i> Update Password
+        </a>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="card border-danger shadow-sm">
+        <div class="card-body p-4">
+
+          <h5 class="text-danger fw-bold mb-3">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> Danger Zone
+          </h5>
+
+          <p class="mb-4">
+            Deleting your account is <strong>permanent</strong> and will erase all associated data.  
+            This action <strong>cannot be undone</strong>.
+          </p>
+
+          <a 
+            href="{{ url_for('account.destroy') }}"
+            class="btn btn-danger w-100 py-2">
+            Delete Account
+          </a>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
