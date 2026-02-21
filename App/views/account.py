@@ -8,7 +8,7 @@ from ..controllers.auth import get_current_user
 from ..controllers.decorators import login_required, role_required
 from ..controllers.account import user_to_profile_form_data
 
-account_views = Blueprint('account_views', __name__, template_folder='../templates', url_prefix='/account')
+account_views = Blueprint('account', __name__, template_folder='../templates', url_prefix='/account')
 
 @account_views.route("/")
 @login_required
