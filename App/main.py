@@ -16,6 +16,7 @@ from App.controllers import (
 )
 
 from App.views import views
+from App.controllers.auth import get_current_user, get_user_profile
 
 
 
@@ -32,7 +33,14 @@ def create_app(overrides={}):
     # configure_uploads(app, photos)
     add_views(app)
     init_db(app)
-    
+    @app.context_processor
+    def inject_current_user():
+        user = get_current_user()  # call the function to get the actual user
+        user_profile = get_user_profile(user) if user else None
+        return {
+            "current_user": user,
+            "user_profile": user_profile
+        }
     Bootstrap5(app)
     jwt = setup_jwt(app)
     # setup_admin(app)
