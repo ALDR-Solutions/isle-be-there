@@ -16,10 +16,10 @@ class AddHotelListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
-    image_url=StringField('Image URL', validators=[DataRequired()])
+    image_urls=StringField('Image URL')
     # official star rating, not platform specific rating (generated from user reviews)
     star_rating=SelectField('Star Rating', choices=[('1', '1 Star'), ('2', '2 Stars'), ('3', '3 Stars'), ('4', '4 Stars'), ('5', '5 Stars')], validators=[DataRequired()])
     hotel_type=SelectField('Hotel Type', choices=[('luxury', 'Luxury'), ('boutique', 'Boutique'), ('budget', 'Budget'), ('economy', 'economy')], validators=[DataRequired()])
@@ -47,7 +47,7 @@ class AddRestaurantListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])
@@ -76,7 +76,7 @@ class AddTourListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])
@@ -96,7 +96,7 @@ class AddActivityListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])
@@ -119,10 +119,10 @@ class EditHotelListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
-    image_url=StringField('Image URL', validators=[DataRequired()])
+    image_url=StringField('Image URL')
     # official star rating, not platform specific rating (generated from user reviews)
     star_rating=SelectField('Star Rating', choices=[('1', '1 Star'), ('2', '2 Stars'), ('3', '3 Stars'), ('4', '4 Stars'), ('5', '5 Stars')], validators=[DataRequired()])
     hotel_type=SelectField('Hotel Type', choices=[('luxury', 'Luxury'), ('boutique', 'Boutique'), ('budget', 'Budget'), ('economy', 'economy')], validators=[DataRequired()])
@@ -149,7 +149,7 @@ class EditRestaurantListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])
@@ -178,7 +178,7 @@ class EditActivityListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])
@@ -197,7 +197,7 @@ class EditTourListingForm(FlaskForm):
     state=StringField('State', validators=[DataRequired()])
     country=StringField('Country', validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
-    lattitude=StringField('Latitude', validators=[DataRequired()])
+    latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
 
     image_url=StringField('Image URL', validators=[DataRequired()])

@@ -16,7 +16,7 @@ from App.controllers import (
 )
 
 from App.views import views
-from App.controllers.auth import get_current_user, get_user_profile
+from App.controllers.auth import get_business_profile, get_current_user, get_user_profile
 
 
 
@@ -36,7 +36,10 @@ def create_app(overrides={}):
     @app.context_processor
     def inject_current_user():
         user = get_current_user()  # call the function to get the actual user
-        user_profile = get_user_profile(user) if user else None
+        if user and user.user_metadata.get('is_business'):
+            user_profile = get_business_profile(user)
+        else:
+            user_profile = get_user_profile(user) if user else None
         return {
             "current_user": user,
             "user_profile": user_profile

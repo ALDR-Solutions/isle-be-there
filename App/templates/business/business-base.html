@@ -57,20 +57,33 @@
                     </li>
                     {% endif%}
 
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('business.listings') }}">Listings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="">Bookings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="">Services</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="">Reviews</a>
+                    </li>
+
                    
 
                     {% if current_user %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="profile-circle me-2">
-                                {% if current_user.user_metadata and current_user.user_metadata.get('avatar_url')%}
-                                    <img src="{{current_user.user_metadata.avatar_url}}" alt="Profile" class="profile-image">
+                                {% if current_user.user_metadata and current_user.user_metadata.get('logo_url')%}
+                                    <img src="{{current_user.user_metadata.logo_url}}" alt="Profile" class="profile-image">
                                 {% else %}
                                     <i class="fas fa-user"></i>
                                 {% endif %}
                             </div>
-                            {% if current_user.user_metadata and current_user.user_metadata.get('first_name')%}
-                                {{ current_user.user_metadata.first_name}}
+                            {% if user_profile and user_profile.business_name%}
+                                {{ user_profile.business_name}}
                             {% else %}
                                 {{ current_user.email.split('@')[0] }}
                             {% endif %}

@@ -114,6 +114,44 @@ def get_user_profile(user: User) -> dict:
 
     return profile_info
 
+def get_business_profile(user: User) -> dict:
+    profile_info = {}
+
+    if not user:
+        return profile_info
+
+    try:
+        profile_response = (
+            supabase.table("businesses")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybe_single()
+            .execute()
+        )
+
+        if not profile_response:
+            current_app.logger.warning(f"No response from Supabase for business {user.id}")
+            return profile_info
+
+        db_profile = getattr(profile_response, "data", None)
+        if not db_profile:
+            current_app.logger.info(f"No profile data found for business {user.id}")
+            return profile_info
+
+        name = db_profile.get("business_name", "") or ""
+
+        profile_info = {
+            "business_name": name,
+            "logo_url": db_profile.get("logo_url"),
+            "phone": db_profile.get("phone"),
+            "id": db_profile.get("id"),
+        }
+
+    except Exception as err:
+        current_app.logger.warning(f"Could not fetch profile for business {user.id}: {err}")
+
+    return profile_info
+
 def get_valid_access_token():
     """Return a valid access token, refreshing it if expired."""
     access_token = session.get("access_token")

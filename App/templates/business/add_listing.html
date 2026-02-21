@@ -1,0 +1,317 @@
+{% extends "business-base.html" %}
+{% block title %}Add Listing - IsleBeThere Business{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="mb-4">Add Hotel Listing</h1>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="form">
+                {{ form.hidden_tag() }}
+
+                <!-- Basic Information -->
+                <fieldset class="mb-4">
+                    <legend class="fs-5 mb-3">Basic Information</legend>
+                    
+                    <div class="mb-3">
+                        {% if form.title.errors %}
+                            {{ form.title(class="form-control is-invalid", placeholder="Hotel Name") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.title.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.title(class="form-control", placeholder="Hotel Name") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.title.label }}</label>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.description.errors %}
+                            {{ form.description(class="form-control is-invalid", rows="4", placeholder="Describe your hotel...") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.description.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.description(class="form-control", rows="4", placeholder="Describe your hotel...") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.description.label }}</label>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.image_urls.errors %}
+                            {{ form.image_urls(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.image_urls.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.image_urls(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.image_urls.label }}</label>
+                    </div>
+                </fieldset>
+
+                <!-- Location Information -->
+                <fieldset class="mb-4">
+                    <legend class="fs-5 mb-3">Location Information</legend>
+                    
+                    <div class="mb-3">
+                        {% if form.street.errors %}
+                            {{ form.street(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.street.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.street(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.street.label }}</label>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% if form.city.errors %}
+                                {{ form.city(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.city.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.city(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.city.label }}</label>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {% if form.state.errors %}
+                                {{ form.state(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.state.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.state(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.state.label }}</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% if form.country.errors %}
+                                {{ form.country(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.country.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.country(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.country.label }}</label>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {% if form.postal_code.errors %}
+                                {{ form.postal_code(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.postal_code.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.postal_code(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.postal_code.label }}</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% if form.latitude.errors %}
+                                {{ form.latitude(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.latitude.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.latitude(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.latitude.label }}</label>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {% if form.longitude.errors %}
+                                {{ form.longitude(class="form-control is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.longitude.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.longitude(class="form-control") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.longitude.label }}</label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Hotel Details -->
+                <fieldset class="mb-4">
+                    <legend class="fs-5 mb-3">Hotel Details</legend>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% if form.hotel_type.errors %}
+                                {{ form.hotel_type(class="form-select is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.hotel_type.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.hotel_type(class="form-select") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.hotel_type.label }}</label>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {% if form.star_rating.errors %}
+                                {{ form.star_rating(class="form-select is-invalid") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.star_rating.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.star_rating(class="form-select") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.star_rating.label }}</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% if form.room_count.errors %}
+                                {{ form.room_count(class="form-control is-invalid", type="number") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.room_count.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.room_count(class="form-control", type="number") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.room_count.label }}</label>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {% if form.available_rooms.errors %}
+                                {{ form.available_rooms(class="form-control is-invalid", type="number") }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.available_rooms.errors %}<span>{{ error }}</span>{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.available_rooms(class="form-control", type="number") }}
+                            {% endif %}
+                            <label class="form-label">{{ form.available_rooms.label }}</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.amenities.errors %}
+                            {{ form.amenities(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.amenities.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.amenities(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.amenities.label }}</label>
+                        <small class="form-text text-muted">Separate multiple amenities with commas</small>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.nearby_attractions.errors %}
+                            {{ form.nearby_attractions(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.nearby_attractions.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.nearby_attractions(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.nearby_attractions.label }}</label>
+                        <small class="form-text text-muted">Separate multiple attractions with commas</small>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.last_renovation_date.errors %}
+                            {{ form.last_renovation_date(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.last_renovation_date.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.last_renovation_date(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.last_renovation_date.label }}</label>
+                    </div>
+                </fieldset>
+
+                <!-- Policies & Requirements -->
+                <fieldset class="mb-4">
+                    <legend class="fs-5 mb-3">Policies & Requirements</legend>
+                    
+                    <div class="mb-3">
+                        {% if form.age_requirement.errors %}
+                            {{ form.age_requirement(class="form-control is-invalid", type="number") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.age_requirement.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.age_requirement(class="form-control", type="number") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.age_requirement.label }}</label>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if form.cancellation_policy.errors %}
+                            {{ form.cancellation_policy(class="form-control is-invalid") }}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.cancellation_policy.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.cancellation_policy(class="form-control") }}
+                        {% endif %}
+                        <label class="form-label">{{ form.cancellation_policy.label }}</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.deposit_required(class="form-check-input") }}
+                            <label class="form-check-label">
+                                {{ form.deposit_required.label }}
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.status(class="form-check-input", checked=True) }}
+                            <label class="form-check-label">
+                                {{ form.status.label }}
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Submit Buttons -->
+                <div class="mb-3">
+                    {{ form.submit(class="btn btn-primary btn-lg me-2") }}
+                    <a href="{{ url_for('business.listings') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
