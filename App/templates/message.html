@@ -1,15 +1,186 @@
-{% extends "layout.html" %}
-{% block title %}{{title}}{% endblock %}
-{% block page %}{{title}}{% endblock %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<style>
+    .toast-stack {
+        position: fixed;
+        top: 90px;
+        right: 24px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(360px, calc(100vw - 32px));
+    }
 
-{{ super() }}
+    .flash-toast {
+        position: relative;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.16);
+        padding: 12px 14px 14px;
+        transform: translateX(110%);
+        animation: slideInRight .25s ease forwards;
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, 0.15);
+    }
 
-{% block content %}
-<div class="container">
-    <div class="row" style="margin-top: 10%;">
-        <div class="col s12 m10 offset-m1">
-            <p>{{message}}</p>
-        </div>
-    </div>
-</div>
-{% endblock %}
+    .flash-toast .toast-content-wrapper {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .flash-toast .toast-icon {
+        font-size: 1.1rem;
+        line-height: 1.3;
+    }
+
+    .flash-toast .toast-message {
+        color: #0f172a;
+        font-size: 0.92rem;
+        line-height: 1.35;
+        margin-right: 8px;
+    }
+
+    .flash-toast .toast-progress {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        width: 100%;
+        animation-name: toastProgress;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+    }
+
+    .flash-toast.toast-success {
+        background: #d9fbe6;
+    }
+
+    .flash-toast.toast-success .toast-progress {
+        background: #22c55e;
+    }
+
+    .flash-toast.toast-danger {
+        background: #fee2e2;
+    }
+
+    .flash-toast.toast-danger .toast-progress {
+        background: #ef4444;
+    }
+
+    .flash-toast.toast-warning {
+        background: #fef3c7;
+    }
+
+    .flash-toast.toast-warning .toast-progress {
+        background: #f59e0b;
+    }
+
+    .flash-toast.toast-info {
+        background: #dbeafe;
+    }
+
+    .flash-toast.toast-info .toast-progress {
+        background: #3b82f6;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(110%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(110%);
+            opacity: 0;
+        }
+    }
+
+    @keyframes toastProgress {
+        from {
+            width: 100%;
+        }
+
+        to {
+            width: 0;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .toast-stack {
+            top: 78px;
+            right: 12px;
+            width: calc(100vw - 24px);
+        }
+    }
+</style>
+
+<div class="toast-stack" id="flash-toast-stack"></div>
+
+<script>
+    (function () {
+        const icon = {
+            success: '✔',
+            danger: '✖',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+
+        const normalizeCategory = (category) => {
+            const value = (category || '').toLowerCase();
+            if (value === 'error') {
+                return 'danger';
+            }
+            if (['success', 'danger', 'warning', 'info'].includes(value)) {
+                return value;
+            }
+            return 'info';
+        };
+
+        const showToast = (message, toastType = 'info', duration = 5000) => {
+            const stack = document.getElementById('flash-toast-stack');
+            if (!stack) {
+                return;
+            }
+
+            const type = normalizeCategory(toastType);
+            const box = document.createElement('div');
+            box.classList.add('flash-toast', `toast-${type}`);
+            box.innerHTML = `
+                <div class="toast-content-wrapper">
+                    <div class="toast-icon">${icon[type]}</div>
+                    <div class="toast-message"></div>
+                </div>
+                <div class="toast-progress"></div>
+            `;
+
+            box.querySelector('.toast-message').textContent = message || 'Notification';
+            box.querySelector('.toast-progress').style.animationDuration = `${duration / 1000}s`;
+            stack.appendChild(box);
+
+            window.setTimeout(() => {
+                box.style.animation = 'slideOutRight .25s ease forwards';
+                window.setTimeout(() => box.remove(), 250);
+            }, duration);
+        };
+
+        const flashed = {{ messages|tojson }};
+        flashed.forEach(([category, message], index) => {
+            window.setTimeout(() => showToast(message, category, 5000), index * 120);
+        });
+    })();
+</script>
+{% endif %}
+{% endwith %}
