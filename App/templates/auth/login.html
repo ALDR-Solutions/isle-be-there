@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Isle Be There</title>
     {% block styles %}
-    {{ bootstrap5.load_css() }}
+    {{ bootstrap.load_css() }}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         *{
@@ -485,7 +485,7 @@
                 </div>
 
                 <div class="back-home text-center">
-                    <a href="{{ url_for('index')}}" class="btn">
+                    <a href="{{ url_for('main.index')}}" class="btn">
                         <i class="fas fa-home me-1"></i>Back to Home
                     </a>
 
@@ -496,7 +496,7 @@
     </div>
 
     {% block scripts %}
-    {{bootstrap5.load_js()}}
+    {{bootstrap.load_js()}}
     {% endblock %}
     
 </body>
