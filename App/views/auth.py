@@ -14,7 +14,9 @@ def login():
     """User login view."""
     form = LoginForm()
     next_url = request.args.get("next")
-    print(f"Next URL: {next_url}")
+    # Skip logout as next URL to prevent immediate logout after login
+    if next_url == "auth.logout":
+        next_url = None
     if form.validate_on_submit():
 
         try:
