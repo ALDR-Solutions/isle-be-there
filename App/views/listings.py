@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, Blueprint, flash
 from App.supabase_client import supabase
-from ..controllers.listings import get_all_listings, get_listing_by_id, filter_listings, sort_listings, get_listing_details
+from ..controllers.listings import get_active_listing_by_id, filter_active_listings, sort_listings, get_listing_details, get_active_listings
 
 listings_view = Blueprint('listings', __name__, template_folder='../templates', url_prefix='/listings')
 
@@ -9,7 +9,7 @@ def list_listings():
     business_types = (supabase.table('business_types').select('*').execute()).data or []
     filters = request.args.to_dict()
     print("Filters received:", filters)
-    listings = filter_listings(filters) if filters else get_all_listings()
+    listings = filter_active_listings(filters) if filters else get_active_listings()
     sort_by = request.args.get('sort')
     if sort_by:
         listings = sort_listings(listings, sort_by)
@@ -17,7 +17,7 @@ def list_listings():
 
 @listings_view.route('/<listing_id>', methods=['GET'])
 def view_listing(listing_id):
-    listing = get_listing_by_id(listing_id)
+    listing = get_active_listing_by_id(listing_id)
     if not listing:
         flash('Listing not found.', 'warning')
         return redirect(url_for('listings.list_listings'))
