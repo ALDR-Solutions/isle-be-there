@@ -1,42 +1,28 @@
+from App.controllers.base import get_caribbean_countries
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
+from wtforms import IntegerField, StringField, SubmitField, BooleanField, SelectField, TextAreaField, EmailField
+from wtforms.validators import DataRequired, Email, Length, Optional, Regexp
 
-from wtforms import FileField, IntegerField, StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Optional
 
-
-#for adding hotel listing by business user
-
-class AddHotelListingForm(FlaskForm):
+class ListingForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     description = TextAreaField('Description', validators=[DataRequired()])
-
     street=StringField('Street', validators=[DataRequired()])
     city=StringField('City', validators=[DataRequired()])   
     state=StringField('State', validators=[DataRequired()])
-    country=StringField('Country', validators=[DataRequired()])
+    country=SelectField('Country', choices=[], validators=[DataRequired()])
     postal_code=StringField('Zip Code', validators=[DataRequired()])
     latitude=StringField('Latitude', validators=[DataRequired()])
     longitude=StringField('Longitude', validators=[DataRequired()])
-
-    image_urls=StringField('Image URL')
-    # official star rating, not platform specific rating (generated from user reviews)
-    star_rating=SelectField('Star Rating', choices=[('1', '1 Star'), ('2', '2 Stars'), ('3', '3 Stars'), ('4', '4 Stars'), ('5', '5 Stars')], validators=[DataRequired()])
-    hotel_type=SelectField('Hotel Type', choices=[('luxury', 'Luxury'), ('boutique', 'Boutique'), ('budget', 'Budget'), ('economy', 'economy')], validators=[DataRequired()])
-    room_count=IntegerField('Room Count', validators=[DataRequired()])
-    available_rooms=IntegerField('Available Rooms', validators=[DataRequired()])
-    amenities = StringField('Amenities (comma separated)', validators=[DataRequired()])
-    nearby_attractions = StringField('Nearby Attractions (comma separated)', validators=[DataRequired()])
-
-    age_requirement = IntegerField('Age Requirement', validators=[DataRequired()])
-    deposit_required = BooleanField('Deposit Required')
-    cancellation_policy = StringField('Cancellation Policy', validators=[DataRequired()])
-    status = BooleanField('Open for Booking', default=True)
-    last_renovation_date = StringField('Last Renovation Date (YYYY-MM-DD)', validators=[DataRequired()])
-
-    submit = SubmitField('Add Hotel Listing')
-
-#adding a restaurant listing by business user
+    phone_number=StringField('Phone Number', validators=[DataRequired(), Length(min=10, max=15), # Adjust length as needed
+        Regexp(r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$', message="Invalid phone number format")])
+    email_address=EmailField('Email Address', validators=[DataRequired(), Email()]) 
+    image_urls=FileField('Image URL', validators=[FileAllowed(['jpg', 'jpeg', 'png'], 'Images only!')], render_kw={"multiple": True})
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.country.choices = get_caribbean_countries()
 
 class AddRestaurantListingForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
