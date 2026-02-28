@@ -482,7 +482,7 @@
                             <h3 class="listing-title">{{ listing.title }}</h3>
                             <p class="listing-description">{{ listing.description or 'No description available' }}</p>
                             <div class="listing-footer">
-                                <div class="listing-price">${{ "%.2f"|format(listing.base_price or 0) }}</div>
+                                <div class="listing-price">{{ "$%.2f"|format(listing.base_price) if listing.base_price else 'N/A' }}</div>
                                 <div class="listing-rating">
                                     <span>★ {{ listing.rating or 'N/A' }}</span>
                                 </div>
