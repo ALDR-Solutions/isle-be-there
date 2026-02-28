@@ -14,6 +14,22 @@ def get_all_listings():
         return []
     print("Response data:", response.data)
     return response.data
+def get_active_listing_by_id(listing_id):
+    """Get a listing by its ID.
+
+    Args:
+        listing_id (str): ID of the listing to retrieve (UUID or string).
+
+    Returns:
+        dict: The listing data if found, None otherwise.
+    """
+    try:
+        response=supabase.table('listings').select('*, business_types(name)').eq('status', "active").eq('id',listing_id).single().execute()
+    except Exception as e:
+        print("Error fetching listing by id:", e)
+        return None
+    return response.data
+
 def get_listing_by_id(listing_id):
     """Get a listing by its ID.
 
@@ -28,6 +44,19 @@ def get_listing_by_id(listing_id):
     except Exception as e:
         print("Error fetching listing by id:", e)
         return None
+    return response.data
+
+def get_active_listings():
+    """Get all active listings from the database.
+
+    Returns:
+        list: List of active listings.
+    """
+    try:
+        response = supabase.table('listings').select('*, business_types(name)').eq('status', "active").execute()
+    except Exception as e:
+        print("Error fetching active listings:", e)
+        return []
     return response.data
 
 def get_listing_details(listing_id):
@@ -69,7 +98,7 @@ def get_listing_details(listing_id):
         response = (
             supabase.table(details_table)
             .select('*')
-            .eq('id', listing_id)
+            .eq('listing_id', listing_id)
             .single()
             .execute()
         )
@@ -98,8 +127,8 @@ def search_listings(query):
         return []
     return response.data
 
-def filter_listings(filters):
-    """Filter listings based on provided criteria.
+def filter_active_listings(filters):
+    """Filter active listings based on provided criteria.
 
     Args:
         filters (dict): Dictionary containing filter criteria.
@@ -108,7 +137,7 @@ def filter_listings(filters):
         list: List of filtered listings.
     """
     try:
-        query = supabase.table('listings').select('*, business_types(name)')
+        query = supabase.table('listings').select('*, business_types(name)').eq('status', "active")
         for key, value in filters.items():
             if value != "":
                 if key == "query":
@@ -137,12 +166,33 @@ def sort_listings(listings, sort_by):
     Returns:
         list: Sorted list of listings.
     """
+    def price_key(x, descending=False):
+        price = x.get("base_price")
+
+        # Always push NULL prices to the end
+        if price is None:
+            return (1, 0)
+
+        return (0, -price if descending else price)
+
     if sort_by == "price-low":
-        return sorted(listings, key=lambda x: x.get('base_price', 0))
+        return sorted(listings, key=lambda x: price_key(x))
+
     elif sort_by == "price-high":
-        return sorted(listings, key=lambda x: x.get('base_price', 0), reverse=True)
+        return sorted(listings, key=lambda x: price_key(x, descending=True))
+
     elif sort_by == "rating":
-        return sorted(listings, key=lambda x: x.get('rating', 0), reverse=True)
+        return sorted(
+            listings,
+            key=lambda x: x.get("rating") or 0,
+            reverse=True
+        )
+
     elif sort_by == "newest":
-        return sorted(listings, key=lambda x: x.get('created_at', ''), reverse=True)
+        return sorted(
+            listings,
+            key=lambda x: x.get("created_at") or "",
+            reverse=True
+        )
+
     return listings
