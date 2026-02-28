@@ -11,3 +11,24 @@ def fetch_business_types():
     except Exception:
         current_app.logger.exception("Failed to fetch business types")
         return []
+    
+def get_caribbean_countries():
+    countries = [
+        "Antigua and Barbuda",
+        "Bahamas",
+        "Barbados",
+        "Belize",
+        "Cuba",
+        "Dominica",
+        "Dominican Republic",
+        "Grenada",
+        "Guyana",
+        "Haiti",
+        "Jamaica",
+        "Saint Kitts and Nevis",
+        "Saint Lucia",
+        "Saint Vincent and the Grenadines",
+        "Suriname",
+        "Trinidad and Tobago",
+    ]
+    return countries    
