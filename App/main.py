@@ -33,7 +33,7 @@ def create_app(overrides={}):
             "current_user": user,
             "user_profile": user_profile
         }
-    Bootstrap5(app)
+    bootstrap = Bootstrap5(app)
     def custom_unauthorized_response(error):
         return render_template('401.html', error=error), 401
     app.app_context().push()
