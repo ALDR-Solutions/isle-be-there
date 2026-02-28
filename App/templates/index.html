@@ -10,7 +10,7 @@
 
 
 {% block modals %}
-{% if show_interest %}
+{% if show_interests %}
 <div class="modal fade" id="interestsModal" tabindex="-1" aria-labelledby="interestsModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -81,9 +81,9 @@
                 .catch(error => console.error('Error: ', error));
             });
 
-            document.getElementById('saveInterestBtn').addEventListener('click', function() {
+            document.getElementById('saveInterestsBtn').addEventListener('click', function() {
                 var selected = [];
-                document.querySelectedAll('#interestsForm input[name="interests"]:checked').forEach(function(cb) {
+                document.querySelectorAll('#interestsForm input[name="interests"]:checked').forEach(function(cb) {
                     selected.push(cb.value);
                 });
                 fetch('{{url_for("main.save_interests")}}', {
