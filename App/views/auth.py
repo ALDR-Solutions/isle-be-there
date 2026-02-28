@@ -71,7 +71,12 @@ def auth_callback():
     # For a pure Flask backend, you may need to exchange the 'code' for a session.
     code = request.args.get('code')
     if code:
-        supabase.auth.exchange_code_for_session(code)
+        response = supabase.auth.exchange_code_for_session({"auth_code": code})
+        if response.session:
+            session["access_token"] = response.session.access_token
+            session["refresh_token"] = response.session.refresh_token
+            session["user_id"] = response.user.id if response.user else None
+            session["user_role"] = response.user.user_metadata.get("user_type") if response.user else None
     return redirect(url_for("main.index"))
 
 @auth_views.route("/logout")

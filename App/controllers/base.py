@@ -20,3 +20,14 @@ def get_caribbean_countries():
         "Saint Lucia", "Saint Vincent and the Grenadines", "Suriname",
         "Trinidad and Tobago"
     ]
+    
+def get_all_interests():
+    """Return list of dicts [{'id':..., 'name':...}, ...] or [] on error."""
+    try:
+        resp = supabase.table("interests").select("id,name").execute()
+        data = getattr(resp, "data", None) or (resp.get("data") if isinstance(resp, dict) else None)
+        print(data)
+        return data or []
+    except Exception:
+        current_app.logger.exception("Failed to fetch interests")
+        return []
