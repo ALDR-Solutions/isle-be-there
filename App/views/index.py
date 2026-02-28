@@ -12,7 +12,7 @@ def index():
     show_interests = False
     interests = []
     if user:
-        profile = get_user_profile(user)
+        profile = get_user_profile(user) or {}
         # Show popup only if interests_handled is False
         show_interests = not profile.get('interests_handled', True)
         print("User profile interests_handled:", profile.get('interests_handled'))
