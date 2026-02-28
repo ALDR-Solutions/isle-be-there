@@ -122,30 +122,50 @@
             display: none;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 200px 10px 200px;
+            padding: 40px 20px 30px;
             text-align: center;
-            border-radius: 0 0 20px 20px;
+            border-radius: 0 0 24px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mobile-header::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            top: -50%;
+            left: -50%;
+            animation: rotate 30s linear infinite;
         }
 
         .mobile-header h1{
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
         }
 
         .mobile-header p{
             opacity: 0.9;
+            font-size: 0.95rem;
+            position: relative;
+            z-index: 1;
         }
 
         .mobile-header i{
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 2.5rem;
+            margin-bottom: 12px;
             background-color: rgba(255,255,255,0.2);
-            width: 80px;
-            height: 80px;
-            line-height: 80px;
+            width: 70px;
+            height: 70px;
+            line-height: 70px;
             border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            z-index: 1;
         }
 
         .form-label{
@@ -331,6 +351,7 @@
         @media (max-width: 1000px){
             .split-container{
                 display: block;
+                min-height: 100vh;
             }
 
             .hero-section{
@@ -338,8 +359,10 @@
             }
 
             .form-section{
-                padding: 10px;
+                padding: 0 12px 24px;
                 background: #f8fafc;
+                min-height: auto;
+                display: block;
             }
 
             .mobile-header {
@@ -347,27 +370,113 @@
             }
 
             .login-card{
-                box-shadow: none;
-                padding: 15px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                padding: 24px 20px;
                 background: white;
-                border-radius: 10px;
-                margin-top: 20px;
-            }    
+                border-radius: 16px;
+                margin-top: -20px;
+                position: relative;
+                z-index: 10;
+                max-width: 100%;
+            }
+
+            .form-control {
+                padding: 12px 14px;
+                font-size: 16px; /* Prevents iOS zoom on focus */
+            }
+
+            .input-group-text {
+                padding: 12px 14px;
+            }
+
+            .btn-login {
+                padding: 14px;
+                font-size: 1rem;
+            }
+
+            .remember-forgot {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .forgot-password {
+                font-size: 0.95rem;
+            }
+
+            .social-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.1rem;
+            }
+
+            .footer-links p {
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+            }
+
+            .back-home .btn {
+                padding: 10px 20px;
+            }
         }
 
         @media (max-width: 576px) {
-            .login-card{
-                padding: 15px 10px;
+            .mobile-header {
+                padding: 32px 16px 24px;
+            }
 
+            .mobile-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .mobile-header i {
+                font-size: 2rem;
+                width: 60px;
+                height: 60px;
+                line-height: 60px;
+            }
+
+            .login-card{
+                padding: 16px 12px;
+                margin-top: -16px;
+                border-radius: 12px;
+            }
+
+            .form-section {
+                padding: 0;
+                min-height: auto;
             }
 
             .social-login{
-                gap: 8px;
+                gap: 12px;
             }
 
             .social-btn{
-                width: 40px;
-                height: 40px;
+                width: 48px;
+                height: 48px;
+            }
+
+            .form-label {
+                font-size: 0.9rem;
+            }
+
+            .divider span {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 375px) {
+            .mobile-header {
+                padding: 24px 12px 20px;
+            }
+
+            .login-card {
+                padding: 14px 10px;
+            }
+
+            .footer-links p {
+                font-size: 0.85rem;
             }
         }
 
@@ -396,13 +505,13 @@
 
         </div>
 
-        <div class="form-section">
-            <div class="mobile-header">
-                <i class="fas fa-umbrella-beach"></i>
-                <h1>Isle Be There</h1>
-                <p>Welcome! Please login</p>
-            </div>
+        <div class="mobile-header">
+            <i class="fas fa-umbrella-beach"></i>
+            <h1>Isle Be There</h1>
+            <p>Welcome! Please login</p>
+        </div>
 
+        <div class="form-section">
             <div class="login-card">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -469,7 +578,7 @@
 
                 <div class="social-login">
                     <a href="#" class="social-btn facebook"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-btn google"><i class="fab fa-google"></i></a>
+                    <a href="{{ url_for('auth.google_login')}}" class="social-btn google"><i class="fab fa-google"></i></a>
                     <a href="#" class="social-btn twitter"><i class="fab fa-twitter"></i></a>
                 </div>
 

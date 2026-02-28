@@ -52,6 +52,28 @@ def login():
 
     return render_template("auth/login.html", form=form, next=next_url)
 
+@auth_views.route('/login/google')
+def google_login():
+    # Redirect user to Google's login page via Supabase
+    # redirectTo must match your 'Site URL' or 'Redirect URLs' in Supabase settings
+    res = supabase.auth.sign_in_with_oauth({
+        "provider": "google",
+        "options": {
+            "redirect_to": "http://127.0.0.1:8080/auth/callback"
+        }
+    })
+    return redirect(res.url)
+
+@auth_views.route('/auth/callback')
+def auth_callback():
+    # Supabase handles the session via cookies/tokens automatically 
+    # if using the Supabase Auth Helpers or JS client.
+    # For a pure Flask backend, you may need to exchange the 'code' for a session.
+    code = request.args.get('code')
+    if code:
+        supabase.auth.exchange_code_for_session(code)
+    return redirect(url_for("main.index"))
+
 @auth_views.route("/logout")
 @login_required
 def logout():
