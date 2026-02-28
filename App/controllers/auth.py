@@ -34,7 +34,7 @@ def get_user_profile(user):
         profile_response = (
             supabase.table("profiles")
             .select("*")
-            .eq("id", user.id)
+            .eq("user_id", user.id)
             .maybe_single()
             .execute()
         )

@@ -13,9 +13,10 @@ def index():
     interests = []
     if user:
         profile = get_user_profile(user)
-        # Show popup only if interests_handled is False
-        show_interests = not profile.get('interests_handled', True)
+        # Show popup only if interests_handled is False (default False for new users)
+        show_interests = not profile.get('interests_handled', False)
         print("User profile interests_handled:", profile.get('interests_handled'))
+        print("Show interests popup:", show_interests)
         if show_interests:
             interests = get_all_interests()
     return render_template('index.html', show_interests=show_interests, interests=interests)
