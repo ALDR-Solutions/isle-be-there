@@ -96,7 +96,7 @@
         }
 
         .hero-quote p{
-            font-size: 10px;
+            font-size: 1rem;
         }
 
         .hero-quote cite{
@@ -248,6 +248,7 @@
 
         .social-login {
             display: flex;
+            align-items: center;
             justify-content: center;
             gap: 10px;
             margin-bottom: 15px;
@@ -430,7 +431,7 @@
                                 {% endfor %}
                             {% endfor %}
                         </ul>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close""></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 
                     </div>
                 {% endif %}
@@ -484,7 +485,7 @@
                 </div>
 
                 <div class="back-home text-center">
-                    <a href="{{ url_for('index.html')}}" class="btn">
+                    <a href="{{ url_for('index')}}" class="btn">
                         <i class="fas fa-home me-1"></i>Back to Home
                     </a>
 
@@ -495,7 +496,7 @@
     </div>
 
     {% block scripts %}
-    {{bootstrap.load_js()}}
+    {{bootstrap5.load_js()}}
     {% endblock %}
     
 </body>
