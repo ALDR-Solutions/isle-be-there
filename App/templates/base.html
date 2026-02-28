@@ -54,11 +54,11 @@
                 <ul class="navbar-nav ms-auto align-items-center">
                     <!-- {% if not current_user %}  -->
                         <li class="nav-item">
-                            <a href="#" class="nav-link">Login</a>
+                            <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
 
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">Register</a>
+                            <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
                         </li>
                     <!-- {% endif %} -->
                     <li class="nav-item">
@@ -93,9 +93,9 @@
                                 </span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="navbarDropdown">
-                                <li><a href="#" class="dropdown-item"><i class="fas fa-user me-2"></i>Business Profile</a></li>
+                                <li><a href="#" class="dropdown-item"><i class="fas fa-user me-2"></i>Profile</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a href="#" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                                <li><a href="{{ url_for('auth.logout') }}" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
 
                             </ul>
 
