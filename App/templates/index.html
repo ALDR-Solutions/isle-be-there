@@ -1,5 +1,106 @@
 {% extends "base.html" %}
 {% block title %} Isle Be There{% endblock %}
 
-{% block  head%}
-{% endblock  %}
+{% block content %}
+{% endblock %}
+
+
+
+
+
+
+{% block modals %}
+{% if show_interest %}
+<div class="modal fade" id="interestsModal" tabindex="-1" aria-labelledby="interestsModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="interestsModalLabel">Tell us your interest</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeModalX"></button>
+
+            </div>
+            <div class="modal-body">
+                <p>Select your interest to help us personalize your experience: </p>
+                <form id="interestsForm">
+                    {% for interest in interests %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="{{interest.id}}" id="interest_{{interest.id}}" name="interests">
+                            <label class="form-check-label" for="interest_{{interest.id}}">{{interest.name}}</label>
+
+                        </div>
+                    {% endfor %}
+                </form>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="skipBtn">Skip</button>
+                <button type="button" class="btn btn-primary" id="saveInterestsBtn">Save & Continue</button>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if show_interests %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var interestModalEl = document.getElementById("interestsModal");
+        if (interestsModalEl) {
+            var interestModal = new bootstrap.Modal(interestModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            interestModal.show();
+
+            document.getElementById('skipBtn').addEventListener('click', function() {
+                fetch('{{url_for("main.skip_interests")}}', {method:'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        interestModal.hide();
+                    }
+                })
+                .catch(error => console.error("Error: ", error));
+            });
+
+            document.getElementById('closeModalX').addEventListener('click', function() {
+                fetch('{{url_for("main.skip_interests")}}', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if( data.success) {
+                        interestModal.hide();
+                    }
+                })
+                .catch(error => console.error('Error: ', error));
+            });
+
+            document.getElementById('saveInterestBtn').addEventListener('click', function() {
+                var selected = [];
+                document.querySelectedAll('#interestsForm input[name="interests"]:checked').forEach(function(cb) {
+                    selected.push(cb.value);
+                });
+                fetch('{{url_for("main.save_interests")}}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ interests: selected})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        location.reload()
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
