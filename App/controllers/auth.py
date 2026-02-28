@@ -39,13 +39,10 @@ def get_user_profile(user):
             .execute()
         )
 
-        if not profile_response:
-            current_app.logger.warning(f"No response from Supabase for user {user.id}")
-            return profile_info
-
-        db_profile = getattr(profile_response, "data", None)
+        db_profile = getattr(profile_response, "data", None)  # None if no row found
+        
         if not db_profile:
-            current_app.logger.info(f"No profile data found for user {user.id}")
+            current_app.logger.info(f"No profile found for user {user.id}")
             return profile_info
 
         first = db_profile.get("first_name", "") or ""
@@ -58,6 +55,7 @@ def get_user_profile(user):
             "avatar_url": db_profile.get("avatar_url"),
             "phone_number": db_profile.get("phone"),
             "birth_date": db_profile.get("birth_date"),
+            "interests_handled": db_profile.get("interests_handled", False),
             "id": db_profile.get("id"),
         }
 
