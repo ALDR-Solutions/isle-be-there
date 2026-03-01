@@ -7,6 +7,9 @@
         height: 100vh;
         width: 100%;
         position: relative;
+        overflow: hidden;
+        margin-top: -50px;
+        padding-top: 50px;
     }
 
     #heroCarousel,
@@ -23,14 +26,29 @@
     }
 
     #heroCarousel .carousel-item::after {
-        content: "";
+        content: '';
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5);
+        background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6));
         z-index: 1;
+    }
+
+    .hero-content-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        z-index: 2;
+        pointer-events: none;
     }
 
     .hero-content-overlay .container{
@@ -38,31 +56,50 @@
     }
 
     .hero-title{
-        font-size: 3rem;
-        font-weight: bold;
+        font-size: 3.5rem;
+        margin-bottom: 5px;
+        font-weight: 700;
         text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
     }
 
     .hero-subtitle{
         font-size: 1.5rem;
-        margin-bottom: 2rem;
+        margin-bottom: 40px;
+        opacity: 0.9;
         text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
     }
 
+    .itinerary-nav{
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
     .itinerary-btn{
-        background-color: #ff6b6b;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         color: white;
-        padding: 12px 30px;
-        border-radius: 50px;
+        padding: 15px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
         text-decoration: none;
-        font-weight: bold;
-        transition: 0.3;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
     }
 
     .itinerary-btn:hover{
-        background: #ff5252;
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         color: white;
+    }
+
+    .itinerary-btn i{
+        font-size: 1.5rem;
     }
 
     .carousel-control-prev, .carousel-control-next,
@@ -71,17 +108,17 @@
     }
 </style>
 <section class="hero-section">
-    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
         <div class="carousel-indicators">
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
 
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" ></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
 
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" ></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
 
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" ></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
 
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4" aria-label="Slide 5"></button>
 
         </div>
 
