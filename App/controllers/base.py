@@ -24,7 +24,8 @@ def get_caribbean_countries():
 def get_all_interests():
     """Return list of dicts [{'id':..., 'name':...}, ...] or [] on error."""
     try:
-        resp = supabase.table("interests").select("id,name").execute()
+        resp = supabase.table("interests").select("id,name,category").execute()
+        print(f"This is your data {resp.data}")
         data = getattr(resp, "data", None) or (resp.get("data") if isinstance(resp, dict) else None)
         print(data)
         return data or []

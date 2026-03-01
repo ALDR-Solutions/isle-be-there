@@ -127,6 +127,7 @@ def register():
                     "id": user.id,
                     "first_name": form.first_name.data,
                     "last_name": form.last_name.data,
+                    "interests_handled": False
                 }
                 supabase.table("profiles").insert(user_profile).execute()
             except Exception:

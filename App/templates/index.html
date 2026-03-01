@@ -12,7 +12,7 @@
 {% block modals %}
 {% if show_interests %}
 <div class="modal fade" id="interestsModal" tabindex="-1" aria-labelledby="interestsModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="interestsModalLabel">Tell us your interest</h5>
@@ -20,21 +20,46 @@
 
             </div>
             <div class="modal-body">
-                <p>Select your interest to help us personalize your experience: </p>
-                <form id="interestsForm">
-                    {% for interest in interests %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="{{interest.id}}" id="interest_{{interest.id}}" name="interests">
-                            <label class="form-check-label" for="interest_{{interest.id}}">{{interest.name}}</label>
+                <p class="mb-3">Select your interest to help us personalize your experience</p>
+                {% set categories = {} %}
+                {% for interest in interests %}
+                    {% set category = interest.get('category', 'Other') %}
+                    {% if category not in categories %}
+                        {% set _ = categories.update({category: []}) %}
+                    {% endif %}
+                    {% set _ = categories[category].append(interest) %}
+                {% endfor %}
+
+                <div id="categorySteps">
+                    {% for category, items in categories.items() %}
+                        <div class="category-step" data-category="{{category}}" {% if not loop.first %}style="display: none;"{% endif %}>
+                            <h6 class="fw-semibold mb-3 text-uppercase">{{category}}</h6>
+                            <div class="row row-cols-1 row-cols-md-3 g-2">
+                                {% for interest in items %}
+                                    <div class="col">
+                                        <input class="btn-check" type="checkbox" value="{{ interest.get('id')}}" name="interests" id="interest_{{interest.get('id')}}" autocomplete="off">
+                                        <label class="btn btn-outline-primary w-100" for="interest_{{interest.get('id')}}">{{interest.get('name')}}</label>
+                                    
+
+                                    </div>
+                                {% endfor %}
+                            </div>
 
                         </div>
                     {% endfor %}
-                </form>
+                </div>
+                <div class="text-center mt-3 text-muted small" id="stepIndicator"></div>
 
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="skipBtn">Skip</button>
-                <button type="button" class="btn btn-primary" id="saveInterestsBtn">Save & Continue</button>
+                <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
+
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="skipBtn">Skip</button>
+                    <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+                </div>
+                
+                
 
             </div>
 
@@ -52,12 +77,71 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var interestModalEl = document.getElementById("interestsModal");
-        if (interestsModalEl) {
+        if (!interestModalEl) return;
             var interestModal = new bootstrap.Modal(interestModalEl, {
                 backdrop: 'static',
                 keyboard: false
             });
             interestModal.show();
+
+            var steps = document.querySelectorAll('.category-step');
+            var currentStep = 0;
+            var totalSteps = steps.length;
+            var prevBtn = document.getElementById('prevBtn');
+            var nextBtn = document.getElementById('nextBtn');
+            var stepIndicator = document.getElementById('stepIndicator');
+
+            function updateStep() {
+                steps.forEach(step => step.style.display = 'none');
+                steps[currentStep].style.display = 'block';
+
+                if (currentStep === 0){
+                    prevBtn.style.display = 'none';
+                }else{
+                    prevBtn.style.display = 'inline-block';
+                }
+
+                if (currentStep === totalSteps - 1){
+                    nextBtn.textContent = 'Save';
+                }else{
+                    nextBtn.textContent = 'Next';
+                }
+
+                stepIndicator.textContent = `Category ${currentStep + 1} of ${totalSteps}`;
+            }
+
+            nextBtn.addEventListener('click', function() {
+                if(currentStep < totalSteps - 1){
+                    currentStep++;
+                    updateStep();
+                }else{
+                    var selected = [];
+                    document.querySelectorAll('#categorySteps input[name="interests"]:checked').forEach(function(cb){
+                        selected.push(cb.value);
+                    });
+                    fetch('{{url_for("main.save_interests")}}',{
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({interests: selected})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if(data.success) {
+                            location.reload();
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            });
+
+            prevBtn.addEventListener('click', function(){
+                if(currentStep > 0){
+                    currentStep--;
+                    updateStep();
+                }
+            });
+
+
 
             document.getElementById('skipBtn').addEventListener('click', function() {
                 fetch('{{url_for("main.skip_interests")}}', {method:'POST'})
@@ -81,26 +165,15 @@
                 .catch(error => console.error('Error: ', error));
             });
 
-            document.getElementById('saveInterestsBtn').addEventListener('click', function() {
-                var selected = [];
-                document.querySelectorAll('#interestsForm input[name="interests"]:checked').forEach(function(cb) {
-                    selected.push(cb.value);
-                });
-                fetch('{{url_for("main.save_interests")}}', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ interests: selected})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if(data.success) {
-                        location.reload()
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            });
-        }
+            if(totalSteps > 0){
+                updateStep();
+            }
+
+            
+        
     });
+
+    
 </script>
 {% endif %}
 {% endblock %}
