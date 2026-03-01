@@ -24,6 +24,23 @@ body{
     margin: 0 5px;
 }
 
+.nav-item-auth .nav-link {
+    background-color: #ffffff;
+    color: #3498db !important;
+    border-radius: 25px;
+    padding: 5px 10px;
+    margin: 0 5px;
+    width: 80px;
+    text-align: center;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.nav-item-auth .nav-link:hover{
+    background-color: #3498db;
+    color: #ffffff !important;
+    transform: scale(1.02);
+}
+
 .avatar-circle{
     width: 34px;
     height: 34px;

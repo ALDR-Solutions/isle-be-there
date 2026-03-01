@@ -9,7 +9,7 @@
         position: relative;
         overflow: hidden;
         margin-top: -50px;
-        padding-top: 50px;
+        padding-top: 30px;
     }
 
     #heroCarousel,
@@ -106,6 +106,26 @@
     .carousel-indicators{
         z-index: 3;
     }
+
+    @media (max-width: 1000px){
+        .hero-title{
+            font-size: 2.5rem;
+        }
+
+        .hero-subtitle{
+            font-size: 1rem;
+        }
+
+        .itinerary-btn{
+            width: 100%;
+            max-width: 300px;
+
+        }
+
+        .section-title{
+            font-size: 2rem;
+        }
+    }
 </style>
 <section class="hero-section">
     <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="2000">
@@ -135,7 +155,7 @@
 
         </div>
 
-        <div class="hero-content-overlay"">
+        <div class="hero-content-overlay">
             <div class="container">
                 <h1 class="hero-title">Discover the Paradise of the Caribbean Islands</h1>
                 <p class="hero-subtitle">Experience a once in a life time trip to the hidden gems of the Caribbean</p>
@@ -157,12 +177,31 @@
 
 <section class="featured-section">
     <div class="container text-center mt-5 pt-5">
-        <h2 class="section-title">Recommended Destinations</h2>
+        <h2 class="section-title">Featured Destinations</h2>
         <hr class="mx-auto">
-        <p>Come and check out these places</p>
+        <p>Come and check out these places you may like</p>
     </div>
 
 </section>
+
+<section class="popular-section">
+    <div class="container text-center mt-5 pt-5">
+        <h2 class="section-title">Popular Destinations</h2>
+        <hr class="mx-auto">
+        <p>Come and check out these popular places</p>
+    </div>
+
+</section>
+
+<section class="hotel-section">
+    <div class="container text-center mt-5 pt-5">
+        <h2 class="section-title">Hotels and Villas</h2>
+        <hr class="mx-auto">
+        <p>Most luxurious places to stay on your trip</p>
+    </div>
+
+</section>
+
 
 
 {% endblock %}

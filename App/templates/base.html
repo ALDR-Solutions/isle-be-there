@@ -40,7 +40,7 @@
                 <div class="d-lg-none my-3">
                     <form class="d-flex" action="" method="GET" >
                         <div class="input-group">
-                            <input type="text" class="form-control" placeholder="Search..." name="q" aria-label="Search">
+                            <input type="text" class="form-control" placeholder="Search . . ." name="q" aria-label="Search">
                             <button class="btn btn-outline-primary" type="submit">
                                 <i class="fas fa-search"></i>
 
@@ -53,11 +53,11 @@
 
                 <ul class="navbar-nav ms-auto align-items-center">
                     {% if not current_user %}
-                        <li class="nav-item">
+                        <li class="nav-item nav-item-auth">
                             <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
 
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item nav-item-auth">
                             <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
                         </li>
                     {% endif %}
