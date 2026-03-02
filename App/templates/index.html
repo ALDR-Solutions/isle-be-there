@@ -357,21 +357,24 @@
 
                             <div class="destination-rating">
                                 <div class="rating-stars">
-                                    {% with rating=listing.rating|default:0 %}
-                                        {% for i in "12345"|make_list%}
-                                            {% if i|add:0 <= rating|floatformat:0|add:0 %}
-                                                <i class="fas fa-star"></i>
-                                            {% elif i|add:0 == rating|floatformat:0|add:1 and rating|floatformat:1|slice:"-2:" >= "5"  %}
-                                                <i class="fas fa-star-half-alt"></i>
-                                            {% else %}
-                                                <i class="far fa-star"></i>
-                                            {% endif %}
-                                        {% endfor %}
+                                    {% with rating=listing.rating|default(0) %}
+                                        {% for i in range(1, 6) %}
+    {% if i <= rating %}
+        {# Full Star #}
+        <i class="fas fa-star text-warning"></i>
+    {% elif i - 0.5 <= rating %}
+        {# Half Star #}
+        <i class="fas fa-star-half-alt text-warning"></i>
+    {% else %}
+        {# Empty Star #}
+        <i class="far fa-star text-warning"></i>
+    {% endif %}
+{% endfor %}
                                     {% endwith %}
 
 
                                 </div>
-                                <span class="rating-value">{{listing.rating|floatformat:1}}</span>
+                                <span class="rating-value">{{listing.rating|round(1)}}</span>
 
                             </div>
 
@@ -384,7 +387,7 @@
                     </div>
 
                 </div>
-            {% empty %}
+            {% else %}
             <div class="col-12 text-center text-white">
                 <p>No Destination Available</p>
             </div>

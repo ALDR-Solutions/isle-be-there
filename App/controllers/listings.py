@@ -14,6 +14,21 @@ def get_all_listings():
         return []
     print("Response data:", response.data)
     return response.data
+
+def get_all_active_listings():
+    """Get all active listings from the database.
+    
+    Returns:
+        list: List of active listings.
+    """
+    try:
+        response=supabase.table('listings').select('*, business_types(name)').eq('status', 'active').execute()
+    except Exception as e:
+        print("Error fetching active listings:", e)
+        return []
+    print("Response data:", response.data)
+    return response.data
+
 def get_listing_by_id(listing_id):
     """Get a listing by its ID.
 
@@ -146,3 +161,29 @@ def sort_listings(listings, sort_by):
     elif sort_by == "newest":
         return sorted(listings, key=lambda x: x.get('created_at', ''), reverse=True)
     return listings
+
+def personalize_listings(user_interests):
+    """Personalize listings based on user interests.
+
+    Args:
+        user_interests (list): List of user's interest IDs.
+
+    Returns:
+        list: Personalized list of listings.
+    """
+    if not user_interests:
+        return get_all_active_listings()
+    try:
+        response = (
+            supabase.table('listings')
+            .select('*, business_types(name), listing_interests!inner(interest_id)')
+            .in_('listing_interests->>interest_id', user_interests)
+            .eq('status', 'active')
+            .order('random()')
+            .limit(20)
+            .execute()
+        )
+    except Exception as e:
+        print("Error personalizing listings:", e)
+        return []
+    return response.data

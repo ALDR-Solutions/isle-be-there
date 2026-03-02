@@ -48,8 +48,8 @@ def save_interests():
             }).execute()
 
         # Mark as handled
-        supabase.table("profiles").update({"interests_handled": True}).eq("id", user.id).execute()
-
+        supabase.table("profiles").update({"interests_handled": True}).eq("user_id", user.id).execute()
+        flash("Your interests have been saved!", "success")
         return jsonify({'success': True})
     except Exception as e:
         flash("An error occurred while saving your interests. Please try again.", "danger")
@@ -64,7 +64,8 @@ def skip_interests():
 
     try:
         # Just mark as handled, no interests inserted
-        supabase.table("profiles").update({"interests_handled": True}).eq("id", user.id).execute()
+        supabase.table("profiles").update({"interests_handled": True}).eq("user_id", user.id).execute()
+        flash("You have skipped selecting your interests.", "info")
         return jsonify({'success': True})
     except Exception as e:
         flash("An error occurred while skipping your interests. Please try again.", "danger")

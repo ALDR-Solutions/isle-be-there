@@ -32,3 +32,13 @@ def get_all_interests():
     except Exception:
         current_app.logger.exception("Failed to fetch interests")
         return []
+
+def get_user_interests(user_id):
+    """Return list of interest IDs for a given user."""
+    try:
+        resp = supabase.table("user_interests").select("interest_id").eq("user_id", user_id).execute()
+        data = getattr(resp, "data", None) or (resp.get("data") if isinstance(resp, dict) else None)
+        return [item["interest_id"] for item in (data or [])]
+    except Exception:
+        current_app.logger.exception(f"Failed to fetch interests for user {user_id}")
+        return []
