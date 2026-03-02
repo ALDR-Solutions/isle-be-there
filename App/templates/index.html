@@ -190,6 +190,12 @@
         <hr class="mx-auto">
         <p>Come and check out these popular places</p>
     </div>
+    {{ personalized_listings.image_urls }}
+    {{ personalized_listings.title }}
+    {{ personalized_listings.description }}
+    {{ personalized_listings.price }}
+    {{ personalized_listings.address }}
+    {{ personalized_listings.reviews }}
 
 </section>
 
@@ -218,7 +224,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="interestsModalLabel">Tell us your interest</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeModalX"></button>
+                <button type="button" class="btn-close" aria-label="Close" id="closeModalX"></button>
 
             </div>
             <div class="modal-body">
