@@ -113,9 +113,14 @@
         color: white;
     }
 
+    .featured-section p{
+        text-align: center;
+        color: black;
+    }
+
     .section-title{
         text-align: center;
-        color: white;
+        color: black;
         margin-bottom: 50px;
         font-weight: 700;
         font-size: 2.5rem;
@@ -326,19 +331,10 @@
 </section>
 
 <section class="featured-section">
-    <div class="container text-center mt-5 pt-5">
+    <div class="container">
         <h2 class="section-title">Featured Destinations</h2>
         <hr class="mx-auto">
-        <p>Come and check out these places you may like</p>
-    </div>
-
-</section>
-
-<section class="popular-section">
-    <div class="container">
-        <h2 class="section-title">Popular Destinations</h2>
-        <hr class="mx-auto">
-        <p class="text-center mb-5" >Come and check out these popular places</p>
+        <p >Come and check out these places you may like</p>
 
         <div class="row g-4">
             {% for listing in personalized_listing %}
@@ -395,6 +391,14 @@
         </div>
 
 
+    </div>
+
+</section>
+
+<section class="popular-section">
+    <div class="container">
+        <h2 class="section-title">Popular Destinations</h2>
+        <hr class="mx-auto">
     </div>
 
 </section>
