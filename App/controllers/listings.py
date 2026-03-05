@@ -1,4 +1,5 @@
 from App.supabase_client import supabase
+import random
 
 def get_all_listings():
     """Get all listings from the database.
@@ -169,7 +170,7 @@ def personalize_listings(user_interests):
         user_interests (list): List of user's interest IDs.
 
     Returns:
-        list: Personalized list of listings.
+        list: Personalized list of listings, falling back to random active listings if none found.
     """
     if not user_interests:
         return get_all_active_listings()
@@ -177,13 +178,19 @@ def personalize_listings(user_interests):
         response = (
             supabase.table('listings')
             .select('*, business_types(name), listing_interests!inner(interest_id)')
-            .in_('listing_interests->>interest_id', user_interests)
+            .in_('listing_interests.interest_id', user_interests)
             .eq('status', 'active')
-            .order('random()')
             .limit(20)
             .execute()
         )
+        listings = response.data or []
+        print(f"Personalized listings found: {len(listings)} for interests: {user_interests}")
+
+        if not listings:
+            return get_all_active_listings()
+
+        random.shuffle(listings)
+        return listings
     except Exception as e:
         print("Error personalizing listings:", e)
-        return []
-    return response.data
+        return get_all_active_listings()

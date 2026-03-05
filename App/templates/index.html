@@ -175,7 +175,7 @@
     .destination-name{
         font-size: 1.3rem;
         font-weight: 600;
-        color: white;
+        color: black;
         margin-bottom: 12px;
         line-height: 1.3;
     }
@@ -252,6 +252,91 @@
         transform: scale(0.98);
     }
 
+    /* Card Carousel */
+    .card-carousel-wrapper {
+        position: relative;
+        padding: 0 50px;
+    }
+
+    .card-carousel-track {
+        display: flex;
+        transition: transform 0.5s ease;
+        gap: 24px;
+    }
+
+    .card-carousel-slide {
+        min-width: calc((100% - 48px) / 3);
+        max-width: calc((100% - 48px) / 3);
+        flex-shrink: 0;
+    }
+
+    .carousel-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #3498db;
+        color: white;
+        border: none;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 5;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .carousel-nav-btn:hover {
+        background: #2980b9;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .carousel-nav-btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: translateY(-50%);
+    }
+
+    .carousel-nav-btn.prev-btn {
+        left: 0;
+    }
+
+    .carousel-nav-btn.next-btn {
+        right: 0;
+    }
+
+    .carousel-dots {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+    }
+
+    .carousel-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #bdc3c7;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 0;
+    }
+
+    .carousel-dot.active {
+        background: #3498db;
+        transform: scale(1.3);
+    }
+
+    @media (max-width: 1000px){
+        .card-carousel-slide {
+            min-width: calc(50% - 12px);
+        }
+    }
 
     @media (max-width: 1000px){
         .hero-title{
@@ -279,6 +364,16 @@
 
         .destination-price{
             font-size: 1.2rem;
+        }
+    }
+
+    @media (max-width: 576px){
+        .card-carousel-slide {
+            min-width: 100%;
+        }
+
+        .card-carousel-wrapper {
+            padding: 0 40px;
         }
     }
 </style>
@@ -336,59 +431,67 @@
         <hr class="mx-auto">
         <p >Come and check out these places you may like</p>
 
-        <div class="row g-4">
-            {% for listing in personalized_listing %}
-                <div class="col-lg-4 col-md-6">
-                    <div class="destination-card">
-                        <img src="{{listing.image_urls.0}}" alt="{{listing.title}}" class="destination-image">
+        {% if personalized_listings %}
+        <div class="card-carousel-wrapper" id="personalizedCarousel">
+            <button class="carousel-nav-btn prev-btn" id="carouselPrev" aria-label="Previous">
+                <i class="fas fa-chevron-left"></i>
+            </button>
 
-                        <div class="destination-content">
-                            <h3 class="destination-name">{{listing.title}}</h3>
+            <div style="overflow: hidden;">
+                <div class="card-carousel-track" id="carouselTrack">
+                    {% for listing in personalized_listings %}
+                    <div class="card-carousel-slide">
+                        <div class="destination-card">
+                            <img src="{{listing.get('image_urls', [])[0]}}" alt="{{listing.title}}" class="destination-image">
 
-                            <div class="destination-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>{{listing.address}}</span>
+                            <div class="destination-content">
+                                <h3 class="destination-name">{{listing.title}}</h3>
 
-                            </div>
-
-                            <div class="destination-rating">
-                                <div class="rating-stars">
-                                    {% with rating=listing.rating|default(0) %}
-                                        {% for i in range(1, 6) %}
-    {% if i <= rating %}
-        {# Full Star #}
-        <i class="fas fa-star text-warning"></i>
-    {% elif i - 0.5 <= rating %}
-        {# Half Star #}
-        <i class="fas fa-star-half-alt text-warning"></i>
-    {% else %}
-        {# Empty Star #}
-        <i class="far fa-star text-warning"></i>
-    {% endif %}
-{% endfor %}
-                                    {% endwith %}
-
-
+                                <div class="destination-location">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{listing.address}}</span>
                                 </div>
-                                <span class="rating-value">{{listing.rating|round(1)}}</span>
 
+                                {% if listing.rating %}
+                                <div class="destination-rating">
+                                    <div class="rating-stars">
+                                        {% with rating=listing.rating|default(0) %}
+                                            {% for i in range(1, 6) %}
+                                                {% if i <= rating %}
+                                                    <i class="fas fa-star text-warning"></i>
+                                                {% elif i - 0.5 <= rating %}
+                                                    <i class="fas fa-star-half-alt text-warning"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-warning"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endwith %}
+                                    </div>
+                                    <span class="rating-value">{{listing.rating|round(1)}}</span>
+                                </div>
+                                {% endif %}
+
+                                <div class="destination-price">${{listing.base_price}}/night</div>
+
+                                <a href="/listing/{{listing.id}}/" class="btn btn-primary-cta w-100">View Details</a>
                             </div>
-
-                            <div class="destination-price">${{listing.price}}/night</div>
-
-                            <a href="/listing/{{listing.id}}/" class="btn btn-primary-cta w-100">View Details</a>
-
                         </div>
-
                     </div>
-
+                    {% endfor %}
                 </div>
-            {% else %}
-            <div class="col-12 text-center text-white">
-                <p>No Destination Available</p>
             </div>
-            {% endfor %}
+
+            <button class="carousel-nav-btn next-btn" id="carouselNext" aria-label="Next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
+            <div class="carousel-dots" id="carouselDots"></div>
         </div>
+        {% else %}
+        <div class="text-center">
+            <p style="color: black;">No Destination Available</p>
+        </div>
+        {% endif %}
 
 
     </div>
@@ -484,6 +587,80 @@
 
 {% block scripts %}
 {{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const track = document.getElementById('carouselTrack');
+    const prevBtn = document.getElementById('carouselPrev');
+    const nextBtn = document.getElementById('carouselNext');
+    const dotsContainer = document.getElementById('carouselDots');
+    if (!track) return;
+
+    const slides = track.querySelectorAll('.card-carousel-slide');
+    const totalSlides = slides.length;
+    let currentIndex = 0;
+
+    function getVisibleCount() {
+        if (window.innerWidth <= 576) return 1;
+        if (window.innerWidth <= 1000) return 2;
+        return 3;
+    }
+
+    function getMaxIndex() {
+        return Math.max(0, totalSlides - getVisibleCount());
+    }
+
+    function buildDots() {
+        dotsContainer.innerHTML = '';
+        const maxIdx = getMaxIndex();
+        for (let i = 0; i <= maxIdx; i++) {
+            const dot = document.createElement('button');
+            dot.className = 'carousel-dot' + (i === currentIndex ? ' active' : '');
+            dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+            dot.addEventListener('click', () => { currentIndex = i; updateCarousel(); });
+            dotsContainer.appendChild(dot);
+        }
+    }
+
+    function updateCarousel() {
+        const maxIdx = getMaxIndex();
+        if (currentIndex > maxIdx) currentIndex = maxIdx;
+        if (currentIndex < 0) currentIndex = 0;
+
+        const slideEl = slides[0];
+        const gap = 24;
+        const offset = currentIndex * (slideEl.offsetWidth + gap);
+        track.style.transform = 'translateX(-' + offset + 'px)';
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex >= maxIdx;
+
+        dotsContainer.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === currentIndex);
+        });
+    }
+
+    prevBtn.addEventListener('click', () => { currentIndex--; updateCarousel(); });
+    nextBtn.addEventListener('click', () => { currentIndex++; updateCarousel(); });
+
+    // Touch/swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+    track.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+    track.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) { currentIndex++; } else { currentIndex--; }
+            updateCarousel();
+        }
+    });
+
+    buildDots();
+    updateCarousel();
+
+    window.addEventListener('resize', () => { buildDots(); updateCarousel(); });
+});
+</script>
 {% if show_interests %}
 
 <script>

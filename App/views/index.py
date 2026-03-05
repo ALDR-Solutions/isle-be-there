@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, flash
 from App.supabase_client import supabase
 from App.controllers.auth import get_current_user, get_user_profile
-from App.controllers.base import get_all_interests
+from App.controllers.base import get_all_interests, get_user_interests
+from App.controllers.listings import personalize_listings, get_all_active_listings
+import random
 
 
 index_views = Blueprint('main', __name__, template_folder='../templates')
@@ -11,6 +13,7 @@ def index():
     user = get_current_user()
     show_interests = False
     interests = []
+    personalized_listings = []
     if user:
         profile = get_user_profile(user)
         # Show popup only if interests_handled is False
@@ -19,7 +22,14 @@ def index():
         print("Show interests popup:", show_interests)
         if show_interests:
             interests = get_all_interests()
-    return render_template('index.html', show_interests=show_interests, interests=interests)
+        
+        personalized_listings = personalize_listings(get_user_interests(user.id))
+    else:
+        personalized_listings = get_all_active_listings()
+    
+    personalized_listings = personalized_listings[:10]  # Limit to 20 listings for performance
+    random.shuffle(personalized_listings)  # Show some active listings for guests
+    return render_template('index.html', show_interests=show_interests, interests=interests, personalized_listings=personalized_listings)
 
 
 @index_views.route('/save-interests', methods=['POST'])
