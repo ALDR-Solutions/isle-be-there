@@ -1,0 +1,74 @@
+{% extends "onboarding/base.html" %}
+{% block onboarding_title %}Your Results{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-lg">
+    <!-- Progress bar -->
+    <div class="mb-6">
+      <div class="mb-2 flex justify-between text-xs font-medium text-slate-500">
+        <span>Step 6 of 6</span>
+        <span>100%</span>
+      </div>
+      <div class="h-2 w-full rounded-full bg-slate-200">
+        <div class="h-2 rounded-full bg-brand-600" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Here's what we got for you</h1>
+      <p class="mt-1 text-sm text-slate-500">Based on your preferences, we recommend these packages.</p>
+
+      <!-- Summary of selections -->
+      <div class="mt-4 space-y-1 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        {% if params.getlist('interests') %}
+          <p><span class="font-medium text-slate-900">Interests:</span> {{ params.getlist('interests') | join(', ') | title }}</p>
+        {% endif %}
+        {% if params.getlist('style') %}
+          <p><span class="font-medium text-slate-900">Style:</span> {{ params.getlist('style') | join(', ') | title }}</p>
+        {% endif %}
+        {% if params.getlist('vibe') %}
+          <p><span class="font-medium text-slate-900">Vibe:</span> {{ params.getlist('vibe') | join(', ') | title }}</p>
+        {% endif %}
+        {% if params.get('adults') %}
+          <p><span class="font-medium text-slate-900">Guests:</span> {{ params.get('adults') }} adult{{ 's' if params.get('adults') != '1' else '' }}{% if params.get('children', '0') != '0' %}, {{ params.get('children') }} child{{ 'ren' if params.get('children') != '1' else '' }}{% endif %}</p>
+        {% endif %}
+        {% if params.get('check_in') and params.get('check_out') %}
+          <p><span class="font-medium text-slate-900">Dates:</span> {{ params.get('check_in') }} &mdash; {{ params.get('check_out') }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Result card -->
+      <div class="mt-6 space-y-4">
+        <div class="overflow-hidden rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md">
+          <div class="flex gap-4 p-4">
+            <div class="h-20 w-20 flex-shrink-0 rounded-lg bg-slate-200">
+              <div class="flex h-full w-full items-center justify-center text-slate-400">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="font-semibold text-slate-900">Package Name</h3>
+                  <span class="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">Hotel</span>
+                </div>
+                <span class="text-lg font-bold text-slate-900">$0.00</span>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                Package snapshot: discover local dining, beachfront stays, and guided island tours all bundled into one unforgettable experience tailored to your preferences.
+              </p>
+            </div>
+          </div>
+          <div class="border-t border-slate-100 bg-slate-50 px-4 py-3">
+            <button class="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">Book Now</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-between gap-3">
+        <a href="{{ url_for('onboarding_views.onboarding_step_5') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}" class="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Back</a>
+        <a href="{{ url_for('onboarding_views.onboarding_overview') }}" class="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Start Over</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
