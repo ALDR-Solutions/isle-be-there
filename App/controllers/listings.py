@@ -1,7 +1,7 @@
 from App.supabase_client import supabase
 import random
 
-def get_all_listings():
+def get_all_listings(active = False):
     """Get all listings from the database.
     
     Returns:
@@ -9,26 +9,38 @@ def get_all_listings():
     """
     
     try:
-        response=supabase.table('listings').select('*, business_types(name)').execute()
+        if active:
+            response = supabase.table('listings').select('*, business_types(name), reviews(rating)').eq('status', 'active').execute()
+        else:
+            response = supabase.table('listings').select('*, business_types(name), reviews(rating)').execute()
+        
+        listings = response.data or []
+        for listing in listings:
+            reviews = listing.get('reviews', [])
+            if reviews:
+                avg = sum(r['rating'] for r in reviews) / len(reviews)
+                listing['rating'] = round(avg, 1)
+            else:
+                listing['rating'] = None
     except Exception as e:
         print("Error fetching listings:", e)
         return []
-    print("Response data:", response.data)
-    return response.data
+    print("Response data:", listings)
+    return listings
 
-def get_all_active_listings():
-    """Get all active listings from the database.
+# def get_all_active_listings():
+#     """Get all active listings from the database.
     
-    Returns:
-        list: List of active listings.
-    """
-    try:
-        response=supabase.table('listings').select('*, business_types(name)').eq('status', 'active').execute()
-    except Exception as e:
-        print("Error fetching active listings:", e)
-        return []
-    print("Response data:", response.data)
-    return response.data
+#     Returns:
+#         list: List of active listings.
+#     """
+#     try:
+#         response=supabase.table('listings').select('*, business_types(name)').eq('status', 'active').execute()
+#     except Exception as e:
+#         print("Error fetching active listings:", e)
+#         return []
+#     print("Response data:", response.data)
+#     return response.data
 
 def get_listing_by_id(listing_id):
     """Get a listing by its ID.
@@ -173,7 +185,7 @@ def personalize_listings(user_interests):
         list: Personalized list of listings, falling back to random active listings if none found.
     """
     if not user_interests:
-        return get_all_active_listings()
+        return get_all_listings(active=True)
     try:
         response = (
             supabase.table('listings')
@@ -187,10 +199,10 @@ def personalize_listings(user_interests):
         print(f"Personalized listings found: {len(listings)} for interests: {user_interests}")
 
         if not listings:
-            return get_all_active_listings()
+            return get_all_listings(active=True)
 
         random.shuffle(listings)
         return listings
     except Exception as e:
         print("Error personalizing listings:", e)
-        return get_all_active_listings()
+        return get_all_listings(active=True)
