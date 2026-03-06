@@ -110,18 +110,23 @@
     .featured-section{
         padding: 70px 0;
         background: transparent;
-        color: white;
+        color: #f9f9f9;
     }
 
-    .featured-section p{
+    .section-subtitle{
         text-align: center;
-        color: black;
+        font-size: 1.2rem;
+        font-weight: 300;
+        color: #666;
+        max-width: 600px;
+        margin: 0 auto 20px auto;
+        line-height: 1.6;
     }
 
     .section-title{
         text-align: center;
-        color: black;
-        margin-bottom: 50px;
+        color: #222;
+        margin-bottom: 20px;
         font-weight: 700;
         font-size: 2.5rem;
     }
@@ -429,7 +434,7 @@
     <div class="container">
         <h2 class="section-title">Featured Destinations</h2>
         <hr class="mx-auto">
-        <p >Come and check out these places you may like</p>
+        <p class="section-subtitle" >Come and check out these places you may like to visit</p>
 
         {% if personalized_listings %}
         <div class="card-carousel-wrapper" id="personalizedCarousel">
@@ -449,7 +454,14 @@
 
                                 <div class="destination-location">
                                     <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{listing.address}}</span>
+                                    <span>
+                                        {{listing.address.street}},
+                                        {{listing.address.city}},
+                                        {{listing.address.state}},
+                                        {{listing.address.postal_code}},
+                                        {{listing.address.country}}
+
+                                    </span>
                                 </div>
 
                                 {% if listing.rating %}
@@ -471,7 +483,7 @@
                                 </div>
                                 {% endif %}
 
-                                <div class="destination-price">${{listing.base_price}}/night</div>
+                                <div class="destination-price">${{"%.2f"|format(listing.base_price or 0)}}/night</div>
 
                                 <a href="/listing/{{listing.id}}/" class="btn btn-primary-cta w-100">View Details</a>
                             </div>
@@ -485,7 +497,6 @@
                 <i class="fas fa-chevron-right"></i>
             </button>
 
-            <div class="carousel-dots" id="carouselDots"></div>
         </div>
         {% else %}
         <div class="text-center">
@@ -498,10 +509,12 @@
 
 </section>
 
+
 <section class="popular-section">
     <div class="container">
         <h2 class="section-title">Popular Destinations</h2>
         <hr class="mx-auto">
+        <p class="section-subtitle"></p>
     </div>
 
 </section>
@@ -510,7 +523,7 @@
     <div class="container text-center mt-5 pt-5">
         <h2 class="section-title">Hotels and Villas</h2>
         <hr class="mx-auto">
-        <p>Most luxurious places to stay on your trip</p>
+        <p class="section-subtitle">Most luxurious places to stay on your trip</p>
     </div>
 
 </section>
@@ -642,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     prevBtn.addEventListener('click', () => { currentIndex--; updateCarousel(); });
     nextBtn.addEventListener('click', () => { currentIndex++; updateCarousel(); });
 
-    // Touch/swipe support
+
     let touchStartX = 0;
     let touchEndX = 0;
     track.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
