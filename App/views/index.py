@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app, fla
 from App.supabase_client import supabase
 from App.controllers.auth import get_current_user, get_user_profile
 from App.controllers.base import get_all_interests, get_user_interests
-from App.controllers.listings import personalize_listings, get_all_active_listings
+from App.controllers.listings import personalize_listings, get_all_listings
 import random
 
 
@@ -25,7 +25,7 @@ def index():
         
         personalized_listings = personalize_listings(get_user_interests(user.id))
     else:
-        personalized_listings = get_all_active_listings()
+        personalized_listings = get_all_listings(active=True)
     
     personalized_listings = personalized_listings[:10]  # Limit to 20 listings for performance
     random.shuffle(personalized_listings)  # Show some active listings for guests
