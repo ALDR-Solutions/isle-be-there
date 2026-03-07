@@ -64,6 +64,18 @@ def google_login():
     })
     return redirect(res.url)
 
+@auth_views.route('/login/facebook')
+def facebook_login():
+    # Redirect user to Facebook's login page via Supabase
+    # redirectTo must match your 'Site URL' or 'Redirect URLs' in Supabase settings
+    res = supabase.auth.sign_in_with_oauth({
+        "provider": "facebook",
+        "options": {
+            "redirect_to": "http://127.0.0.1:8080/auth/callback"
+        }
+    })
+    return redirect(res.url)
+
 @auth_views.route('/auth/callback')
 def auth_callback():
     # Supabase handles the session via cookies/tokens automatically 
