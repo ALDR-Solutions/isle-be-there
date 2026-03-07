@@ -5,51 +5,48 @@
 {{ super() }}
 
 {% block content %}
-    <div class="row">
-        <p>
-            This is table is renderd on the Server. Flask gets the data from the database and uses jinja templates to dyanmically render this page when a request is sent to <a href="/users">/users</a>.
+    <section class="space-y-6">
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p class="text-slate-600">
+          This table is rendered on the server. Flask gets data from the database and uses Jinja templates to dynamically render this page when a request is sent to
+          <a href="/users" class="font-semibold text-brand-700 hover:text-brand-600">/users</a>.
         </p>
-    </div>
+      </div>
 
-    <div class="row">
-      <form class="col s12" method="POST" action="/users">
-        
-        <div class="row">
-          <div class="input-field col s6">
-            <input placeholder="Username" name="username" type="text" class="validate">
-            <label for="username">Username</label>
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <form class="grid gap-4 md:grid-cols-2" method="POST" action="/users">
+          <div>
+            <label for="username" class="mb-1 block text-sm font-medium text-slate-700">Username</label>
+            <input id="username" placeholder="Username" name="username" type="text" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none" required>
           </div>
-          <div class="input-field col s6">
-            <input placeholder="password" name="password" type="password" class="validate">
-            <label for="password">Password</label>
+          <div>
+            <label for="password" class="mb-1 block text-sm font-medium text-slate-700">Password</label>
+            <input id="password" placeholder="Password" name="password" type="password" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none" required>
           </div>
-        </div>
-      
-        <div class="row">
-          <div class="input-field col s12">
-            <button class="btn waves-effect waves-light right purple" type="submit" name="action">Submit</button>
+          <div class="md:col-span-2">
+            <button class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700" type="submit" name="action">Create User</button>
           </div>
-        </div> 
+        </form>
+      </div>
 
-      </form>
-    </div>
-
-    <div class="row">
-      <table>
-        <thead>
-          <tr>
-            <th>Id</th><th>Username</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for user in users %}
+      <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50">
             <tr>
-                <td>{{user.id}}</td>
-                <td>{{user.username}}</td>
+              <th class="px-4 py-3 text-left font-semibold text-slate-700">ID</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-700">Username</th>
             </tr>
-          {% endfor %}
-        <tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            {% for user in users %}
+              <tr>
+                <td class="px-4 py-3 text-slate-600">{{ user.id }}</td>
+                <td class="px-4 py-3 font-medium text-slate-900">{{ user.username }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
 {% endblock %}

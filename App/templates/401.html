@@ -5,19 +5,16 @@
 {{ super() }}
 
 {% block content %}
-<div class="container">
-    <div class="row" style="margin-top: 10%;">
-        <div class="col s12 m10 offset-m1">
-            <div class="card-content">
-                <h1>401 - Not Authorized</h1>
-                <p>You do not have permission to access this resource. Please check your credentials and try again.</p>
-                <p>{{error}}</p>
-            </div>
-            <div class="card-action">
-                <a href="/" class="waves-effect waves-light btn">Go Home</a>
-                <a href="javascript:history.back()" class="waves-effect waves-light btn">Go Back</a>
-            </div>
-        </div>
+<section class="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">401 - Not Authorized</h1>
+    <p class="mt-3 text-slate-600">You do not have permission to access this resource. Please check your credentials and try again.</p>
+    {% if error %}
+      <p class="mt-2 text-sm text-red-700">{{ error }}</p>
+    {% endif %}
+
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a href="/" class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">Go Home</a>
+      <a href="javascript:history.back()" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Go Back</a>
     </div>
-</div>
+</section>
 {% endblock %}
