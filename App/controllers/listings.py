@@ -20,8 +20,10 @@ def get_all_listings(active = False):
             if reviews:
                 avg = sum(r['rating'] for r in reviews) / len(reviews)
                 listing['rating'] = round(avg, 1)
+                listing['reviews_count'] = len(reviews)
             else:
                 listing['rating'] = None
+                listing['reviews_count'] = None
     except Exception as e:
         print("Error fetching listings:", e)
         return []

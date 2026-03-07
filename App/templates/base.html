@@ -13,7 +13,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container">
-            <a href="#" class="navbar-brand fw-bold text-primary">
+            <a href="#" class="navbar-brand fw-bold">
                 <i class="fas fa-umbrella-beach me-2"></i>Isle Be There
             </a>
 
@@ -21,7 +21,7 @@
                 <form class="d-flex w-100" action="" method="GET">
                     <div class="input-group">
                         <input type="text" class="form-control" placeholder="Search..." name="q" aria-label="Search">
-                        <button class="btn btn-outline-primary" type="submit">
+                        <button class="btn btn-outline-search" type="submit">
                             <i class="fas fa-search"></i>
                         </button>
 
@@ -61,16 +61,19 @@
                             <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
                         </li>
                     {% endif %}
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">Booking</a>         
-                    </li>
-                    <li class="nav-item">
+
+                    {% if current_user%}
+                        <li class="nav-item nav-item-cta">
+                            <a href="#" class="nav-link">Booking</a>         
+                        </li>
+                    {% endif %}
+                    <li class="nav-item nav-item-cta">
                         <a href="#" class="nav-link">Listings</a>         
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item nav-item-cta">
                         <a href="#" class="nav-link">Services</a>         
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item nav-item-cta">
                         <a href="#" class="nav-link">Reviews</a>         
                     </li>
 
