@@ -109,8 +109,15 @@
 
     .featured-section{
         padding: 70px 0;
+        box-shadow: none;
+        border: none;
         background: transparent;
-        color: #f9f9f9;
+        color: #ffffff;
+    }
+
+    .featured-section .container{
+        background-color: transparent;
+        box-shadow: none;
     }
 
     .section-subtitle{
@@ -144,23 +151,20 @@
     }
 
     .destination-card{
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: #fff;
+        border: black;
         border-radius: 16px;
         overflow: hidden;
-        transition: all 0.3s ease;
         backdrop-filter: blur(10px);
         height: 100%;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
+
 
     }
 
     .destination-card:hover{
-        transform:translateY(-10px);
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
+        transform:scale(1.02);
     }
 
     .destination-image{
@@ -257,21 +261,30 @@
         transform: scale(0.98);
     }
 
-    /* Card Carousel */
     .card-carousel-wrapper {
         position: relative;
+        background: transparent;
         padding: 0 50px;
+        box-shadow: none;
+    }
+
+    .carousel-viewport{
+        overflow: hidden;
+        padding-top: 10px;
     }
 
     .card-carousel-track {
+        margin-top: -10px;
         display: flex;
         transition: transform 0.5s ease;
         gap: 24px;
     }
 
     .card-carousel-slide {
-        min-width: calc((100% - 48px) / 3);
-        max-width: calc((100% - 48px) / 3);
+        min-width: calc((100% - 50px) / 3);
+        max-width: calc((100% - 50px) / 3);
+        border: #2980b9;
+        border-radius: 10px;
         flex-shrink: 0;
     }
 
@@ -314,32 +327,57 @@
         right: 0;
     }
 
-    .carousel-dots {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 24px;
-    }
-
-    .carousel-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #bdc3c7;
-        border: none;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        padding: 0;
-    }
-
-    .carousel-dot.active {
-        background: #3498db;
-        transform: scale(1.3);
-    }
 
     .cta-section{
-        background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("../static/images/");
+        background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("../static/images/bay.jpg");
+        padding: 50px 0;
+        text-align: center;
+        width: 100%;
+        height: 500px;
+        background-size: cover;
+        background-position: top 70px center;
+        background-attachment: fixed;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        margin-bottom: 10px;
+
     }
+
+    .cta-content{
+        max-width: 700px;
+        max-height: 100%;
+        margin: 0% auto;
+        color: white;
+        position: relative;
+        z-index: 1;
+    }
+
+    .cta-title{
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .cta-description{
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+        opacity: 0.9;
+    }
+
+    .cta-buttons{
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .test{
+        overflow: visible;
+    }
+
+
 
     @media (max-width: 1000px){
         .card-carousel-slide {
@@ -446,54 +484,56 @@
                 <i class="fas fa-chevron-left"></i>
             </button>
 
-            <div style="overflow: hidden;">
-                <div class="card-carousel-track" id="carouselTrack">
-                    {% for listing in personalized_listings %}
-                    <div class="card-carousel-slide">
-                        <div class="destination-card">
-                            <img src="{{listing.get('image_urls', [])[0]}}" alt="{{listing.title}}" class="destination-image">
+            <div class="test">
+                <div class="carousel-viewport">
+                    <div class="card-carousel-track" id="carouselTrack">
+                        {% for listing in personalized_listings %}
+                        <div class="card-carousel-slide">
+                            <div class="destination-card">
+                                <img src="{{listing.get('image_urls', [])[0]}}" alt="{{listing.title}}" class="destination-image">
 
-                            <div class="destination-content">
-                                <h3 class="destination-name">{{listing.title}}</h3>
+                                <div class="destination-content">
+                                    <h3 class="destination-name">{{listing.title}}</h3>
 
-                                <div class="destination-location">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>
-                                        {{listing.address.street}},
-                                        {{listing.address.city}},
-                                        {{listing.address.state}},
-                                        {{listing.address.postal_code}},
-                                        {{listing.address.country}}
+                                    <div class="destination-location">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>
+                                            {{listing.address.street}},
+                                            {{listing.address.city}},
+                                            {{listing.address.state}},
+                                            {{listing.address.postal_code}},
+                                            {{listing.address.country}}
 
-                                    </span>
-                                </div>
-
-                                {% if listing.rating %}
-                                <div class="destination-rating">
-                                    <div class="rating-stars">
-                                        {% with rating=listing.rating|default(0) %}
-                                            {% for i in range(1, 6) %}
-                                                {% if i <= rating %}
-                                                    <i class="fas fa-star text-warning"></i>
-                                                {% elif i - 0.5 <= rating %}
-                                                    <i class="fas fa-star-half-alt text-warning"></i>
-                                                {% else %}
-                                                    <i class="far fa-star text-warning"></i>
-                                                {% endif %}
-                                            {% endfor %}
-                                        {% endwith %}
+                                        </span>
                                     </div>
-                                    <span class="rating-value">{{listing.rating|round(1)}}</span>
+
+                                    {% if listing.rating %}
+                                    <div class="destination-rating">
+                                        <div class="rating-stars">
+                                            {% with rating=listing.rating|default(0) %}
+                                                {% for i in range(1, 6) %}
+                                                    {% if i <= rating %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                    {% elif i - 0.5 <= rating %}
+                                                        <i class="fas fa-star-half-alt text-warning"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star text-warning"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endwith %}
+                                        </div>
+                                        <span class="rating-value">{{listing.rating|round(1)}}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="destination-price">${{"%.2f"|format(listing.base_price or 0)}}/night</div>
+
+                                    <a href="/listing/{{listing.id}}/" class="btn btn-primary-cta w-100">View Details</a>
                                 </div>
-                                {% endif %}
-
-                                <div class="destination-price">${{"%.2f"|format(listing.base_price or 0)}}/night</div>
-
-                                <a href="/listing/{{listing.id}}/" class="btn btn-primary-cta w-100">View Details</a>
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
             </div>
 
