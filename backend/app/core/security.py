@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic_settings import BaseSettings
+import bcrypt
 
 
 class Settings(BaseSettings):
@@ -22,20 +23,37 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt_sha256 avoids bcrypt's 72-byte password limit
+pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+def _normalize_secret(secret: str | bytes) -> str:
+    if isinstance(secret, bytes):
+        return secret.decode("utf-8", errors="strict")
+    return secret
 
+
+# def verify_password(plain_password: str | bytes, hashed_password: str) -> bool:
+#     """Verify a password against a hash."""
+#     return pwd_context.verify(_normalize_secret(plain_password), hashed_password)
+
+
+# def get_password_hash(password: str | bytes) -> str:
+#     """Hash a password."""
+#     return pwd_context.hash(_normalize_secret(password))
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8")
+    )
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
