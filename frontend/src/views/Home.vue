@@ -11,11 +11,11 @@
         >
           <div class="absolute inset-0 bg-slate-950/55"></div>
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"></div>
-        </div>
+        </div>ems-center justify-center px-4 sm:px-6 lg:px-8">
       </transition-group>
 
-      <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-        <div class="max-w-3xl align-content-center">
+      <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div class="flex max-w-3x1 flex-col items-center text-center">
 
           <h1 class="text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
             Discover the Paradise of the Caribbean Islands
@@ -26,21 +26,16 @@
             adventures, and coastal escapes curated for modern travelers.
           </p>
 
-          <div class="mt-10 flex flex-wrap gap-4">
+          <div class="mt-10 flex flex-wrap gap-4 justify-center">
             <router-link
               to="/listings"
-              class="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-8 py-4 text-sm font-semibold text-slate-950 shadow-xl shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:bg-cyan-300"
+              class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
             >
               Plan Your Trip Now
             </router-link>
 
-            <router-link
-              to="/register"
-              class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
-            >
-              Create an Account
-            </router-link>
           </div>
+
         </div>
       </div>
 
@@ -49,7 +44,7 @@
           v-for="(_, i) in heroImages"
           :key="i"
           @click="currentSlide = i"
-          class="h-3 rounded-full transition-all duration-300"
+          class="h-3 rounded-full transition-all duration-500"
           :class="currentSlide === i ? 'w-10 bg-cyan-300' : 'w-3 bg-white/45 hover:bg-white/70'"
         />
       </div>
@@ -63,10 +58,10 @@
               Featured Destinations
             </p>
             <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-              Places worth opening a new tab for
+              Recommended for You
             </h2>
             <p class="mt-4 text-base leading-7 text-slate-600">
-              Browse standout stays and destinations travelers are most excited to explore next.
+              Browse these amazing places and are tailored to your desires and interest
             </p>
           </div>
 
@@ -148,12 +143,6 @@
             Explore Listings
           </router-link>
 
-          <router-link
-            to="/register"
-            class="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
-          >
-            Sign Up
-          </router-link>
         </div>
       </div>
     </section>
