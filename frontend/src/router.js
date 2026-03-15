@@ -11,13 +11,13 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('./views/Login.vue'),
-    meta: { guest: true }
+    meta: { guest: true, layout:'auth' }
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('./views/Register.vue'),
-    meta: { guest: true }
+    meta: { guest: true, layout:'auth'}
   },
   {
     path: '/listings',

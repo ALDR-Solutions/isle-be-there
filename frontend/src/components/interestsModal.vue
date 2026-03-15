@@ -1,58 +1,123 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="$emit('close')">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b">
-        <h3 class="text-lg font-semibold">Tell us your interests</h3>
-        <button @click="skip" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+    @click.self="$emit('close')"
+  >
+    <div class="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl">
+      <div class="absolute inset-x-0 top-0 h-32 bg-gradient-to-r from-cyan-100 via-white to-emerald-100"></div>
+
+      <div class="relative flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">
+            Personalize
+          </p>
+          <h3 class="mt-2 text-2xl font-bold text-slate-900">
+            Tell us your interests
+          </h3>
+          <p class="mt-2 text-sm text-slate-500">
+            Select what you like so we can make your experience feel more relevant.
+          </p>
+        </div>
+
+        <button
+          @click="skip"
+          class="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <!-- Body -->
-      <div class="px-6 py-4 overflow-y-auto flex-1">
-        <p class="text-gray-600 mb-4">Select your interests to help us personalize your experience</p>
+      <div class="relative flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+        <div class="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">
+              Category {{ currentStep + 1 }} of {{ categories.length || 1 }}
+            </p>
+            <p class="text-sm text-slate-500">
+              {{ currentCategoryLabel }}
+            </p>
+          </div>
 
-        <div v-if="loadingInterests" class="text-center py-4 text-gray-400">Loading...</div>
-        <div v-else>
-          <div v-for="(items, category) in categorized" :key="category" v-show="categories[currentStep] === category">
-            <h4 class="font-semibold uppercase text-sm text-gray-700 mb-3">{{ category }}</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <label
-                v-for="interest in items"
-                :key="interest.id"
-                class="cursor-pointer"
-              >
-                <input type="checkbox" :value="interest.id" v-model="selected" class="hidden peer" />
-                <div class="border rounded-lg px-4 py-2 text-center text-sm font-medium transition
-                  peer-checked:bg-teal-700 peer-checked:text-white peer-checked:border-teal-700
-                  hover:border-teal-500">
-                  {{ interest.name }}
-                </div>
-              </label>
+          <div class="min-w-[140px]">
+            <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                class="h-full rounded-full bg-slate-900 transition-all duration-300"
+                :style="{ width: `${progressWidth}%` }"
+              ></div>
             </div>
           </div>
         </div>
 
-        <p class="text-center text-gray-400 text-sm mt-4">
-          Category {{ currentStep + 1 }} of {{ categories.length }}
-        </p>
+        <div v-if="loadingInterests" class="py-16 text-center text-slate-400">
+          Loading interests...
+        </div>
+
+        <div v-else-if="categories.length === 0" class="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-slate-500">
+          No interests available right now.
+        </div>
+
+        <div v-else>
+          <div class="mb-6">
+            <h4 class="text-lg font-bold text-slate-900">
+              {{ categories[currentStep] }}
+            </h4>
+            <p class="mt-1 text-sm text-slate-500">
+              Pick as many as you like.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label
+              v-for="interest in categorized[categories[currentStep]]"
+              :key="interest.id"
+              class="cursor-pointer"
+            >
+              <input
+                v-model="selected"
+                type="checkbox"
+                :value="interest.id"
+                class="peer sr-only"
+              />
+
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50 peer-checked:border-slate-900 peer-checked:bg-slate-900 peer-checked:text-white">
+                <div class="flex items-center justify-between gap-3">
+                  <span>{{ interest.name }}</span>
+                  <span class="flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px] opacity-70">
+                    ✓
+                  </span>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
 
-      <!-- Footer -->
-      <div class="flex items-center justify-between px-6 py-4 border-t">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:px-8">
         <button
           v-show="currentStep > 0"
           @click="currentStep--"
-          class="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50"
-        >Previous</button>
+          class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+        >
+          Previous
+        </button>
+
         <div v-show="currentStep === 0"></div>
 
-        <div class="flex gap-2">
-          <button @click="skip" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Skip</button>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            @click="skip"
+            class="rounded-2xl px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+          >
+            Skip for now
+          </button>
+
           <button
             @click="next"
-            class="px-4 py-2 bg-teal-700 text-white rounded-md hover:bg-teal-800"
+            class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            {{ currentStep === categories.length - 1 ? 'Save' : 'Next' }}
+            {{ currentStep === categories.length - 1 ? 'Save Interests' : 'Next Category' }}
           </button>
         </div>
       </div>
@@ -93,6 +158,16 @@ const categorized = computed(() => {
 })
 
 const categories = computed(() => Object.keys(categorized.value))
+
+const progressWidth = computed(() => {
+  if (!categories.value.length) return 0
+  return ((currentStep.value + 1) / categories.value.length) * 100
+})
+
+const currentCategoryLabel = computed(() => {
+  if (!categories.value.length) return 'No categories available'
+  return categories.value[currentStep.value]
+})
 
 async function next() {
   if (currentStep.value < categories.value.length - 1) {
