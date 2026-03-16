@@ -10,6 +10,7 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import DefaultLayout from './layouts/DefaultLayout.vue';
 import AuthLayout from './layouts/AuthLayout.vue';
+import AppToast from './components/AppToast.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
