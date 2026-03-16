@@ -164,14 +164,17 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const currentYear = computed(() => new Date().getFullYear());
 
 const handleLogout = () => {
   authStore.logout();
+  toastStore.show('You have been logged out.', 'info')
   router.push('/');
 };
 </script>
