@@ -163,9 +163,11 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const firstName = ref('');
 const lastName = ref('');
@@ -190,9 +192,11 @@ const handleRegister = async () => {
   });
 
   if (success) {
+    toastStore.show('Account created successfully.', 'success')
     router.push('/');
   } else {
     error.value = authStore.error || 'Registration failed';
+    toastStore.show(error.value, 'error')
   }
 
   loading.value = false;
