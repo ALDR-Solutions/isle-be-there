@@ -2,6 +2,7 @@
   <component :is="layoutComponent">
     <router-view/>
   </component>
+  <AppToast />
 </template>
 
 <script setup>
