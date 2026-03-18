@@ -92,7 +92,7 @@
           Loading destinations...
         </div>
 
-        <div v-else-if="listings.length === 0" class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-slate-500 shadow-sm">
+        <div v-else-if="personalizedListings.length === 0" class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-slate-500 shadow-sm">
           No destinations available.
         </div>
 
@@ -104,7 +104,7 @@
               :style="{ transform: `translateX(-${carouselOffset}px)` }"
             >
               <div
-                v-for="listing in listings"
+                v-for="listing in personalizedListings"
                 :key="listing.id"
                 class="shrink-0"
                 :style="{ width: `${cardWidth}px` }"
@@ -229,6 +229,7 @@ let heroInterval = null
 
 const listings = ref([])
 const loading = ref(true)
+const personalizedListings = ref([])
 
 const trackRef = ref(null)
 const carouselIndex = ref(0)
@@ -242,7 +243,7 @@ onMounted(() => {
     currentSlide.value = (currentSlide.value + 1) % heroImages.length
   }, 4000)
 
-  fetchListings()
+  fetchPersonalizedListings()
   window.addEventListener('resize', updateCardWidth)
   updateCardWidth()
 })
@@ -258,6 +259,34 @@ async function fetchListings() {
     listings.value = res.data
   } catch (e) {
     console.error('Failed to load listings', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchPersonalizedListings() {
+  const hasToken = !!localStorage.getItem('access_token')
+  try {
+    if (!hasToken) {
+      const res = await listingsAPI.getAll({ limit: 20 })
+      personalizedListings.value = res.data
+      return
+    }
+
+    const res = await listingsAPI.getPersonalized({ limit: 20 })
+    personalizedListings.value = res.data
+  } catch (e) {
+    if (e?.response?.status === 401) {
+      try {
+        const res = await listingsAPI.getAll({ limit: 20 })
+        personalizedListings.value = res.data
+        return
+      } catch (fallbackError) {
+        console.error('Failed to load fallback listings', fallbackError)
+      }
+    } else {
+      console.error('Failed to load personalized listings', e)
+    }
   } finally {
     loading.value = false
   }
@@ -279,7 +308,7 @@ function updateCardWidth() {
   }
 }
 
-const maxIndex = computed(() => Math.max(0, listings.value.length - visibleCount()))
+const maxIndex = computed(() => Math.max(0, personalizedListings.value.length - visibleCount()))
 const carouselOffset = computed(() => carouselIndex.value * (cardWidth.value + gap))
 
 function prevSlide() {
