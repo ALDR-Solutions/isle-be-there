@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
+from datetime import datetime
 
 from app.core.security import (
     verify_password,
@@ -131,3 +132,22 @@ def get_me(
         raise HTTPException(status_code=404, detail="User not found")
 
     return user
+
+
+@router.delete('/me', status_code=200)
+def disable_account(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user = _get_user_by_id(db, payload["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = False
+    user.updated_at = datetime.utcnow()
+    db.add(user)
+    db.commit()
+    return {"detail": "Account disabled"}
