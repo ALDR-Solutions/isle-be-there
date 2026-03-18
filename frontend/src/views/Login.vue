@@ -120,7 +120,13 @@ const handleLogin = async () => {
 
   if (success) {
     toastStore.show('Login Successful.', 'success');
-    router.push(route.query.redirect || '/');
+    if (authStore.isBusiness) {
+      router.push('/business');
+    }else if (authStore.isAdmin){
+      router.push('/admin');  
+    } else {
+      router.push(route.query.redirect || '/');
+    }
   } else {
     error.value = authStore.error || 'Login failed';
     toastStore.show('Incorrect email or password', 'error')
