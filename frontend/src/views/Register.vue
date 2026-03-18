@@ -117,6 +117,24 @@
             />
           </div>
 
+          <div>
+            <div class="mb-1.5 flex items-center justify-between">
+              <label for="confirmPassword" class="block text-sm font-medium text-slate-700">
+                Confirm password
+              </label>
+            </div>
+            <input
+              id="confirmPassword"
+              v-model="confirmPassword"
+              type="password"
+              required
+              autocomplete="new-password"
+              placeholder="Repeat your password"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100"
+            />
+          </div>
+
+
           <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             <input
               v-model="isBusiness"
@@ -163,15 +181,18 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const firstName = ref('');
 const lastName = ref('');
 const email = ref('');
 const username = ref('');
 const password = ref('');
+const confirmPassword = ref('');
 const isBusiness = ref(false);
 const error = ref('');
 const loading = ref(false);
@@ -179,6 +200,13 @@ const loading = ref(false);
 const handleRegister = async () => {
   error.value = '';
   loading.value = true;
+
+  if (password.value !== confirmPassword.value) {
+    error.value = 'Passwords do not match';
+    loading.value = false;
+    return;
+  }
+
 
   const success = await authStore.register({
     email: email.value,
@@ -190,9 +218,15 @@ const handleRegister = async () => {
   });
 
   if (success) {
-    router.push('/');
+    toastStore.show('Account created successfully.', 'success')
+    if (authStore.isBusiness) {
+      router.push('/business');
+    } else {
+      router.push('/');
+    }
   } else {
     error.value = authStore.error || 'Registration failed';
+    toastStore.show(error.value, 'error')
   }
 
   loading.value = false;

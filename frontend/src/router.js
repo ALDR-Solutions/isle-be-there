@@ -7,12 +7,29 @@ const routes = [
     name: 'Home',
     component: Home
   },
+
+  {
+    path: '/business',
+    name: 'BusinessHome',
+    component: () => import('./views/BusinessHome.vue'),
+    meta: { requiresAuth: true, layout: 'business' }
+  },
+
+  {
+    path: '/admin',
+    name: 'AdminHome',
+    component: () => import('./views/Admin.vue'),
+    meta: { requiresAuth: true, layout: 'admin'}
+  },
+
   {
     path: '/login',
     name: 'Login',
     component: () => import('./views/Login.vue'),
     meta: { guest: true, layout:'auth' }
   },
+
+  
   {
     path: '/register',
     name: 'Register',

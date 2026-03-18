@@ -97,7 +97,11 @@
         </div>
 
         <div v-else class="relative">
-          <div class="overflow-hidden">
+          <div
+            class="overflow-hidden"
+            @touchstart.passive="onTouchStart"
+            @touchend.passive="onTouchEnd"
+          >
             <div
               ref="trackRef"
               class="flex gap-6 transition-transform duration-500 ease-out"
@@ -317,6 +321,19 @@ function prevSlide() {
 
 function nextSlide() {
   if (carouselIndex.value < maxIndex.value) carouselIndex.value++
+}
+
+let touchStartX = 0
+
+function onTouchStart(e) {
+  touchStartX = e.touches[0].clientX
+}
+
+function onTouchEnd(e) {
+  const delta = touchStartX - e.changedTouches[0].clientX
+  if (Math.abs(delta) < 50) return
+  if (delta > 0) nextSlide()
+  else prevSlide()
 }
 </script>
 

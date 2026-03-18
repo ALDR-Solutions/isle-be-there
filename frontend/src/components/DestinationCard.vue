@@ -35,10 +35,6 @@
         <div v-if="listing.rating" class="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm">
           {{ listing.rating.toFixed(1) }} / 5 rating
         </div>
-
-        <div class="rounded-full bg-cyan-400 px-3 py-1.5 text-xs font-bold text-slate-950 shadow-sm">
-          ${{ parseFloat(listing.base_price || 0).toFixed(2) }}
-        </div>
       </div>
     </div>
 

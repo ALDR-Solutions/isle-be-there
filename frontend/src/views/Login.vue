@@ -100,10 +100,12 @@
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast'
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const email = ref('');
 const password = ref('');
@@ -117,9 +119,17 @@ const handleLogin = async () => {
   const success = await authStore.login(email.value, password.value);
 
   if (success) {
-    router.push(route.query.redirect || '/');
+    toastStore.show('Login Successful.', 'success');
+    if (authStore.isBusiness) {
+      router.push('/business');
+    }else if (authStore.isAdmin){
+      router.push('/admin');  
+    } else {
+      router.push(route.query.redirect || '/');
+    }
   } else {
     error.value = authStore.error || 'Login failed';
+    toastStore.show('Incorrect email or password', 'error')
   }
 
   loading.value = false;
