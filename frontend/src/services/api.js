@@ -73,6 +73,7 @@ export const authAPI = {
   },
   refresh: (refreshToken) => api.post('/api/auth/refresh', { refresh_token: refreshToken }),
   getMe: () => api.get('/api/auth/me'),
+  disableAccount: () => api.delete('/api/auth/me'),
 };
 
 // Listings API
