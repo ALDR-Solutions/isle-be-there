@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user_id
-from app.database import get_db
+from app.database.session import get_db
 from app.schemas.booking import BookingCreate, BookingUpdate
 from app.services.booking_service import (
     list_bookings,

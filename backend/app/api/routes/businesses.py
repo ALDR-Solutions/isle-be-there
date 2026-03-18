@@ -6,9 +6,10 @@ from typing import List
 from sqlmodel import Session
 
 from app.api.dependencies.auth import get_current_user_id
-from app.database import get_db
+from app.database.session import get_db
 from app.schemas.business import BusinessCreate, BusinessUpdate
-from app.services.business_service import list_businesses, get_business_by_id, get_business_listings as get_business_listings_service, create_business, update_business
+from app.services.business_service import list_businesses, get_business_by_id, create_business, update_business
+from app.services.listing_service import get_business_listings as get_business_listings_service
 
 
 
@@ -30,6 +31,11 @@ def get_businesses(
     """Get all businesses."""
     return list_businesses(db, skip=skip, limit=limit, verified_only=verified_only)
 
+@router.get("/listings", response_model=List[dict])
+def get_business_listings(business_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Get all listings for a business."""
+    _require_user_id(business_id)
+    return get_business_listings_service(db, business_id)
 
 @router.get("/{business_id}", response_model=dict)
 def get_business(business_id: str, db: Session = Depends(get_db)):
@@ -37,10 +43,7 @@ def get_business(business_id: str, db: Session = Depends(get_db)):
     return get_business_by_id(db, business_id)
 
 
-@router.get("/{business_id}/listings", response_model=List[dict])
-def get_business_listings(business_id: str, db: Session = Depends(get_db)):
-    """Get all listings for a business."""
-    return get_business_listings_service(db, business_id)
+
 
 
 @router.post("", response_model=dict, status_code=201)

@@ -1,12 +1,10 @@
 """
 Authentication dependencies and utilities.
 """
-from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from ..core.security import settings, decode_token
-from ..database import get_db
+from ..core.security import decode_token
+from ..database.session import get_db
 from ..models import User
 
 

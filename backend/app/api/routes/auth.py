@@ -9,7 +9,7 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
 )
-from app.database import get_db
+from app.database.session import get_db
 from app.models.user import User
 from app.schemas.user import (
     UserCreate,

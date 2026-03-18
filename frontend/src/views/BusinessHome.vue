@@ -82,8 +82,8 @@
           <!-- Image -->
           <div class="relative h-48 bg-slate-100 overflow-hidden">
             <img
-              v-if="listing.images && listing.images.length > 0"
-              :src="listing.images[0]"
+              v-if="listing.image_urls && listing.image_urls.length > 0"
+              :src="listing.image_urls[0]"
               :alt="listing.name"
               class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
@@ -114,13 +114,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {{ listing.city }}, {{ listing.country }}
+              <span class="line-clamp-2">{{ [listing.address?.city, listing.address?.country].filter(Boolean).join(', ') }}</span>
             </p>
             <p class="mt-2 text-sm text-slate-500 line-clamp-2">{{ listing.description }}</p>
 
             <div class="mt-4 flex items-center justify-between">
               <div>
-                <span class="text-lg font-bold text-slate-900">${{ listing.cost }}</span>
+                <span class="text-lg font-bold text-slate-900">${{ listing.base_price }}</span>
                 <span class="text-sm text-slate-400"> / night</span>
               </div>
             </div>
@@ -420,50 +420,66 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { businessesAPI } from '../services/api'
+
+
 
 // Replace with API calls
-const listing = ref([
-    {
-    id: 1,
-    name: 'Sunset Bay Resort',
-    category: 'Hotel',
-    hotelSubcategory: 'Luxury',
-    description: 'A stunning luxury resort perched above the turquoise bay with panoramic ocean views.',
-    cost: 320,
-    city: 'Bridgetown',
-    country: 'Barbados',
-    policies: 'No smoking. Check-in after 3pm. Complimentary breakfast included.',
-    images: [],
-    status: 'active',
-    },
-    {
-        id: 2,
-        name: 'Coral Reef Diving Tour',
-        category: 'Tour',
-        hotelSubcategory: '',
-        description: 'Guided snorkelling and diving experience through the vibrant coral reefs of St. Lucia.',
-        cost: 75,
-        city: 'Castries',
-        country: 'St. Lucia',
-        policies: 'Must be able to swim. Minimum age 12.',
-        images: [],
-        status: 'pending',
-    },
-    {
-        id: 3,
-        name: 'Spice Garden Restaurant',
-        category: 'Restaurant',
-        hotelSubcategory: '',
-        description: 'Farm-to-table dining featuring authentic Grenadian spices and fresh seafood.',
-        cost: 40,
-        city: 'St. George\'s',
-        country: 'Grenada',
-        policies: 'Reservations recommended. Smart casual dress code.',
-        images: [],
-        status: 'archived',
-    },
-])
+// const listing = ref([
+//     {
+//     id: 1,
+//     name: 'Sunset Bay Resort',
+//     category: 'Hotel',
+//     hotelSubcategory: 'Luxury',
+//     description: 'A stunning luxury resort perched above the turquoise bay with panoramic ocean views.',
+//     cost: 320,
+//     city: 'Bridgetown',
+//     country: 'Barbados',
+//     policies: 'No smoking. Check-in after 3pm. Complimentary breakfast included.',
+//     images: [],
+//     status: 'active',
+//     },
+//     {
+//         id: 2,
+//         name: 'Coral Reef Diving Tour',
+//         category: 'Tour',
+//         hotelSubcategory: '',
+//         description: 'Guided snorkelling and diving experience through the vibrant coral reefs of St. Lucia.',
+//         cost: 75,
+//         city: 'Castries',
+//         country: 'St. Lucia',
+//         policies: 'Must be able to swim. Minimum age 12.',
+//         images: [],
+//         status: 'pending',
+//     },
+//     {
+//         id: 3,
+//         name: 'Spice Garden Restaurant',
+//         category: 'Restaurant',
+//         hotelSubcategory: '',
+//         description: 'Farm-to-table dining featuring authentic Grenadian spices and fresh seafood.',
+//         cost: 40,
+//         city: 'St. George\'s',
+//         country: 'Grenada',
+//         policies: 'Reservations recommended. Smart casual dress code.',
+//         images: [],
+//         status: 'archived',
+//     },
+// ])
+const listing = ref([])
+
+async function fetchListings() {
+  try {
+    const response = await businessesAPI.getListings()
+    listing.value = response.data
+  } catch (error) {
+    console.error('Error fetching listings:', error)
+  }
+}
+onMounted(() => {
+  fetchListings()
+})
 
 const tabs = [
     { label: 'All', value: 'all' },

@@ -82,6 +82,7 @@ export const listingsAPI = {
   create: (data) => api.post('/api/listings', data),
   update: (id, data) => api.put(`/api/listings/${id}`, data),
   delete: (id) => api.delete(`/api/listings/${id}`),
+  getPersonalized: (params) => api.get('/api/listings/personalized', { params }),
 };
 
 // Bookings API
@@ -129,7 +130,7 @@ export const interestsAPI = {
 export const businessesAPI = {
   getAll: (params) => api.get('/api/businesses', { params }),
   getById: (id) => api.get(`/api/businesses/${id}`),
-  getListings: (id) => api.get(`/api/businesses/${id}/listings`),
+  getListings: (params) => api.get('/api/businesses/listings', { params }),
   getTypes: () => api.get('/api/businesses/types'),
 };
 

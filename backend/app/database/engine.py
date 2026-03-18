@@ -1,40 +1,21 @@
-"""
-Database engine configuration (lazy initialization).
-
-Note: This module provides the SQLAlchemy engine for Postgres access.
-"""
+from functools import lru_cache
 from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlmodel import create_engine
-from pydantic_settings import BaseSettings
-
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 ENV_FILES = (str(ROOT_DIR / ".env"), str(ROOT_DIR / "backend" / ".env"))
 
-
 class DatabaseSettings(BaseSettings):
     DATABASE_URL: str
-    model_config = {"env_file": ENV_FILES, "extra": "ignore"}
+    SQL_ECHO: bool = False
+    model_config = SettingsConfigDict(env_file=ENV_FILES, extra="ignore")
 
+@lru_cache
+def get_settings() -> DatabaseSettings:
+    return DatabaseSettings()
 
-settings = DatabaseSettings()
-DATABASE_URL = settings.DATABASE_URL
-
-# Create SQLAlchemy engine (lazy - only connects when actually used)
-engine = None
-
-
+@lru_cache
 def get_engine():
-    """Lazy engine creation - only when needed."""
-    global engine
-    if engine is None:
-        engine = create_engine(
-            DATABASE_URL,
-            echo=True,  # Enable SQL query logging for debugging
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
-        )
-    return engine
-
-__all__ = ["engine", "get_engine", "DATABASE_URL", "settings"]
+    s = get_settings()
+    return create_engine(s.DATABASE_URL, echo=s.SQL_ECHO, pool_pre_ping=True, pool_size=10, max_overflow=20)

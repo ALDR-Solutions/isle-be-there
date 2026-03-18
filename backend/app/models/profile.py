@@ -40,7 +40,7 @@ class Profile(SQLModel, table=True):
     last_name: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     birth_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    created_at: Optional[datetime] = Field(
+    created_at: datetime = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True, server_default=text("now()")),
     )
