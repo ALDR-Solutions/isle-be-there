@@ -11,7 +11,9 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import DefaultLayout from './layouts/DefaultLayout.vue';
 import AuthLayout from './layouts/AuthLayout.vue';
+import BusinessLayout from './layouts/BusinessLayout.vue';
 import AppToast from './components/AppToast.vue';
+import AdminLayout from './layouts/AdminLayout.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -22,7 +24,10 @@ onMounted(() => {
 
 const layoutComponent = computed(() => {
   const layout = route.meta.layout || 'default';
-  return layout === 'auth' ? AuthLayout : DefaultLayout;
+  if (layout === 'auth') return AuthLayout;
+  if (layout === 'business') return BusinessLayout;
+  if (layout === 'admin') return AdminLayout;
+  return DefaultLayout;
 })
 </script>
 
