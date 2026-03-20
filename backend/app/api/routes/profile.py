@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.core.security import decode_token
 from app.database import get_db
 from app.models.user import User
+from app.models.profile import Profile
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
@@ -18,6 +19,8 @@ class ProfileUpdate(BaseModel):
     last_name: str | None = None
     username: str | None = None
     email: str | None = None
+    
+
 
 @router.put("", status_code=200)
 def update_profile(
@@ -54,3 +57,50 @@ def update_profile(
     db.commit()
     db.refresh(user)
     return {"detail": "Profile updated"}
+
+
+@router.get("", status_code=200)
+def get_profile(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    if not profile:
+        return {"interests_handled": False}
+
+    return {
+        "id": str(profile.id),
+        "user_id": str(profile.user_id),
+        "first_name": profile.first_name,
+        "last_name": profile.last_name,
+        "avatar_url": profile.avatar_url,
+        "phone": profile.phone,
+        "birth_date": str(profile.birth_date) if profile.birth_date else None,
+        "interests_handled": profile.interests_handled or False,
+        "created_at": str(profile.created_at) if profile.created_at else None,
+        "updated_at": str(profile.updated_at) if profile.updated_at else None,
+    }
+
+
+@router.patch("/interests-handled", status_code=200)
+def set_interests_handled(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    profile.interests_handled = True
+    db.add(profile)
+    db.commit()
+    return {"detail": "Updated"}
+
