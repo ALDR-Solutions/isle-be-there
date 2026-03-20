@@ -1,16 +1,16 @@
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-900">
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
-      <div class="mx-auto grid h-20 max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:h-20 sm:px-6 lg:px-8">
         <router-link to="/business" class="flex items-center gap-3">
           <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-lg shadow-slate-900/10">
             IBT
           </div>
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">
+            <p class="hidden text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600 sm:block">
               Travel Platform
             </p>
-            <p class="text-lg font-bold text-slate-900">
+            <p class="text-base font-bold text-slate-900 sm:text-lg">
               Isle Be There
             </p>
           </div>
@@ -86,7 +86,7 @@
       </div>
 
       <div class="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">
               Isle Be There
