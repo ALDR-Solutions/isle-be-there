@@ -12,6 +12,7 @@ from app.models.user_interest import UserInterest
 from app.models.listing_interest import ListingInterest
 from app.models.business import Business
 from app.models.review import Review
+from app.models.user import User
 from sqlalchemy import func
 from sqlalchemy.sql.functions import count
 
@@ -159,7 +160,15 @@ def get_listing_by_id(db: Session, listing_id: str):
 
 
 def create_listing(db: Session, data: dict, user_id: str):
-    data["business_id"] = user_id
+    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+    if not business:
+        user = db.exec(select(User).where(User.id == user_id)).first()
+        business_name = user.username or user.email.split("@")[0] if user else "My Business"
+        business = Business(user_id=user_id, business_name=business_name)
+        db.add(business)
+        db.commit()
+        db.refresh(business)
+    data["business_id"] = business.id
     listing = Listing(**data)
     db.add(listing)
     db.commit()
@@ -172,7 +181,8 @@ def update_listing(db: Session, listing_id: str, update_data: dict, user_id: str
     listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    if str(listing.business_id) != str(user_id):
+    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+    if not business or str(listing.business_id) != str(business.id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     for key, value in update_data.items():
@@ -187,7 +197,8 @@ def delete_listing(db: Session, listing_id: str, user_id: str):
     listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    if str(listing.business_id) != str(user_id):
+    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+    if not business or str(listing.business_id) != str(business.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     db.delete(listing)
     db.commit()
@@ -197,10 +208,10 @@ def get_active_listings(db: Session, limit: int = 20):
     return _serialize_listings(db, _fetch_active_listings(db, limit))
 
 
-def get_business_listings(db: Session, business_id: str):
-    business = db.exec(select(Business).where(Business.user_id == business_id)).first()
+def get_business_listings(db: Session, user_id: str):
+    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
     if not business:
-        raise HTTPException(status_code=404, detail="Business not found")
+        return []
     listings = db.exec(
         select(Listing)
         .where(Listing.business_id == business.id)
