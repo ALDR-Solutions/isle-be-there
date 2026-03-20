@@ -207,16 +207,21 @@
       </div>
     </section>
 
-    <InterestsModal v-if="showInterestsModal" @close="showInterestsModal = false" />
+    <InterestsModal
+      v-if="showInterestsModal"
+      @close="showInterestsModal = false"
+      @interests-saved="onInterestsSaved"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { listingsAPI } from '../services/api'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { listingsAPI, profileAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import DestinationCard from '../components/DestinationCard.vue'
 import InterestsModal from '../components/InterestsModal.vue'
+
 
 const authStore = useAuthStore()
 
@@ -250,12 +255,35 @@ onMounted(() => {
   fetchPersonalizedListings()
   window.addEventListener('resize', updateCardWidth)
   updateCardWidth()
+
+  if (localStorage.getItem('access_token')) {
+  checkInterestModal()
+}
+
+
 })
 
 onUnmounted(() => {
   clearInterval(heroInterval)
   window.removeEventListener('resize', updateCardWidth)
 })
+
+async function checkInterestModal() {
+  try {
+    const res = await profileAPI.get()
+    const handled = res.data?.interests_handled
+    if (!handled) {
+      setTimeout(() => { showInterestsModal.value = true }, 700)
+    }
+  } catch (e) {
+    // Not authenticated or no profile — don't show
+  }
+}
+
+function onInterestsSaved() {
+  fetchPersonalizedListings()
+}
+
 
 async function fetchListings() {
   try {
@@ -293,6 +321,7 @@ async function fetchPersonalizedListings() {
     }
   } finally {
     loading.value = false
+    nextTick(() => updateCardWidth())
   }
 }
 
