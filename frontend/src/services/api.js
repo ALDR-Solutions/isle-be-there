@@ -117,6 +117,8 @@ export const profileAPI = {
   get: () => api.get('/api/profile'),
   update: (data) => api.put('/api/profile', data),
   updateAvatar: (avatarUrl) => api.put('/api/profile/avatar', null, { params: { avatar_url: avatarUrl } }),
+  setInterestsHandled: () => api.patch('/api/profile/interests-handled'),
+
 };
 
 // Interests API
