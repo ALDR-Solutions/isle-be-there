@@ -61,6 +61,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authAPI.getMe();
       user.value = response.data;
+      const role = response.data.is_admin ? 'admin' : response.data.is_business ? 'business' : 'user'
+      localStorage.setItem('user_role', role)
     } catch (err) {
       logout();
     }
@@ -69,6 +71,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_role');
     user.value = null;
   }
 
