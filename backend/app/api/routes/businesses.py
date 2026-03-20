@@ -7,9 +7,11 @@ from sqlmodel import Session
 
 from app.api.dependencies.auth import get_current_user_id
 from app.database.session import get_db
+from app.models.business_types import BusinessType
 from app.schemas.business import BusinessCreate, BusinessUpdate
 from app.services.business_service import list_businesses, get_business_by_id, create_business, update_business
 from app.services.listing_service import get_business_listings as get_business_listings_service
+from sqlmodel import select
 
 
 
@@ -36,6 +38,12 @@ def get_business_listings(business_id: str = Depends(get_current_user_id), db: S
     """Get all listings for a business."""
     _require_user_id(business_id)
     return get_business_listings_service(db, business_id)
+
+@router.get("/types", response_model=List[dict])
+def get_business_types(db: Session = Depends(get_db)):
+    """Get all business types."""
+    types = db.exec(select(BusinessType)).all()
+    return [{"id": str(t.id), "name": t.name} for t in types]
 
 @router.get("/{business_id}", response_model=dict)
 def get_business(business_id: str, db: Session = Depends(get_db)):
