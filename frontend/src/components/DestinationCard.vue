@@ -25,11 +25,22 @@
 
       <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/55 to-transparent"></div>
 
-      <div class="absolute left-4 top-4">
-        <span class="rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-md">
-          Featured
-        </span>
+      <div class="absolute right-4 top-4">
+        <button
+          class="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors"
+          :class="isFavorited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
+          @click.prevent="toggleFavorite"
+        >
+          <svg v-if="!isFavorited" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+            <path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clip-rule="evenodd" />
+          </svg>
+        </button>
       </div>
+
+
     </div>
 
     <div class="flex flex-1 flex-col p-6">
@@ -103,18 +114,23 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue';
 
+const isFavorited = ref(false)
 const props = defineProps({
   listing: {
     type: Object,
     required: true,
   },
-})
+});
 
 const locationText = computed(() => {
-  const a = props.listing.address
-  if (!a) return ''
-  return [a.street, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(', ')
-})
+  const a = props.listing.address;
+  if (!a) return '';
+  return [a.street, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(', ');
+});
+
+function toggleFavorite(){
+  isFavorited.value = !isFavorited.value;
+};
 </script>
