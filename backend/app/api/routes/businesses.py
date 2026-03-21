@@ -18,8 +18,6 @@ from app.models.user import User
 
 
 router = APIRouter(prefix="/api/businesses", tags=["Businesses"])
-
-
 def _require_user_id(user_id: str | None):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
