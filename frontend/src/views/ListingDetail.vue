@@ -1,14 +1,12 @@
 <template>
   <div class="bg-slate-50 min-h-screen">
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex min-h-screen items-center justify-center">
-      <div class="rounded-3xl border border-slate-200 bg-white px-12 py-16 text-center shadow-sm">
-        <p class="text-base text-slate-500">Loading listing...</p>
-      </div>
+    <div v-if="loading" class="flex justify-center py-20">
+      <svg class="h-8 w-8 animate-spin text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+      </svg>
     </div>
 
-    <!-- Not Found State -->
     <div v-else-if="!listing" class="flex min-h-screen items-center justify-center">
       <div class="rounded-3xl border border-slate-200 bg-white px-12 py-16 text-center shadow-sm">
         <p class="text-base font-medium text-slate-500">Listing not found.</p>
