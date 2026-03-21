@@ -19,6 +19,9 @@ class ProfileUpdate(BaseModel):
     last_name: str | None = None
     username: str | None = None
     email: str | None = None
+    avatar_url: str | None = None
+    phone: str | None = None
+    birth_date: datetime | None = None
     
 
 
@@ -51,6 +54,13 @@ def update_profile(
         if existing and existing.id != user.id:
             raise HTTPException(status_code=400, detail="Email already registered")
         user.email = data.email
+    if data.avatar_url is not None:
+        user.avatar_url = data.avatar_url
+    if data.phone is not None:
+        user.phone = data.phone
+    if data.birth_date is not None:
+        user.birth_date = data.birth_date
+
 
     user.updated_at = datetime.utcnow()
     db.add(user)
@@ -68,13 +78,12 @@ def get_profile(
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:
         return {"interests_handled": False}
 
     return {
-        "id": str(profile.id),
-        "user_id": str(profile.user_id),
+        "user_id": str(profile.id),
         "first_name": profile.first_name,
         "last_name": profile.last_name,
         "avatar_url": profile.avatar_url,
@@ -95,7 +104,7 @@ def set_interests_handled(
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 

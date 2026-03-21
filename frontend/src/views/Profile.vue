@@ -255,6 +255,8 @@ async function confirmSave() {
     showSaveModal.value = false;
     formError.value = err.response?.data?.detail || 'Failed to update profile.';
     toastStore.show('Failed to update profile.', 'error');
+  }finally {
+    saving.value = false;
   }
 }
 
@@ -269,7 +271,7 @@ async function confirmDisable() {
     showDisableModal.value = false;
     toastStore.show('Failed to disable account.', 'error');
   }finally{
-    disabling.value = false
+    disabling.value = false;
   }
   
 }
