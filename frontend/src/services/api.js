@@ -133,6 +133,8 @@ export const interestsAPI = {
 export const businessesAPI = {
   getAll: (params) => api.get('/api/businesses', { params }),
   getById: (id) => api.get(`/api/businesses/${id}`),
+  getMe: () =>  api.get('/api/businesses/me'),
+  update: (id, data) => api.put(`/api/businesses/${id}`, data),
   getListings: (params) => api.get('/api/businesses/listings', { params }),
   getTypes: () => api.get('/api/businesses/types'),
 };
