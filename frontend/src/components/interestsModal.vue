@@ -113,7 +113,7 @@
             <div :key="currentStep">
               <div class="mb-6 rounded-2xl border border-cyan-100 bg-gradient-to-r from-cyan-50 to-emerald-50 px-5 py-4">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600">Category {{ currentStep + 1 }}</p>
-                <h4 class="mt-1 text-xl font-bold text-slate-900">{{ categories[currentStep] }}</h4>
+                <h4 class="mt-1 text-xl font-bold text-slate-900 capitalize">{{ categories[currentStep] }}</h4>
                 <p class="mt-1 text-sm text-slate-500">Pick as many as you like — or skip this category.</p>
               </div>
 

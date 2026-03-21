@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value);
   const isBusiness = computed(() => user.value?.is_business || false);
-  const isAdmin = computed(() => user.value?.is_admin || false);
+  const isAdmin = computed(() => user.value?.is_super_admin || false);
 
   async function login(email, password) {
     loading.value = true;
@@ -61,7 +61,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authAPI.getMe();
       user.value = response.data;
-      const role = response.data.is_admin ? 'admin' : response.data.is_business ? 'business' : 'user'
+      const role = response.data.is_super_admin
+        ? 'admin'
+        : response.data.is_business
+          ? 'business'
+          : 'user'
       localStorage.setItem('user_role', role)
     } catch (err) {
       logout();

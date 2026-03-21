@@ -5,13 +5,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List
 from sqlmodel import Session
 
-from app.api.dependencies.auth import get_current_user_id
+from app.api.dependencies.permissions import require_business_owner, require_roles
 from app.database.session import get_db
 from app.models.business_types import BusinessType
 from app.schemas.business import BusinessCreate, BusinessUpdate
 from app.services.business_service import list_businesses, get_business_by_id, create_business, update_business
 from app.services.listing_service import get_business_listings as get_business_listings_service
 from sqlmodel import select
+from app.models.business import Business
+from app.models.user import User
 
 
 
@@ -34,10 +36,13 @@ def get_businesses(
     return list_businesses(db, skip=skip, limit=limit, verified_only=verified_only)
 
 @router.get("/listings", response_model=List[dict])
-def get_business_listings(business_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def get_business_listings(
+    current_user: User = Depends(require_roles("business", "admin")),
+    db: Session = Depends(get_db),
+):
     """Get all listings for a business."""
-    _require_user_id(business_id)
-    return get_business_listings_service(db, business_id)
+    _require_user_id(current_user.id)
+    return get_business_listings_service(db, current_user.id)
 
 @router.get("/types", response_model=List[dict])
 def get_business_types(db: Session = Depends(get_db)):
@@ -57,23 +62,29 @@ def get_business(business_id: str, db: Session = Depends(get_db)):
 @router.post("", response_model=dict, status_code=201)
 def create_business_endpoint(
     business_data: BusinessCreate,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
     """Create a new business."""
-    _require_user_id(user_id)
+    _require_user_id(current_user.id)
     data = business_data.dict(exclude_unset=True)
-    return create_business(db, data, user_id)
+    return create_business(db, data, current_user.id)
 
 
 @router.put("/{business_id}", response_model=dict)
 def update_business_endpoint(
     business_id: str,
     business_data: BusinessUpdate,
-    user_id: str = Depends(get_current_user_id),
+    business: Business = Depends(require_business_owner),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
     """Update a business."""
-    _require_user_id(user_id)
     update_data = {k: v for k, v in business_data.dict(exclude_unset=True).items() if v is not None}
-    return update_business(db, business_id, update_data, user_id)
+    return update_business(
+        db,
+        business_id,
+        update_data,
+        current_user.id,
+        is_admin=current_user.is_super_admin,
+    )

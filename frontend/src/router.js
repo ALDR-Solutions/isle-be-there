@@ -94,14 +94,10 @@ router.beforeEach((to, from, next) => {
 
   // Role-restricted routes
   if (to.meta.role && isAuthenticated) {
-    if (to.meta.role === 'admin' && role !== 'admin') {
-      return next({ name: role === 'business' ? 'BusinessHome' : 'Home' })
-    }
-    if (to.meta.role === 'business' && role !== 'business') {
-      return next({ name: role === 'admin' ? 'AdminHome' : 'Home' })
-    }
-    if (to.meta.role === 'user' && (role === 'admin' || role === 'business')) {
-      return next({ name: role === 'admin' ? 'AdminHome' : 'BusinessHome' })
+    if (to.meta.role !== role) {
+      if (role === 'admin') return next({ name: 'AdminHome' })
+      if (role === 'business') return next({ name: 'BusinessHome' })
+      return next({ name: 'Home' })
     }
   }
 

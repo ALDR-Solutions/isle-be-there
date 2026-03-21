@@ -4,10 +4,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, desc, select
 
-from app.api.dependencies.auth import get_current_user_id
+from app.api.dependencies.permissions import require_review_owner, require_roles
 from app.database.session import get_db
 from app.models.listing import Listing
 from app.models.review import Review
+from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewUpdate
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
@@ -43,7 +44,7 @@ def get_review(review_id: UUID, db: Session = Depends(get_db)):
 @router.post("", response_model=dict, status_code=201)
 def create_review(
     payload: ReviewCreate,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(require_roles("user", "admin")),
     db: Session = Depends(get_db),
 ):
     listing = db.exec(select(Listing.id).where(Listing.id == payload.listing_id)).first()
@@ -51,14 +52,16 @@ def create_review(
         raise HTTPException(status_code=404, detail="Listing not found")
 
     existing = db.exec(
-        select(Review).where(Review.listing_id == payload.listing_id).where(Review.user_id == user_id)
+        select(Review)
+        .where(Review.listing_id == payload.listing_id)
+        .where(Review.user_id == current_user.id)
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail="You already reviewed this listing")
 
     review = Review(
         listing_id=payload.listing_id,
-        user_id=user_id,
+        user_id=current_user.id,
         rating=payload.rating,
         comment=payload.comment,
     )
@@ -72,16 +75,9 @@ def create_review(
 def update_review(
     review_id: UUID,
     payload: ReviewUpdate,
-    user_id: str = Depends(get_current_user_id),
+    review: Review = Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-
-    if str(review.user_id) != str(user_id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(review, key, value)
@@ -96,16 +92,9 @@ def update_review(
 @router.delete("/{review_id}", status_code=204)
 def delete_review(
     review_id: UUID,
-    user_id: str = Depends(get_current_user_id),
+    review: Review = Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-
-    if str(review.user_id) != str(user_id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     db.delete(review)
     db.commit()
     return None

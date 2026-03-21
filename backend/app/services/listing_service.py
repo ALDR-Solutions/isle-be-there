@@ -177,13 +177,20 @@ def create_listing(db: Session, data: dict, user_id: str):
     return _serialize_listing(listing, review_stats)
 
 
-def update_listing(db: Session, listing_id: str, update_data: dict, user_id: str):
+def update_listing(
+    db: Session,
+    listing_id: str,
+    update_data: dict,
+    user_id: str,
+    is_admin: bool = False,
+):
     listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-    if not business or str(listing.business_id) != str(business.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not is_admin:
+        business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+        if not business or str(listing.business_id) != str(business.id):
+            raise HTTPException(status_code=403, detail="Not authorized")
 
     for key, value in update_data.items():
         setattr(listing, key, value)
@@ -193,13 +200,19 @@ def update_listing(db: Session, listing_id: str, update_data: dict, user_id: str
     return _serialize_listing(listing, review_stats)
 
 
-def delete_listing(db: Session, listing_id: str, user_id: str):
+def delete_listing(
+    db: Session,
+    listing_id: str,
+    user_id: str,
+    is_admin: bool = False,
+):
     listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-    if not business or str(listing.business_id) != str(business.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not is_admin:
+        business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+        if not business or str(listing.business_id) != str(business.id):
+            raise HTTPException(status_code=403, detail="Not authorized")
     db.delete(listing)
     db.commit()
 

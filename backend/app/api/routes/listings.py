@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List
 from sqlmodel import Session
 
-from app.api.dependencies.auth import get_current_user_id
+from app.api.dependencies.permissions import require_listing_owner, require_roles
 from app.database.session import get_db
+from app.models.listing import Listing
+from app.models.user import User
 from app.schemas.listing import ListingCreate, ListingUpdate
 from app.services.listing_service import (
     list_listings,
@@ -49,12 +51,12 @@ def get_listings(
 
 @router.get("/personalized", response_model=List[dict])
 def get_personalized_listings_endpoint(
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(require_roles("user", "business", "admin")),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(user_id)
-    return get_personalized_listings(db, user_id, limit)
+    _require_user_id(current_user.id)
+    return get_personalized_listings(db, current_user.id, limit)
 
 @router.get("/{listing_id}", response_model=dict)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
@@ -64,29 +66,40 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
 @router.post("", response_model=dict, status_code=201)
 def create_listing_endpoint(
     listing_data: ListingCreate,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(user_id)
+    _require_user_id(current_user.id)
     data = listing_data.dict(exclude_unset=True)
-    return create_listing(db, data, user_id)
+    return create_listing(db, data, current_user.id)
+
 @router.put("/{listing_id}", response_model=dict)
 def update_listing_endpoint(
     listing_id: str,
     listing_data: ListingUpdate,
-    user_id: str = Depends(get_current_user_id),
+    listing: Listing = Depends(require_listing_owner),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(user_id)
     update_data = {k: v for k, v in listing_data.dict(exclude_unset=True).items() if v is not None}
-    return update_listing(db, listing_id, update_data, user_id)
+    return update_listing(
+        db,
+        listing.id,
+        update_data,
+        current_user.id,
+        is_admin=current_user.is_super_admin,
+    )
 @router.delete("/{listing_id}", status_code=204)
 def delete_listing_endpoint(
     listing_id: str,
-    user_id: str = Depends(get_current_user_id),
+    listing: Listing = Depends(require_listing_owner),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(user_id)
-    delete_listing(db, listing_id, user_id)
+    delete_listing(
+        db,
+        listing.id,
+        current_user.id,
+        is_admin=current_user.is_super_admin,
+    )
     return None
-
