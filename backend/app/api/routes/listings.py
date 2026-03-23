@@ -30,7 +30,7 @@ def get_listings(
     min_price: float | None = None,
     max_price: float | None = None,
     sort_by: str | None = None,
-    sort_order: str = Query("asc", regex="^(asc|desc)$"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     status: str | None = None,
     db: Session = Depends(get_db),
 ):

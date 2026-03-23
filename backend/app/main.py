@@ -7,8 +7,8 @@ import shutil
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.api.routes import reviews
-from app.api.routes import ai, auth, bookings, businesses, favorites, interests, listings, profile
+from app.api.routes import favourites, reviews
+from app.api.routes import ai, auth, bookings, businesses, interests, listings, profile
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -45,7 +45,7 @@ app.include_router(bookings.router)
 app.include_router(reviews.router)
 app.include_router(ai.router)
 app.include_router(profile.router)
-app.include_router(favorites.router)
+app.include_router(favourites.router)
 app.include_router(interests.router)
 app.include_router(businesses.router)
 

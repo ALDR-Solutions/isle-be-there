@@ -29,7 +29,7 @@
         <button
           class="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors"
           :class="isFavorited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
-          @click.prevent="toggleFavorite"
+          @click.prevent="toggleFavorite(listing.id)"
         >
           <svg v-if="!isFavorited" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
@@ -114,23 +114,60 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue'
+import { favouritesAPI } from '../services/api'
 
-const isFavorited = ref(false)
 const props = defineProps({
   listing: {
     type: Object,
     required: true,
-  },
-});
+  }
+})
+
+const favourites = ref([])
+
+// ✅ correct computed
+const isFavorited = computed(() =>
+  favourites.value.includes(props.listing.id)
+)
 
 const locationText = computed(() => {
-  const a = props.listing.address;
-  if (!a) return '';
-  return [a.street, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(', ');
-});
+  const a = props.listing.address
+  if (!a) return ''
+  return [a.street, a.city, a.state, a.postal_code, a.country]
+    .filter(Boolean)
+    .join(', ')
+})
 
-function toggleFavorite(){
-  isFavorited.value = !isFavorited.value;
-};
+// ✅ FIXED toggle (update source array, not computed)
+async function toggleFavorite(listing_id) {
+  try {
+    if (isFavorited.value) {
+      await favouritesAPI.remove(listing_id)
+
+      // remove from array
+      favourites.value = favourites.value.filter(id => id !== listing_id)
+    } else {
+      await favouritesAPI.add(listing_id)
+
+      // add to array
+      favourites.value.push(listing_id)
+    }
+  } catch (err) {
+    console.error('Favorite error:', err)
+  }
+}
+
+// ✅ fetch once (still per card, but works)
+onMounted(async () => {
+  try {
+    const res = await favouritesAPI.getAll()
+    console.log('Raw favourites response:', res.data)  // ← check this
+    favourites.value = res.data.map(item => item.listing_id)
+    console.log('Favourites array:', favourites.value)  // ← and this
+    console.log('Current listing id:', props.listing.id) // ← and this
+  } catch (err) {
+    console.error('Fetch error:', err)  // ← is this firing?
+  }
+})
 </script>
