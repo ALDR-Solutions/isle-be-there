@@ -106,7 +106,7 @@ export const reviewsAPI = {
 
 // Favourites API
 export const favouritesAPI = {
-  getAll: () => api.get('/api/favourites/'),
+  getAll: () => api.get('/api/favourites'),
   add: (listingId) => api.post(`/api/favourites/${listingId}`),
   remove: (listingId) => api.delete(`/api/favourites/${listingId}`),
 };

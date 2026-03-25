@@ -114,8 +114,8 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { favouritesAPI } from '../services/api'
+import { computed, onMounted } from 'vue'
+import { useFavouritesStore } from '../stores/favourites'
 
 const props = defineProps({
   listing: {
@@ -124,11 +124,11 @@ const props = defineProps({
   }
 })
 
-const favourites = ref([])
+const favouritesStore = useFavouritesStore()
 
 // ✅ correct computed
 const isFavorited = computed(() =>
-  favourites.value.includes(props.listing.id)
+  favouritesStore.has(props.listing.id)
 )
 
 const locationText = computed(() => {
@@ -142,32 +142,22 @@ const locationText = computed(() => {
 // ✅ FIXED toggle (update source array, not computed)
 async function toggleFavorite(listing_id) {
   try {
-    if (isFavorited.value) {
-      await favouritesAPI.remove(listing_id)
-
-      // remove from array
-      favourites.value = favourites.value.filter(id => id !== listing_id)
-    } else {
-      await favouritesAPI.add(listing_id)
-
-      // add to array
-      favourites.value.push(listing_id)
-    }
+    await favouritesStore.toggle(listing_id)
   } catch (err) {
     console.error('Favorite error:', err)
   }
 }
 
-// ✅ fetch once (still per card, but works)
+// Load shared favourites state once, even if many cards mount together.
 onMounted(async () => {
+  if (!localStorage.getItem('access_token')) {
+    return
+  }
+
   try {
-    const res = await favouritesAPI.getAll()
-    console.log('Raw favourites response:', res.data)  // ← check this
-    favourites.value = res.data.map(item => item.listing_id)
-    console.log('Favourites array:', favourites.value)  // ← and this
-    console.log('Current listing id:', props.listing.id) // ← and this
+    await favouritesStore.fetchAll()
   } catch (err) {
-    console.error('Fetch error:', err)  // ← is this firing?
+    console.error('Fetch error:', err)
   }
 })
 </script>

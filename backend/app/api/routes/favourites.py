@@ -10,6 +10,7 @@ from uuid import UUID
 router = APIRouter(prefix="/api/favourites", tags=["Favourites"])
 
 
+@router.get("/", response_model=list[FavouriteResponse], include_in_schema=False)
 @router.get("", response_model=list[FavouriteResponse])
 def get_favourites(
     current_user: User = Depends(get_current_user),
