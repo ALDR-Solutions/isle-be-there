@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -7,8 +7,8 @@ import shutil
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.api.routes import reviews
-from app.api.routes import ai, auth, bookings, businesses, favorites, interests, listings, profile
+from app.api.routes import favourites, reviews
+from app.api.routes import ai, auth, bookings, businesses, interests, listings, profile
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -45,23 +45,9 @@ app.include_router(bookings.router)
 app.include_router(reviews.router)
 app.include_router(ai.router)
 app.include_router(profile.router)
-app.include_router(favorites.router)
+app.include_router(favourites.router)
 app.include_router(interests.router)
 app.include_router(businesses.router)
-
-# Root route - serve Vue app
-@app.get("/")
-async def root():
-    if FRONTEND_DIST.exists():
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
-    return {"message": "Isle Be There API"}
-
-# Catch-all for Vue Router SPA
-@app.get("/{path:path}")
-async def serve_spa(path: str):
-    if FRONTEND_DIST.exists():
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
-    return {"message": "Isle Be There API"}
 
 @app.get("/health")
 async def health():
@@ -73,3 +59,20 @@ async def upload_image(file: UploadFile = File(...)):
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return {"filename": file.filename, "url": f"/uploads/{file.filename}"}
+
+# Root route - serve Vue app
+@app.get("/")
+async def root():
+    if FRONTEND_DIST.exists():
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
+    return {"message": "Isle Be There API"}
+
+# Catch-all for Vue Router SPA
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    if path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+
+    if FRONTEND_DIST.exists():
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
+    return {"message": "Isle Be There API"}

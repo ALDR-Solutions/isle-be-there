@@ -1,10 +1,18 @@
-from sqlmodel import Column, DateTime, Field, ForeignKey, text, SQLModel, UUID as PGUUID
+from sqlmodel import SQLModel, Field, Column, DateTime, UUID as PGUUID, text, ForeignKey
 from uuid import UUID
 from datetime import datetime
 
+class Favourites(SQLModel, table=True):
+    __tablename__ = "favourites"
 
-class UserInterest(SQLModel, table=True):
-    __tablename__ = "user_interests"
+    id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
+        )
+    )
 
     user_id: UUID = Field(
         sa_column=Column(
@@ -14,11 +22,11 @@ class UserInterest(SQLModel, table=True):
             nullable=False,
         )
     )
-
-    interest_id: UUID = Field(
+    
+    listing_id: UUID = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
-            ForeignKey("interests.id", ondelete="CASCADE"),
+            ForeignKey("listings.id", ondelete="CASCADE"),
             primary_key=True,
             nullable=False,
         )

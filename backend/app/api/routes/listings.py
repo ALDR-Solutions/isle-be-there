@@ -6,7 +6,7 @@ from app.api.dependencies.permissions import require_listing_owner, require_role
 from app.database.session import get_db
 from app.models.listing import Listing
 from app.models.user import User
-from app.schemas.listing import ListingCreate, ListingUpdate
+from app.schemas.listing import ListingCreate, ListingUpdate, ListingResponse
 from app.services.listing_service import (
     list_listings,
     get_listing_by_id,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/listings", tags=["Listings"])
 def _require_user_id(user_id: str | None):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-@router.get("", response_model=List[dict])
+@router.get("", response_model=List[ListingResponse])
 def get_listings(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -30,7 +30,7 @@ def get_listings(
     min_price: float | None = None,
     max_price: float | None = None,
     sort_by: str | None = None,
-    sort_order: str = Query("asc", regex="^(asc|desc)$"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     status: str | None = None,
     db: Session = Depends(get_db),
 ):
@@ -49,7 +49,7 @@ def get_listings(
     )
 
 
-@router.get("/personalized", response_model=List[dict])
+@router.get("/personalized", response_model=List[ListingResponse])
 def get_personalized_listings_endpoint(
     current_user: User = Depends(require_roles("user", "business", "admin")),
     limit: int = Query(20, ge=1, le=100),
@@ -58,12 +58,12 @@ def get_personalized_listings_endpoint(
     _require_user_id(current_user.id)
     return get_personalized_listings(db, current_user.id, limit)
 
-@router.get("/{listing_id}", response_model=dict)
+@router.get("/{listing_id}", response_model=ListingResponse)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
     return get_listing_by_id(db, listing_id)
 
 
-@router.post("", response_model=dict, status_code=201)
+@router.post("", response_model=ListingResponse, status_code=201)
 def create_listing_endpoint(
     listing_data: ListingCreate,
     current_user: User = Depends(require_roles("business", "admin")),
