@@ -4,6 +4,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { authAPI } from '../services/api';
+import { useFavouritesStore } from './favourites';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
@@ -15,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.is_super_admin || false);
 
   async function login(email, password) {
+    const favouritesStore = useFavouritesStore();
     loading.value = true;
     error.value = null;
     
@@ -26,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('refresh_token', refresh_token);
       
       await fetchUser();
+      await favouritesStore.fetchAll(true);
       return true;
     } catch (err) {
       error.value = err.response?.data?.detail || 'Login failed';
@@ -73,16 +76,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    const favouritesStore = useFavouritesStore();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
     user.value = null;
+    favouritesStore.reset();
   }
 
-  function initialize() {
+  async function initialize() {
     const token = localStorage.getItem('access_token');
     if (token) {
-      fetchUser();
+      await fetchUser();
     }
   }
 

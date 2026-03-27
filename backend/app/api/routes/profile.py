@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlmodel import Session, select
-
+from app.api.dependencies.permissions import get_current_user
 from app.core.security import decode_token
 from app.database import get_db
 from app.models.user import User
@@ -12,7 +12,6 @@ from app.models.profile import Profile
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 class ProfileUpdate(BaseModel):
     first_name: str | None = None
@@ -28,14 +27,13 @@ class ProfileUpdate(BaseModel):
 @router.put("", status_code=200)
 def update_profile(
     data: ProfileUpdate,
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    user = db.exec(select(User).where(User.id == payload["sub"])).first()
+    user = db.exec(select(User).where(User.id == current_user.id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -71,12 +69,11 @@ def update_profile(
 
 @router.get("", status_code=200)
 def get_profile(
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:
@@ -97,12 +94,11 @@ def get_profile(
 
 @router.patch("/interests-handled", status_code=200)
 def set_interests_handled(
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:

@@ -26,8 +26,7 @@
           <div class="relative">
             <button
               @click="desktopDropdownOpen = !desktopDropdownOpen"
-              class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-            >
+              class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
               {{ authStore.user?.username }}
               <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': desktopDropdownOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06z" clip-rule="evenodd" />
@@ -35,12 +34,16 @@
             </button>
             <div
               v-if="desktopDropdownOpen"
-              class="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg"
-            >
+              class="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg">
+              <router-link 
+              to="/business/profile"
+              @click="desktopDropdownOpen = false"
+              class="block w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                Profile
+              </router-link>
               <button
                 @click="handleLogout"
-                class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50"
-              >
+                class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50">
                 Logout
               </button>
             </div>
@@ -49,8 +52,7 @@
 
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
-          class="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden col-start-3 justify-self-end"
-        >
+          class="flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden col-start-3 justify-self-end">
           <svg v-if="!mobileMenuOpen" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -65,10 +67,15 @@
           <div class="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
             {{ authStore.user?.username }}
           </div>
+          <router-link
+          to="/business/profile"
+          @click="mobileMenuOpen=false"
+          class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+            Profile
+          </router-link>
           <button
             @click="handleLogout"
-            class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100"
-          >
+            class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100">
             Logout
           </button>
         </div>

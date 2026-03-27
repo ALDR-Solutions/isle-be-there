@@ -3,8 +3,7 @@
  */
 import axios from 'axios';
 
-// Use relative URL - same port as frontend when served from backend
-const API_BASE_URL = '';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -104,12 +103,11 @@ export const reviewsAPI = {
   delete: (id) => api.delete(`/api/reviews/${id}`),
 };
 
-// Favorites API
-export const favoritesAPI = {
-  getAll: () => api.get('/api/favorites'),
-  add: (listingId) => api.post(`/api/favorites/${listingId}`),
-  remove: (listingId) => api.delete(`/api/favorites/${listingId}`),
-  check: (listingId) => api.get(`/api/favorites/${listingId}/check`),
+// Favourites API
+export const favouritesAPI = {
+  getAll: () => api.get('/api/favourites'),
+  add: (listingId) => api.post(`/api/favourites/${listingId}`),
+  remove: (listingId) => api.delete(`/api/favourites/${listingId}`),
 };
 
 // Profile API
@@ -133,6 +131,8 @@ export const interestsAPI = {
 export const businessesAPI = {
   getAll: (params) => api.get('/api/businesses', { params }),
   getById: (id) => api.get(`/api/businesses/${id}`),
+  getMe: () =>  api.get('/api/businesses/me'),
+  update: (id, data) => api.put(`/api/businesses/${id}`, data),
   getListings: (params) => api.get('/api/businesses/listings', { params }),
   getTypes: () => api.get('/api/businesses/types'),
 };

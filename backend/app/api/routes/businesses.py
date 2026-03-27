@@ -33,6 +33,16 @@ def get_businesses(
     """Get all businesses."""
     return list_businesses(db, skip=skip, limit=limit, verified_only=verified_only)
 
+@router.get("/me", response_model=dict)
+def get_my_business(
+    current_user: User = Depends(require_roles("business", "admin")),
+    db: Session = Depends(get_db),
+):
+    business = db.exec(select(Business).where(Business.user_id == current_user.id)).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="No business found for this user")
+    return business.model_dump()
+
 @router.get("/listings", response_model=List[dict])
 def get_business_listings(
     current_user: User = Depends(require_roles("business", "admin")),
