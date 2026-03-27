@@ -218,7 +218,6 @@
             <p v-if="formErrors.business_type" class="mt-1.5 text-xs text-red-500">{{ formErrors.business_type }}</p>
           </div>
 
-          <!-- Description -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
               Description <span class="text-red-500">*</span>
@@ -232,8 +231,6 @@
             ></textarea>
             <p v-if="formErrors.description" class="mt-1.5 text-xs text-red-500">{{ formErrors.description }}</p>
           </div>
-
-          <!-- Base Price -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
               Base Price (USD) <span class="text-red-500">*</span>
@@ -284,8 +281,7 @@
                 v-model="form.state"
                 type="text"
                 placeholder="e.g. Saint Michael"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"/>
             </div>
           </div>
 
@@ -296,8 +292,7 @@
                 v-model="form.postal_code"
                 type="text"
                 placeholder="e.g. BB11000"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"/>
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -308,13 +303,11 @@
                 type="text"
                 placeholder="e.g. Barbados"
                 class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
-                :class="formErrors.country ? 'border-red-300 bg-red-50 focus:border-red-400' : 'border-slate-200 bg-white focus:border-cyan-400'"
-              />
+                :class="formErrors.country ? 'border-red-300 bg-red-50 focus:border-red-400' : 'border-slate-200 bg-white focus:border-cyan-400'"/>
               <p v-if="formErrors.country" class="mt-1.5 text-xs text-red-500">{{ formErrors.country }}</p>
             </div>
           </div>
 
-          <!-- Phone / Email -->
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number</label>
@@ -335,12 +328,8 @@
               />
             </div>
           </div>
-
-          <!-- Image Upload -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Images</label>
-
-            <!-- Drop Zone -->
             <div
               class="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition cursor-pointer"
               :class="isDragging ? 'border-cyan-400 bg-cyan-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'"
@@ -364,8 +353,6 @@
               <p class="mt-1 text-xs text-slate-400">or click to browse files</p>
               <p v-if="uploadingCount > 0" class="mt-2 text-xs font-semibold text-cyan-600">Uploading {{ uploadingCount }} file{{ uploadingCount > 1 ? 's' : '' }}...</p>
             </div>
-
-            <!-- Previews -->
             <div v-if="form.image_urls.filter(u => u).length" class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
               <div
                 v-for="(url, index) in form.image_urls.filter(u => u)"
@@ -420,8 +407,6 @@
         </form>
       </div>
     </div>
-
-    <!-- Archive Confirm Modal -->
     <div
       v-if="showArchiveModal"
       class="fixed inset-0 z-50 flex items-center justify-center px-4"

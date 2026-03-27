@@ -44,9 +44,9 @@
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-slate-900">Remind me next login</p>
+                <p class="font-semibold text-slate-900">Remind me next time</p>
                 <p class="mt-1 text-sm leading-6 text-slate-500">
-                  This prompt will appear the next time you sign in. You can set your interests then.
+                  This prompt will appear again. You can set your interests then.
                 </p>
               </div>
               <div

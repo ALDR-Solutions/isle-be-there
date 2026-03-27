@@ -1,10 +1,12 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <!-- Page Header (matches Profile.vue pattern) -->
-    <div class="mb-10">
-      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-600">Collection</p>
-      <h1 class="mt-2 text-3xl sm:text-4xl font-bold text-slate-900">My Favorites</h1>
-      <p class="mt-1 text-sm text-slate-500">Places you've saved for your next island getaway.</p>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">My Favorites</h1>
+    
+    <div v-if="loading" class="flex justify-center py-20">
+      <svg class="h-8 w-8 animate-spin text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+      </svg>
     </div>
 
     <!-- Loading State -->
