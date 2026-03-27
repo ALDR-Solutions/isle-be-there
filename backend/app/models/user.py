@@ -38,6 +38,10 @@ class User(SQLModel, table=True):
     is_active: bool = Field(
         default=True, sa_column=Column(Boolean, nullable=False, server_default=text("true"))
     )
+    is_verified: bool = Field(
+        default=False, sa_column=Column(Boolean, nullable=False, server_default=text("false"))
+    )
+    verification_token: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

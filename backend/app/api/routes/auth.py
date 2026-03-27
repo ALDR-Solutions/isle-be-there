@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from datetime import datetime
+import secrets
+import bcrypt
+import logging
 
+from app.core.email import send_verification_email
 from app.core.security import (
     verify_password,
     get_password_hash,
@@ -15,12 +19,14 @@ from app.models.user import User
 from app.schemas.user import (
     UserCreate,
     UserResponse,
+    RegisterResponse,
     TokenResponse,
     RefreshTokenRequest,
     ResetPassword,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -39,23 +45,66 @@ def _get_user_by_id(db: Session, user_id: str) -> User | None:
 # ── routes ───────────────────────────────────────────────────────────
 
 
-@router.post("/register", response_model=UserResponse, status_code=201)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@router.post("/register", response_model=RegisterResponse, status_code=201)
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if _get_user_by_email(db, user_data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
-
+    
+    # Generate verification token
+    verification_token = secrets.token_urlsafe(32)
+    
+    # Create user
+    hashed_pw = bcrypt.hashpw(user_data.password.encode(), bcrypt.gensalt()).decode()
     user = User(
         email=user_data.email,
-        hashed_password=get_password_hash(user_data.password),
         username=user_data.username,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        is_business=user_data.is_business,
+        hashed_password=hashed_pw,
+        is_verified=False,
+        verification_token=verification_token,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    
+    email_sent = True
+    try:
+        await send_verification_email(user.email, verification_token)
+    except Exception:
+        email_sent = False
+        logger.exception(
+            "Failed to send verification email for user_id=%s email=%s",
+            user.id,
+            user.email,
+        )
+
+    if email_sent:
+        return {
+            "message": "Registration successful. Please check your email to verify your account.",
+            "email_sent": True,
+        }
+
+    return {
+        "message": "Registration successful, but we could not send a verification email right now. Please try again later.",
+        "email_sent": False,
+    }
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: Session = Depends(get_db)):
+    user = db.exec(
+        select(User).where(User.verification_token == token)
+    ).first()
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    
+    user.is_verified = True
+    user.verification_token = None  # invalidate after use
+    db.add(user)
+    db.commit()
+    
+    return {"message": "Email verified successfully. You can now log in."}
 
 
 @router.post("/login", response_model=TokenResponse)

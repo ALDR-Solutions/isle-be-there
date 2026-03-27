@@ -21,6 +21,8 @@ class UserResponse(BaseModel):
     last_name: str | None = None
     is_business: bool | None = False
     is_super_admin: bool | None = False
+    is_active: bool | None = True
+    is_verified: bool | None = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -43,3 +45,8 @@ class ResetRequest(BaseModel):
 
 class ResetPassword(BaseModel):
     password: str
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    email_sent: bool
