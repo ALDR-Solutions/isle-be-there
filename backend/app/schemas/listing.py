@@ -39,10 +39,18 @@ class ListingUpdate(BaseModel):
     location: Optional[str] = None
 
 
+class ListingLocation(BaseModel):
+    lat: float
+    lng: float
+
+
 class ListingResponse(ListingBase):
     id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
+    location: Optional[ListingLocation] = None
+    avg_rating: Optional[float] = None
+    review_count: int = 0
 
     class Config:
         from_attributes = True
