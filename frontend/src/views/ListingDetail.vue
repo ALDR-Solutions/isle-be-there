@@ -18,39 +18,71 @@
         </router-link>
       </div>
     </div>
-
-    <!-- Listing Content -->
     <div v-else>
-
-      <!-- Hero Image -->
       <div class="relative h-72 w-full overflow-hidden bg-slate-200 sm:h-96 lg:h-[480px]">
-        <img
-          v-if="listing.image_urls && listing.image_urls.length > 0"
-          :src="listing.image_urls[0]"
-          :alt="listing.title"
-          class="h-full w-full object-cover"
-          @error="handleImageError($event)"
-        />
-        <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+
+      <template v-if="images.length">
+        <transition name="fade" mode="out-in">
+          <img
+            :key="currentImage"
+            :src="currentImage"
+            :alt="listing.title"
+            class="h-full w-full object-cover"
+            @error="handleImageError"
+          />
+        </transition>
+
+        <button
+          v-if="images.length > 1"
+          @click="prevImage"
+          class="absolute left-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
+        </button>
+
+        <button
+          v-if="images.length > 1"
+          @click="nextImage"
+          class="absolute right-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div
+          v-if="images.length > 1"
+          class="absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 gap-2"
+        >
+          <button
+            v-for="(image, index) in images"
+            :key="image"
+            @click="goToImage(index)"
+            class="h-3 rounded-full transition-all duration-300"
+            :class="currentImageIndex === index ? 'w-8 bg-cyan-300' : 'w-3 bg-white/50 hover:bg-white/80'"
+          />
         </div>
-        <!-- Gradient overlay -->
+      </template>
+
+      <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+
         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
-        <!-- Back button -->
         <div class="absolute left-4 top-4 sm:left-6 lg:left-8">
           <router-link
             to="/listings"
-            class="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
-          >
+            class="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
             Back
           </router-link>
         </div>
-        <!-- Title overlay at bottom of hero -->
         <div class="absolute bottom-6 left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8">
           <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
             {{ listing.address?.country }}
@@ -61,14 +93,11 @@
         </div>
       </div>
 
-      <!-- Main Content -->
       <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 
-          <!-- Left: Details -->
           <div class="lg:col-span-2 space-y-6">
 
-            <!-- Location & Meta -->
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -101,7 +130,32 @@
               </div>
             </div>
 
-            <!-- Description -->
+            <div
+              v-if="hasCoordinates"
+              class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-600">Location</p>
+                  <p class="mt-2 text-sm text-slate-500">
+                    View this listing on the map
+                  </p>
+                </div>
+
+                <a
+                  :href="openStreetMapLink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Open in OSM
+                </a>
+              </div>
+
+              <div ref="mapEl" class="mt-4 h-80 w-full overflow-hidden rounded-2xl"></div>
+            </div>
+
+
+        
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-600">About this place</p>
               <p class="mt-3 text-base leading-7 text-slate-600">
@@ -197,20 +251,95 @@
 </template>
 
 <script setup>
-import { ref, onMounted} from 'vue';
+import 'leaflet/dist/leaflet.css'
+
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import {useRoute } from 'vue-router';
 import { listingsAPI, reviewsAPI } from '../services/api';
+
+import L from 'leaflet';
 
 const route = useRoute();
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+const currentImageIndex = ref(0);
+const brokenImages = ref(new Set());
+let heroInterval = null;
+
+const mapEl = ref(null);
+let map = null;
+let marker = null;
+
+const hasCoordinates = computed(() => {
+  const lat = listing.value?.location?.lat;
+  const lng = listing.value?.location?.lng;
+
+  return typeof lat === 'number' && typeof lng === 'number';
+});
+
+const openStreetMapLink = computed(() => {
+  const lat = listing.value?.location?.lat;
+  const lng = listing.value?.location?.lng;
+
+  if (typeof lat !== 'number' || typeof lng !== 'number') return '#';
+
+  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+});
+
+const images = computed(() => {
+  return (listing.value?.image_urls ?? []).filter(
+    (url) => url && !brokenImages.value.has(url)
+  );
+});
+
+const currentImage = computed(() => {
+  return images.value[currentImageIndex.value] ?? images.value[0] ?? null;
+
+});
+
+const nextImage = () => {
+  if (!images.value.length) return;
+  currentImageIndex.value = (currentImageIndex.value + 1) % images.value.length;
+};
+
+const prevImage = () => {
+  if(!images.value.length) return;
+  currentImageIndex.value = 
+    (currentImageIndex.value - 1 + images.value.length) % images.value.length;
+};
+
+const goToImage = (index) => {
+  currentImageIndex.value = index;
+  startSlideshow();
+};
+
+const startSlideshow = () => {
+  stopSlideshow();
+
+  if (images.value.length <= 1) return;
+
+  heroInterval = setInterval(() => {
+    nextImage();
+  }, 4000);
+};
+
+const stopSlideshow = () => {
+  if (heroInterval) {
+    clearInterval(heroInterval);
+    heroInterval = null;
+  }
+};
+
 
 const fetchListings = async () => {
   try {
     const response = await listingsAPI.getById(route.params.id);
     listing.value = response.data;
+
+    brokenImages.value = new Set();
+    currentImageIndex.value = 0;
 
     const reviewResponse = await reviewsAPI.getAll({ listing_id:route.params.id});
     reviews.value = reviewResponse.data;
@@ -221,18 +350,117 @@ const fetchListings = async () => {
   }
 };
 
-const handleImageError = (event) => {
-  event.target.style.display = 'none';
-  event.target.parentElement.innerHTML = `
-    <div class="flex h-full w-full items-center justify-center text-slate-300">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    </div>
-  `;
+const handleImageError = () => {
+  if(!currentImage.value) return;
+
+  brokenImages.value = new Set([
+    ...brokenImages.value,
+    currentImage.value,
+  ]);
+
+  if (currentImageIndex.value >= images.value.length) {
+    currentImageIndex.value = 0;
+  }
 };
+
+const initMap = async () => {
+  if(!hasCoordinates.value || !mapEl.value) return;
+
+  await nextTick();
+
+  const lat = listing.value.location.lat;
+  const lng = listing.value.location.lng;
+
+  if (!map) {
+    map = L.map(mapEl.value, {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    }).setView([lat, lng], 15);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    marker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: '#0891b2',
+      fillColor: '#22d3ee',
+      fillOpacity: 0.9,
+      weight: 2,
+    }).addTo(map);
+
+    marker.bindPopup(listing.value.title || 'Listing');
+  }else{
+    map.setView([lat, lng], 15);
+
+    if (marker) {
+      marker.setLatLng([lat, lng]);
+      marker.bindPopup(listing.value.title || 'Listing');
+    }
+
+    map.invalidateSize();
+  }
+};
+
+const destroyMap = () => {
+  if (map) {
+    map.remove();
+    map = null;
+    marker = null;
+  }
+};
+
+watch(
+  () => listing.value?.location,
+  async (location) => {
+    if (
+      typeof location?.lat === 'number' &&
+      typeof location?.lng === 'number'
+    ) {
+      await initMap();
+    }else {
+      destroyMap();
+    }
+  },
+  {deep: true}
+);
+
+
+
+watch(images, (newImages) => {
+  if (!newImages.length) {
+    stopSlideshow();
+    currentImageIndex.value = 0;
+    return;
+  }
+
+  if (currentImageIndex.value >= newImages.length) {
+    currentImageIndex.value = 0;
+  }
+
+  startSlideshow();
+});
 
 onMounted(() => {
   fetchListings();
 });
+
+onUnmounted(() => {
+  stopSlideshow();
+  destroyMap();
+});
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
+
