@@ -78,28 +78,34 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
-import { useFavouritesStore } from '../stores/favourites';
+import { ref, onMounted } from 'vue';
+import { favoritesAPI } from '../services/api';
+import DestinationCard from '../components/DestinationCard.vue';
 
-const favouritesStore = useFavouritesStore();
-const favorites = computed(() => favouritesStore.items);
-const loading = computed(() => favouritesStore.loading && !favouritesStore.loaded);
+const favorites = ref([]);
+const loading = ref(true);
+
+const fetchFavorites = async () => {
+  try {
+    const response = await favoritesAPI.getAll();
+    favorites.value = response.data;
+  } catch (err) {
+    console.error('Failed to load favorites', err);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const removeFavorite = async (listingId) => {
   try {
     await favoritesAPI.remove(listingId);
-    // Remove from local list
     favorites.value = favorites.value.filter(f => f.listing_id !== listingId);
   } catch (err) {
     console.error('Failed to remove favorite', err);
   }
 };
 
-onMounted(async () => {
-  try {
-    await favouritesStore.fetchAll();
-  } catch (err) {
-    console.error('Failed to load favorites', err);
-  }
+onMounted(() => {
+  fetchFavorites();
 });
 </script>

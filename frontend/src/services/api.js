@@ -4,7 +4,7 @@
 import axios from 'axios';
 
 // Use relative URL - same port as frontend when served from backend
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -104,11 +104,12 @@ export const reviewsAPI = {
   delete: (id) => api.delete(`/api/reviews/${id}`),
 };
 
-// Favourites API
-export const favouritesAPI = {
-  getAll: () => api.get('/api/favourites'),
-  add: (listingId) => api.post(`/api/favourites/${listingId}`),
-  remove: (listingId) => api.delete(`/api/favourites/${listingId}`),
+// Favorites API
+export const favoritesAPI = {
+  getAll: () => api.get('/api/favorites'),
+  add: (listingId) => api.post(`/api/favorites/${listingId}`),
+  remove: (listingId) => api.delete(`/api/favorites/${listingId}`),
+  check: (listingId) => api.get(`/api/favorites/${listingId}/check`),
 };
 
 // Profile API

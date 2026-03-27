@@ -19,6 +19,7 @@ class ListingBase(BaseModel):
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
     location: Optional[str] = None
+    embedding: Optional[str] = None
 
 
 class ListingCreate(ListingBase):
@@ -37,6 +38,7 @@ class ListingUpdate(BaseModel):
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
     location: Optional[str] = None
+    embedding: Optional[str] = None
 
 
 class ListingResponse(ListingBase):

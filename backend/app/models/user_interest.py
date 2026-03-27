@@ -6,7 +6,7 @@ from datetime import datetime
 class UserInterest(SQLModel, table=True):
     __tablename__ = "user_interests"
 
-    user_id: UUID = Field(
+    user_id: str = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
             ForeignKey("users.id", ondelete="CASCADE"),
@@ -15,7 +15,7 @@ class UserInterest(SQLModel, table=True):
         )
     )
 
-    interest_id: UUID = Field(
+    interest_id: str = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
             ForeignKey("interests.id", ondelete="CASCADE"),

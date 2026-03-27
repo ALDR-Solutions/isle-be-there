@@ -1,17 +1,19 @@
 from uuid import UUID
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlmodel import Session, select
+
 from app.database.session import get_db
 from app.services.interests_services import get_all_interests, get_user_interests
 from app.schemas.interests import InterestResponse
+from app.core.security import decode_token
 from app.models.user_interest import UserInterest
 from app.models.interests import Interests
-from app.models.user import User
-from app.api.dependencies.permissions import get_current_user
 
 router = APIRouter(prefix="/api/interests", tags=["Interests"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 class UserInterestsUpdate(BaseModel):
@@ -26,19 +28,26 @@ def get_interests(db: Session = Depends(get_db)):
 
 @router.get("/user", response_model=list[InterestResponse])
 def get_user_interests_route(
-    user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    return get_user_interests(db, user.id)
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return get_user_interests(db, payload["sub"])
 
 
 @router.put("/user")
 def update_user_interests(
     data: UserInterestsUpdate,
-    user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    user_id = user.id
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_id = payload["sub"]
 
     existing = db.exec(select(UserInterest).where(UserInterest.user_id == user_id)).all()
     for ui in existing:
