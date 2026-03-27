@@ -1,7 +1,6 @@
 """Business logic for listings."""
 
 import random
-import numpy as np
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from fastapi import HTTPException
@@ -64,9 +63,6 @@ def _serialize_listing(listing: Listing, review_stats: dict | None = None) -> di
                       If None, stats are fetched individually (use only for single listings).
     """
     data = listing.model_dump(exclude={"embedding", "location"})
-
-    embedding = listing.embedding
-    data["embedding"] = embedding.tolist() if isinstance(embedding, np.ndarray) else embedding
 
     location = listing.location
     if isinstance(location, WKBElement):
