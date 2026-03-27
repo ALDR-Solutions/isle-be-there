@@ -6,6 +6,7 @@ from app.models.listing import Listing
 from app.api.dependencies.permissions import get_current_user
 from app.models.user import User
 from app.schemas.favourites import FavouriteResponse
+from app.services.listing_service import _serialize_listings
 from uuid import UUID
 
 router = APIRouter(prefix="/api/favourites", tags=["Favourites"])
@@ -23,13 +24,15 @@ def get_favourites(
         .where(Favourites.user_id == current_user.id)
     )
     rows = db.exec(query).all()
+    serialized_listings = _serialize_listings(db, [listing for _, listing in rows])
+    listings_by_id = {listing["id"]: listing for listing in serialized_listings}
     return [
         {
             "id": favourite.id,
             "user_id": favourite.user_id,
             "listing_id": favourite.listing_id,
             "created_at": favourite.created_at,
-            "listing": listing,
+            "listing": listings_by_id.get(favourite.listing_id),
         }
         for favourite, listing in rows
     ]
@@ -60,12 +63,13 @@ def add_favourite(
     db.add(fav)
     db.commit()
     db.refresh(fav)
+    serialized_listing = _serialize_listings(db, [listing])[0]
     return {
         "id": fav.id,
         "user_id": fav.user_id,
         "listing_id": fav.listing_id,
         "created_at": fav.created_at,
-        "listing": listing,
+        "listing": serialized_listing,
     }
 
 
