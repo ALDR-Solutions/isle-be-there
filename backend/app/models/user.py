@@ -38,7 +38,13 @@ class User(SQLModel, table=True):
     is_active: bool = Field(
         default=True, sa_column=Column(Boolean, nullable=False, server_default=text("true"))
     )
-
+    
+    avatar_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    phone: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    birth_date: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    interests_handled: Optional[bool] = Field(
+        default=False, sa_column=Column(Boolean, nullable=True, server_default=text("false"))
+    )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     )

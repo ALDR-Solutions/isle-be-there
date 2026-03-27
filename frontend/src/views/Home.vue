@@ -220,7 +220,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { listingsAPI, profileAPI } from '../services/api'
+import { listingsAPI, authAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import DestinationCard from '../components/DestinationCard.vue'
 import InterestsModal from '../components/InterestsModal.vue'
@@ -273,7 +273,7 @@ onUnmounted(() => {
 
 async function checkInterestModal() {
   try {
-    const res = await profileAPI.get()
+    const res = await authAPI.getMe()
     const handled = res.data?.interests_handled
     if (!handled) {
       setTimeout(() => { showInterestsModal.value = true }, 700)

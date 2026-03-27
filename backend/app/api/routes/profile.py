@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlmodel import Session, select
-
+from app.api.dependencies.permissions import get_current_user
 from app.core.security import decode_token
 from app.database import get_db
 from app.models.user import User
@@ -12,27 +12,28 @@ from app.models.profile import Profile
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 class ProfileUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     username: str | None = None
     email: str | None = None
+    avatar_url: str | None = None
+    phone: str | None = None
+    birth_date: datetime | None = None
     
 
 
 @router.put("", status_code=200)
 def update_profile(
     data: ProfileUpdate,
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    user = db.exec(select(User).where(User.id == payload["sub"])).first()
+    user = db.exec(select(User).where(User.id == current_user.id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -51,6 +52,13 @@ def update_profile(
         if existing and existing.id != user.id:
             raise HTTPException(status_code=400, detail="Email already registered")
         user.email = data.email
+    if data.avatar_url is not None:
+        user.avatar_url = data.avatar_url
+    if data.phone is not None:
+        user.phone = data.phone
+    if data.birth_date is not None:
+        user.birth_date = data.birth_date
+
 
     user.updated_at = datetime.utcnow()
     db.add(user)
@@ -61,20 +69,18 @@ def update_profile(
 
 @router.get("", status_code=200)
 def get_profile(
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:
         return {"interests_handled": False}
 
     return {
-        "id": str(profile.id),
-        "user_id": str(profile.user_id),
+        "user_id": str(profile.id),
         "first_name": profile.first_name,
         "last_name": profile.last_name,
         "avatar_url": profile.avatar_url,
@@ -88,14 +94,13 @@ def get_profile(
 
 @router.patch("/interests-handled", status_code=200)
 def set_interests_handled(
-    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    profile = db.exec(select(Profile).where(Profile.user_id == payload["sub"])).first()
+    profile = db.exec(select(User).where(User.id == payload["sub"])).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 

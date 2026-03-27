@@ -21,6 +21,10 @@ class UserResponse(BaseModel):
     last_name: str | None = None
     is_business: bool | None = False
     is_super_admin: bool | None = False
+    avatar_url: str | None = None
+    phone: str | None = None
+    birth_date: datetime | None = None
+    interests_handled: bool | None = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
