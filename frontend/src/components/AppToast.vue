@@ -1,5 +1,9 @@
 <template>
-  <div class="pointer-events-none fixed right-4 top-4 z-[100] flex w-full max-w-sm flex-col gap-3">
+  <div
+    class="pointer-events-none fixed right-4 top-4 z-[100] flex w-full max-w-sm flex-col gap-3"
+    aria-live="polite"
+    aria-atomic="true"
+  >
     <transition-group name="toast">
       <div
         v-for="toast in toastStore.toasts"
@@ -17,7 +21,7 @@
             @click="toastStore.remove(toast.id)"
             class="rounded-lg p-1 opacity-70 transition hover:bg-black/5 hover:opacity-100"
           >
-            x
+            Close
           </button>
         </div>
       </div>
@@ -26,7 +30,7 @@
 </template>
 
 <script setup>
-import { useToastStore } from '../stores/toast'
+import { useToastStore } from '@/stores/toast'
 
 const toastStore = useToastStore()
 
