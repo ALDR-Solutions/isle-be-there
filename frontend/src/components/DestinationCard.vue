@@ -1,19 +1,32 @@
 <template>
   <article class="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
     <div class="relative overflow-hidden">
-      <AppImage
-        :src="listingImage"
+      <img
+        v-if="listing.image_urls?.length"
+        :src="listing.image_urls[0]"
         :alt="listing.title"
-        wrapper-class="h-56 w-full"
-        img-class="transition duration-500 group-hover:scale-105"
-        fallback-label="Image unavailable"
+        class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+        @error="$event.target.src = '/placeholder.jpg'"
       />
+
+      <div
+        v-else
+        class="flex h-56 w-full items-center justify-center bg-slate-200 text-slate-400"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
 
       <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/55 to-transparent"></div>
 
       <div class="absolute right-4 top-4">
         <button
-          type="button"
           class="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors"
           :class="isFavorited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
           @click.prevent="toggleFavorite(listing.id)"
@@ -26,6 +39,8 @@
           </svg>
         </button>
       </div>
+
+
     </div>
 
     <div class="flex flex-1 flex-col p-6">
@@ -34,10 +49,20 @@
           {{ listing.title }}
         </h3>
 
-        <div v-if="locationText" class="mt-3 flex items-start text-sm text-slate-500">
+        <div v-if="listing.address" class="mt-3 flex items-start text-sm text-slate-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
           </svg>
           <span class="line-clamp-2">{{ locationText }}</span>
         </div>
@@ -73,7 +98,7 @@
         <div>
           <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Starting from</p>
           <p class="text-2xl font-bold text-slate-900">
-            {{ formattedPrice }}
+            ${{ parseFloat(listing.base_price || 0).toFixed(2) }}
           </p>
         </div>
 
@@ -89,34 +114,50 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import AppImage from '@/components/ui/AppImage.vue'
-import { useFavouritesStore } from '@/stores/favourites'
-import { useToastStore } from '@/stores/toast'
-import { formatCurrency } from '@/utils/formatters'
-import { getListingImage, getListingLocation } from '@/utils/listings'
+import { computed, onMounted } from 'vue'
+import { useFavouritesStore } from '../stores/favourites'
 
 const props = defineProps({
   listing: {
     type: Object,
     required: true,
-  },
+  }
 })
 
 const favouritesStore = useFavouritesStore()
-const toastStore = useToastStore()
 
-const isFavorited = computed(() => favouritesStore.has(props.listing.id))
-const listingImage = computed(() => getListingImage(props.listing))
-const locationText = computed(() => getListingLocation(props.listing))
-const formattedPrice = computed(() => formatCurrency(props.listing.base_price || 0))
+// ✅ correct computed
+const isFavorited = computed(() =>
+  favouritesStore.has(props.listing.id)
+)
 
-async function toggleFavorite(listingId) {
+const locationText = computed(() => {
+  const a = props.listing.address
+  if (!a) return ''
+  return [a.street, a.city, a.state, a.postal_code, a.country]
+    .filter(Boolean)
+    .join(', ')
+})
+
+// ✅ FIXED toggle (update source array, not computed)
+async function toggleFavorite(listing_id) {
   try {
-    const added = await favouritesStore.toggle(listingId)
-    toastStore.show(added ? 'Added to favorites.' : 'Removed from favorites.', 'info')
-  } catch (error) {
-    toastStore.show(error.message || 'Unable to update favorites right now.', 'error')
+    await favouritesStore.toggle(listing_id)
+  } catch (err) {
+    console.error('Favorite error:', err)
   }
 }
+
+// Load shared favourites state once, even if many cards mount together.
+onMounted(async () => {
+  if (!localStorage.getItem('access_token')) {
+    return
+  }
+
+  try {
+    await favouritesStore.fetchAll()
+  } catch (err) {
+    console.error('Fetch error:', err)
+  }
+})
 </script>

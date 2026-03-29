@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { hasSession } from '@/app/session'
-import { favouritesService } from '@/services/favouritesService'
+import { favouritesAPI } from '../services/api'
 
 export const useFavouritesStore = defineStore('favourites', () => {
   const items = ref([])
@@ -23,7 +22,8 @@ export const useFavouritesStore = defineStore('favourites', () => {
   }
 
   async function fetchAll(force = false) {
-    if (!hasSession()) {
+    const token = localStorage.getItem('access_token')
+    if (!token) {
       reset()
       return []
     }
@@ -37,9 +37,9 @@ export const useFavouritesStore = defineStore('favourites', () => {
     }
 
     loading.value = true
-    pendingRequest = favouritesService.getAll()
-      .then((favourites) => {
-        items.value = favourites
+    pendingRequest = favouritesAPI.getAll()
+      .then((response) => {
+        items.value = response.data
         loaded.value = true
         return items.value
       })
@@ -58,16 +58,16 @@ export const useFavouritesStore = defineStore('favourites', () => {
   }
 
   async function add(listingId) {
-    const favourite = await favouritesService.add(listingId)
+    const response = await favouritesAPI.add(listingId)
     if (!has(listingId)) {
-      items.value.push(favourite)
+      items.value.push(response.data)
     }
     loaded.value = true
-    return favourite
+    return response.data
   }
 
   async function remove(listingId) {
-    await favouritesService.remove(listingId)
+    await favouritesAPI.remove(listingId)
     items.value = items.value.filter(item => item.listing_id !== listingId)
     loaded.value = true
   }

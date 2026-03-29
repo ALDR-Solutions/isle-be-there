@@ -1,114 +1,107 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { clearSessionTokens, hasSession, setSessionTokens } from '@/app/session'
-import { authService } from '@/services/authService'
-import { normalizeApiError } from '@/services/http/errors'
-import { useFavouritesStore } from '@/stores/favourites'
-import { getUserRole } from '@/utils/auth'
+/**
+ * Authentication store using Pinia.
+ */
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import { authAPI } from '../services/api';
+import { useFavouritesStore } from './favourites';
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
-  const loading = ref(false)
-  const error = ref('')
-  const initialized = ref(false)
+  const user = ref(null);
+  const loading = ref(false);
+  const error = ref(null);
 
-  const isAuthenticated = computed(() => Boolean(user.value))
-  const isBusiness = computed(() => user.value?.is_business || false)
-  const isAdmin = computed(() => user.value?.is_super_admin || false)
-  const role = computed(() => getUserRole(user.value))
+  const isAuthenticated = computed(() => !!user.value);
+  const isBusiness = computed(() => user.value?.is_business || false);
+  const isAdmin = computed(() => user.value?.is_super_admin || false);
 
   async function login(email, password) {
-    const favouritesStore = useFavouritesStore()
-    loading.value = true
-    error.value = ''
-
+    const favouritesStore = useFavouritesStore();
+    loading.value = true;
+    error.value = null;
+    
     try {
-      const { access_token: accessToken, refresh_token: refreshToken } = await authService.login({
-        email,
-        password,
-      })
-
-      setSessionTokens({ accessToken, refreshToken })
-      await fetchUser()
-      await favouritesStore.fetchAll(true)
-      return true
+      const response = await authAPI.login({ email, password });
+      const { access_token, refresh_token } = response.data;
+      
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
+      
+      await fetchUser();
+      await favouritesStore.fetchAll(true);
+      return true;
     } catch (err) {
-      error.value = normalizeApiError(err).message || 'Login failed'
-      return false
+      error.value = err.response?.data?.detail || 'Login failed';
+      return false;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function register(userData) {
-    loading.value = true
-    error.value = ''
-
+    loading.value = true;
+    error.value = null;
+    
     try {
-      await authService.register(userData)
-      return await login(userData.email, userData.password)
+      await authAPI.register(userData);
+      // Auto-login after registration
+      return await login(userData.email, userData.password);
     } catch (err) {
-      error.value = normalizeApiError(err).message || 'Registration failed'
-      return false
+      error.value = err.response?.data?.detail || 'Registration failed';
+      return false;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function fetchUser() {
-    if (!hasSession()) {
-      user.value = null
-      return null
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      user.value = null;
+      return;
     }
-
+    
     try {
-      user.value = await authService.getCurrentUser()
-      return user.value
-    } catch {
-      logout()
-      return null
+      const response = await authAPI.getMe();
+      user.value = response.data;
+      const role = response.data.is_super_admin
+        ? 'admin'
+        : response.data.is_business
+          ? 'business'
+          : 'user'
+      localStorage.setItem('user_role', role)
+    } catch (err) {
+      logout();
     }
   }
 
   function logout() {
-    const favouritesStore = useFavouritesStore()
-    clearSessionTokens()
-    user.value = null
-    error.value = ''
-    favouritesStore.reset()
-  }
-
-  function handleSessionExpired() {
-    logout()
-    error.value = 'Your session has expired. Please sign in again.'
+    const favouritesStore = useFavouritesStore();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_role');
+    user.value = null;
+    favouritesStore.reset();
   }
 
   async function initialize() {
-    if (initialized.value) {
-      return
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      await fetchUser();
     }
-
-    if (hasSession()) {
-      await fetchUser()
-    }
-
-    initialized.value = true
   }
 
   return {
     user,
     loading,
     error,
-    initialized,
     isAuthenticated,
     isBusiness,
     isAdmin,
-    role,
     login,
     register,
     fetchUser,
     logout,
-    handleSessionExpired,
     initialize,
-  }
-})
+  };
+});
