@@ -1,9 +1,1 @@
-from .api import *
-from .core import *
-from .database import *
-from .services import *
-from .schemas import *
-from .models import *
-from .utils import *
-from .workers import *
-from .repositories import *
+"""Application package for the Isle Be There backend."""

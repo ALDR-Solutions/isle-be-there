@@ -1,15 +1,24 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pathlib import Path
 import os
 import shutil
+from pathlib import Path
+
 from dotenv import load_dotenv
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 load_dotenv()
 
-from app.api.routes import favourites, reviews
-from app.api.routes import ai, auth, bookings, businesses, interests, listings, profile
+from app.modules.auth.router import router as auth_router
+from app.modules.bookings.router import router as bookings_router
+from app.modules.businesses.router import router as businesses_router
+from app.modules.favourites.router import router as favourites_router
+from app.modules.interests.router import router as interests_router
+from app.modules.listings.router import router as listings_router
+from app.modules.recommendations.router import router as recommendations_router
+from app.modules.reviews.router import router as reviews_router
+from app.modules.users.router import router as profile_router
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -55,15 +64,15 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # Include routers
-app.include_router(auth.router)
-app.include_router(listings.router)
-app.include_router(bookings.router)
-app.include_router(reviews.router)
-app.include_router(ai.router)
-app.include_router(profile.router)
-app.include_router(favourites.router)
-app.include_router(interests.router)
-app.include_router(businesses.router)
+app.include_router(auth_router)
+app.include_router(listings_router)
+app.include_router(bookings_router)
+app.include_router(reviews_router)
+app.include_router(recommendations_router)
+app.include_router(profile_router)
+app.include_router(favourites_router)
+app.include_router(interests_router)
+app.include_router(businesses_router)
 
 @app.get("/health")
 async def health():

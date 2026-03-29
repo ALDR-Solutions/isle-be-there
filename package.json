@@ -1,25 +1,14 @@
 {
-  "name": "flask-template",
+  "name": "isle-be-there",
   "version": "1.0.0",
-  "description": "",
+  "description": "Isle Be There project utilities",
   "main": "index.js",
   "scripts": {
-    "init": "flask init",
-    "serve": "flask run",
-    "e2e": "mocha ./e2e/test.js",
-    "prod-serve": "gunicorn -c gunicorn_config.py wsgi:app"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Snickdx/flask-template.git"
+    "e2e": "mocha ./e2e/test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Snickdx/flask-template/issues"
-  },
-  "homepage": "https://github.com/Snickdx/flask-template#readme",
   "dependencies": {
     "chai": "^4.3.6",
     "cors": "^2.8.6",

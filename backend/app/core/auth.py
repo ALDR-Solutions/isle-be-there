@@ -1,11 +1,13 @@
-"""
-Authentication dependencies and utilities.
-"""
+"""Authentication dependencies and utilities."""
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from ..core.security import decode_token
-from ..database.session import get_db
-from ..models import User
+from sqlmodel import Session, select
+
+from app.infrastructure.database import get_db
+from app.modules.users.models import User
+
+from .security import create_access_token, create_refresh_token, decode_token
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -13,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user from JWT token."""
     credentials_exception = HTTPException(
@@ -26,11 +28,11 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
     
-    user_id: int = payload.get("sub")
+    user_id = payload.get("sub")
     if user_id is None:
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.exec(select(User).where(User.id == user_id)).first()
     if user is None:
         raise credentials_exception
     
@@ -48,10 +50,8 @@ async def get_current_active_user(
 
 def create_token_response(user: User) -> dict:
     """Create access and refresh token response for user."""
-    from ..core.security import create_access_token, create_refresh_token
-    
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     return {
         "access_token": access_token,

@@ -114,7 +114,7 @@ export const favouritesAPI = {
 export const profileAPI = {
   get: () => api.get('/api/profile'),
   update: (data) => api.put('/api/profile', data),
-  updateAvatar: (avatarUrl) => api.put('/api/profile/avatar', null, { params: { avatar_url: avatarUrl } }),
+  updateAvatar: (avatarUrl) => api.put('/api/profile', { avatar_url: avatarUrl }),
   setInterestsHandled: () => api.patch('/api/profile/interests-handled'),
 
 };
@@ -124,7 +124,11 @@ export const interestsAPI = {
   getAll: () => api.get('/api/interests'),
   getUserInterests: () => api.get('/api/interests/user'),
   updateUserInterests: (interestIds) => api.put('/api/interests/user', { interest_ids: interestIds }),
-  getCategories: () => api.get('/api/interests/categories'),
+  getCategories: async () => {
+    const response = await api.get('/api/interests');
+    const categories = [...new Set((response.data || []).map((interest) => interest.category).filter(Boolean))];
+    return { ...response, data: categories };
+  },
 };
 
 // Businesses API

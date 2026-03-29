@@ -1,13 +1,9 @@
-App/temp-database.db
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-App/custom_config.py
 # C extensions
 *.so
-
-migrations/*
 
 # Distribution / packaging
 .Python
@@ -64,9 +60,8 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask stuff:
-instance/
-.webassets-cache
+# Runtime data
+backend/uploads/
 
 # Scrapy stuff:
 .scrapy

@@ -11,7 +11,7 @@
         >
           <div class="absolute inset-0 bg-slate-950/55"></div>
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"></div>
-        </div>ems-center justify-center px-4 sm:px-6 lg:px-8">
+        </div>
       </transition-group>
 
       <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
@@ -223,7 +223,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { listingsAPI, authAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import DestinationCard from '../components/DestinationCard.vue'
-import InterestsModal from '../components/InterestsModal.vue'
+import InterestsModal from '../components/interestsModal.vue'
 
 
 const authStore = useAuthStore()

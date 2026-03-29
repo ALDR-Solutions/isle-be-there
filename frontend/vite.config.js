@@ -9,10 +9,12 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true
-        // Remove rewrite - preserve /api prefix
-        // Backend expects /api/listings, not /listings
-      }
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     }
   }
 })
