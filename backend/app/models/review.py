@@ -1,6 +1,5 @@
-
-from sqlmodel import SQLModel, CheckConstraint, UniqueConstraint, Field, Column, UUID as PGUUID, Integer, Text, ForeignKey, DateTime, text
-from typing import Optional
+from sqlmodel import SQLModel, CheckConstraint, UniqueConstraint, Field, Column, UUID as PGUUID, Integer, Text, ForeignKey, DateTime, text, JSON
+from typing import Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime, date
 
@@ -23,6 +22,8 @@ class Review(SQLModel, table=True):
     )
     rating: int = Field(sa_column=Column(Integer, nullable=False))
     comment: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    auto_labels: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    detected_language: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     )

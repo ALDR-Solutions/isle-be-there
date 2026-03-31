@@ -1,6 +1,7 @@
 """Business logic for booking operations."""
 
 from fastapi import HTTPException
+from uuid import UUID
 from sqlmodel import Session, select
 
 from app.models.booking import Booking
@@ -55,3 +56,9 @@ def cancel_booking(db: Session, booking_id: int, user_id: str):
 
     booking.status = "cancelled"
     db.commit()
+
+
+def can_user_review_listing(db: Session, user_id: UUID, listing_id: UUID) -> tuple[bool, str]:
+    """Check if user can review a listing."""
+    from app.services.review_service import validate_can_review
+    return validate_can_review(db, user_id, listing_id)

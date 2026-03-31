@@ -9,6 +9,8 @@ load_dotenv()
 
 from app.api.routes import reviews
 from app.api.routes import ai, auth, bookings, businesses, favorites, interests, listings, profile
+from app.api.routes import classify_reviews
+from app.api.routes import ml
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -43,11 +45,13 @@ app.include_router(auth.router)
 app.include_router(listings.router)
 app.include_router(bookings.router)
 app.include_router(reviews.router)
+app.include_router(classify_reviews.router)
 app.include_router(ai.router)
 app.include_router(profile.router)
 app.include_router(favorites.router)
 app.include_router(interests.router)
 app.include_router(businesses.router)
+app.include_router(ml.router)
 
 # Root route - serve Vue app
 @app.get("/")
@@ -66,6 +70,10 @@ async def serve_spa(path: str):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/healthcheck")
+async def healthcheck():
+    return {"status": "healthy"}
 
 @app.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):

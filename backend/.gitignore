@@ -22,3 +22,6 @@ build/
 
 # Logs
 *.log
+
+# ML Models (keep local, never commit)
+models/
