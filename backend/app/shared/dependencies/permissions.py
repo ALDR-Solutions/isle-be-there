@@ -58,9 +58,9 @@ def get_current_user(
 
 
 def get_user_role(user: User) -> str:
-    if user.is_super_admin:
+    if user.user_type == "admin":
         return "admin"
-    if user.is_business:
+    if user.user_type == "business":
         return "business"
     return "user"
 

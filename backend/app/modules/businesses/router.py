@@ -81,7 +81,6 @@ def create_business_endpoint(
 
 @router.put("/{business_id}", response_model=dict)
 def update_business_endpoint(
-    business_id: str,
     business_data: BusinessUpdate,
     business: Business = Depends(require_business_owner),
     current_user=Depends(require_roles("business", "admin")),

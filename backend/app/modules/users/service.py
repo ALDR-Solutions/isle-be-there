@@ -35,7 +35,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
         username=user_data.username,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        is_business=user_data.is_business,
+        user_type=user_data.user_type,
     )
     db.add(user)
     db.commit()

@@ -29,11 +29,6 @@ pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def _normalize_secret(secret: str | bytes) -> str:
-    if isinstance(secret, bytes):
-        return secret.decode("utf-8", errors="strict")
-    return secret
-
 def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")

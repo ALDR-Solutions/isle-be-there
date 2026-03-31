@@ -1,10 +1,24 @@
 from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
+from enum import Enum
+from sqlmodel import (
+    Field,
+    SQLModel,
+    Enum as SAEnum,
+    text,
+    UUID as PGUUID,
+    Column,
+    Boolean,
+    Text,
+    DateTime,
+)
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Text, text
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Field, Relationship, SQLModel
+
+class UserTypes(str, Enum):
+    regular = "regular"
+    business = "business"
+    admin = "admin"
 
 
 class User(SQLModel, table=True):
@@ -20,71 +34,46 @@ class User(SQLModel, table=True):
     )
     email: str = Field(sa_column=Column(Text, unique=True, nullable=False, index=True))
     hashed_password: str = Field(sa_column=Column(Text, nullable=False))
-    username: Optional[str] = Field(default=None, sa_column=Column(Text, unique=True, nullable=True))
-    first_name: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    last_name: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    is_business: bool = Field(
-        default=False, sa_column=Column(Boolean, nullable=False, server_default=text("false"))
+    username: Optional[str] = Field(
+        default=None, sa_column=Column(Text, unique=True, nullable=True)
     )
-    is_super_admin: bool = Field(
-        default=False, sa_column=Column(Boolean, nullable=False, server_default=text("false"))
+    first_name: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    last_name: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    user_type: UserTypes = Field(
+        default=UserTypes.regular,
+        sa_column=Column(
+            SAEnum(UserTypes), nullable=False, server_default=text("'regular'")
+        ),
     )
     is_active: bool = Field(
-        default=True, sa_column=Column(Boolean, nullable=False, server_default=text("true"))
+        default=True,
+        sa_column=Column(Boolean, nullable=False, server_default=text("true")),
     )
-    avatar_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    phone: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    birth_date: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    interests_handled: Optional[bool] = Field(
-        default=False, sa_column=Column(Boolean, nullable=True, server_default=text("false"))
-    )
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    )
-    updated_at: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-
-    profile: Optional["Profile"] = Relationship(back_populates="user")
-
-
-class Profile(SQLModel, table=True):
-    __tablename__ = "profiles"
-
-    id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            primary_key=True,
-            nullable=False,
-            server_default=text("gen_random_uuid()"),
-        )
-    )
-    user_id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("users.id", onupdate="CASCADE", ondelete="RESTRICT"),
-            unique=True,
-            nullable=False,
-        )
-    )
-    avatar_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    phone: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    first_name: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    last_name: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    birth_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
-    created_at: datetime = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True, server_default=text("now()")),
-    )
-    updated_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True, server_default=text("now()")),
-    )
-    interests_handled: Optional[bool] = Field(
+    is_verified: bool = Field(
         default=False,
-        sa_column=Column(Boolean, nullable=True, server_default=text("false")),
+        sa_column=Column(Boolean, nullable=False, server_default=text("false")),
     )
-
-    user: User = Relationship(back_populates="profile")
+    verification_token: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    avatar_url: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    phone: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    birth_date: Optional[date] = Field(default=None)
+    interests_handled: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default=text("false")),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True), nullable=False, server_default=text("now()")
+        )
+    )
+    updated_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )

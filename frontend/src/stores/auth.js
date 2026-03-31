@@ -21,13 +21,13 @@ export const useAuthStore = defineStore('auth', () => {
   const hasToken = computed(() => !!accessToken.value);
   const role = computed(() => {
     if (!user.value) return null;
-    if (user.value.is_super_admin) return 'admin';
-    if (user.value.is_business) return 'business';
+    if (user.value.user_type === 'admin') return 'admin';
+    if (user.value.user_type === 'business') return 'business';
     return 'user';
   });
   const isAuthenticated = computed(() => hasToken.value && !!user.value);
-  const isBusiness = computed(() => user.value?.is_business || false);
-  const isAdmin = computed(() => user.value?.is_super_admin || false);
+  const isBusiness = computed(() => user.value?.user_type === 'business');
+  const isAdmin = computed(() => user.value?.user_type === 'admin');
   const shouldPromptForInterests = computed(
     () => isAuthenticated.value && !user.value?.interests_handled
   );

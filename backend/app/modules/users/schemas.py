@@ -10,17 +10,16 @@ class UserCreate(BaseModel):
     username: str | None = None
     first_name: str | None = None
     last_name: str | None = None
-    is_business: bool = False
+    user_type: str = "regular"
 
 
 class UserResponse(BaseModel):
     id: UUID
-    email: str | None = None
+    email: EmailStr | None = None
     username: str | None = None
     first_name: str | None = None
     last_name: str | None = None
-    is_business: bool | None = False
-    is_super_admin: bool | None = False
+    user_type: str | None = None
     avatar_url: str | None = None
     phone: str | None = None
     birth_date: datetime | None = None
@@ -64,7 +63,7 @@ class ProfileResponse(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     username: str | None = None
-    email: str | None = None
+    email: EmailStr | None = None
     avatar_url: str | None = None
     phone: str | None = None
     birth_date: datetime | None = None
