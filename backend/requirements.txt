@@ -1,17 +1,28 @@
-bcrypt==5.0.0
-email-validator==2.3.0
+# Backend API
 fastapi==0.135.1
-GeoAlchemy2==0.18.4
-passlib==1.7.4
-pgvector==0.4.2
-psycopg2-binary==2.9.11
+uvicorn==0.41.0
+python-dotenv==1.2.2
+python-multipart==0.0.22
+
+# Validation and settings
 pydantic==2.12.5
 pydantic-settings==2.13.1
-pytest==7.0.1
-python-dotenv==1.2.2
+email-validator==2.3.0
+
+# Authentication and security
+bcrypt==5.0.0
+passlib==1.7.4
 python-jose==3.5.0
-python-multipart==0.0.22
-shapely==2.1.2
-SQLAlchemy==2.0.48
+
+# Database and ORM
+sqlalchemy==2.0.48
 sqlmodel==0.0.37
-uvicorn==0.41.0
+psycopg2-binary==2.9.11
+
+# PostgreSQL extensions and geospatial support
+geoalchemy2==0.18.4
+pgvector==0.4.2
+shapely==2.1.2
+
+# Test tooling
+pytest==7.0.1
