@@ -22,12 +22,6 @@ export const useFavouritesStore = defineStore('favourites', () => {
   }
 
   async function fetchAll(force = false) {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      reset()
-      return []
-    }
-
     if (!force && loaded.value) {
       return items.value
     }

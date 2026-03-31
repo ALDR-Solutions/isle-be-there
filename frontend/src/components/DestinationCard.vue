@@ -28,10 +28,10 @@
       <div class="absolute right-4 top-4">
         <button
           class="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors"
-          :class="isFavorited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
-          @click.prevent="toggleFavorite(listing.id)"
+          :class="isFavourited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
+          @click.prevent="toggleFavourite(listing.id)"
         >
-          <svg v-if="!isFavorited" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
+          <svg v-if="!isFavourited" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
           </svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
@@ -39,8 +39,6 @@
           </svg>
         </button>
       </div>
-
-
     </div>
 
     <div class="flex flex-1 flex-col p-6">
@@ -114,8 +112,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { useFavouritesStore } from '../stores/favourites'
+import { useToastStore } from '../stores/toast'
 
 const props = defineProps({
   listing: {
@@ -124,40 +125,36 @@ const props = defineProps({
   }
 })
 
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const favouritesStore = useFavouritesStore()
+const toastStore = useToastStore()
 
-// ✅ correct computed
-const isFavorited = computed(() =>
+const isFavourited = computed(() =>
   favouritesStore.has(props.listing.id)
 )
 
 const locationText = computed(() => {
-  const a = props.listing.address
-  if (!a) return ''
-  return [a.street, a.city, a.state, a.postal_code, a.country]
+  const address = props.listing.address
+  if (!address) return ''
+
+  return [address.street, address.city, address.state, address.postal_code, address.country]
     .filter(Boolean)
     .join(', ')
 })
 
-// ✅ FIXED toggle (update source array, not computed)
-async function toggleFavorite(listing_id) {
-  try {
-    await favouritesStore.toggle(listing_id)
-  } catch (err) {
-    console.error('Favorite error:', err)
-  }
-}
-
-// Load shared favourites state once, even if many cards mount together.
-onMounted(async () => {
-  if (!localStorage.getItem('access_token')) {
+async function toggleFavourite(listingId) {
+  if (!authStore.isAuthenticated) {
+    toastStore.show('Sign in to save listings to your favourites.', 'info')
+    router.push({ name: 'Login', query: { redirect: route.fullPath } })
     return
   }
 
   try {
-    await favouritesStore.fetchAll()
+    await favouritesStore.toggle(listingId)
   } catch (err) {
-    console.error('Fetch error:', err)
+    console.error('Favourite error:', err)
   }
-})
+}
 </script>

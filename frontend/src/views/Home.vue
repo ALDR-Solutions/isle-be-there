@@ -16,7 +16,6 @@
 
       <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
         <div class="flex max-w-3x1 flex-col items-center text-center">
-
           <h1 class="text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
             Discover the Paradise of the Caribbean Islands
           </h1>
@@ -26,16 +25,14 @@
             adventures, and coastal escapes curated for modern travelers.
           </p>
 
-          <div class="mt-10 flex flex-wrap gap-4 justify-center">
+          <div class="mt-10 flex flex-wrap justify-center gap-4">
             <router-link
               to="/listings"
               class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
             >
               Plan Your Trip Now
             </router-link>
-
           </div>
-
         </div>
       </div>
 
@@ -61,7 +58,7 @@
               Recommended for You
             </h2>
             <p class="mt-4 text-base leading-7 text-slate-600">
-              Browse these amazing places and are tailored to your desires and interest
+              Browse these amazing places that are tailored to your desires and interests.
             </p>
           </div>
 
@@ -149,7 +146,6 @@
           >
             Explore Listings
           </router-link>
-
         </div>
       </div>
     </section>
@@ -220,11 +216,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { listingsAPI, authAPI } from '../services/api'
+import { listingsAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import DestinationCard from '../components/DestinationCard.vue'
-import InterestsModal from '../components/interestsModal.vue'
-
+import InterestsModal from '../components/InterestsModal.vue'
 
 const authStore = useAuthStore()
 
@@ -239,7 +234,6 @@ const heroImages = [
 const currentSlide = ref(0)
 let heroInterval = null
 
-const listings = ref([])
 const loading = ref(true)
 const personalizedListings = ref([])
 
@@ -258,12 +252,7 @@ onMounted(() => {
   fetchPersonalizedListings()
   window.addEventListener('resize', updateCardWidth)
   updateCardWidth()
-
-  if (localStorage.getItem('access_token')) {
-  checkInterestModal()
-}
-
-
+  maybeShowInterestsModal()
 })
 
 onUnmounted(() => {
@@ -271,15 +260,11 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateCardWidth)
 })
 
-async function checkInterestModal() {
-  try {
-    const res = await authAPI.getMe()
-    const handled = res.data?.interests_handled
-    if (!handled) {
-      setTimeout(() => { showInterestsModal.value = true }, 700)
-    }
-  } catch (e) {
-    // Not authenticated or no profile — don't show
+function maybeShowInterestsModal() {
+  if (authStore.shouldPromptForInterests) {
+    setTimeout(() => {
+      showInterestsModal.value = true
+    }, 700)
   }
 }
 
@@ -287,34 +272,21 @@ function onInterestsSaved() {
   fetchPersonalizedListings()
 }
 
-
-async function fetchListings() {
-  try {
-    const res = await listingsAPI.getAll()
-    listings.value = res.data
-  } catch (e) {
-    console.error('Failed to load listings', e)
-  } finally {
-    loading.value = false
-  }
-}
-
 async function fetchPersonalizedListings() {
-  const hasToken = !!localStorage.getItem('access_token')
   try {
-    if (!hasToken) {
-      const res = await listingsAPI.getAll({ limit: 20 })
-      personalizedListings.value = res.data
+    if (!authStore.isAuthenticated) {
+      const response = await listingsAPI.getAll({ limit: 20 })
+      personalizedListings.value = response.data
       return
     }
 
-    const res = await listingsAPI.getPersonalized({ limit: 20 })
-    personalizedListings.value = res.data
+    const response = await listingsAPI.getPersonalized({ limit: 20 })
+    personalizedListings.value = response.data
   } catch (e) {
     if (e?.response?.status === 401) {
       try {
-        const res = await listingsAPI.getAll({ limit: 20 })
-        personalizedListings.value = res.data
+        const response = await listingsAPI.getAll({ limit: 20 })
+        personalizedListings.value = response.data
         return
       } catch (fallbackError) {
         console.error('Failed to load fallback listings', fallbackError)

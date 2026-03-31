@@ -451,8 +451,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { businessesAPI, listingsAPI } from '../services/api'
+import { businessesAPI, listingsAPI, uploadsAPI } from '../services/api'
+import { useToastStore } from '../stores/toast'
 
+const toastStore = useToastStore()
 const listings = ref([])
 const businessTypes = ref([])
 
@@ -462,6 +464,7 @@ async function fetchListings() {
     listings.value = response.data
   } catch (error) {
     console.error('Error fetching listings:', error)
+    toastStore.show('Failed to load your listings.', 'error')
   }
 }
 
@@ -471,6 +474,7 @@ async function fetchBusinessTypes() {
     businessTypes.value = response.data
   } catch (error) {
     console.error('Error fetching business types:', error)
+    toastStore.show('Failed to load business types.', 'error')
   }
 }
 
@@ -586,11 +590,12 @@ async function uploadFiles(files) {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      const data = await res.json()
+      const res = await uploadsAPI.uploadImage(formData)
+      const data = res.data
       form.value.image_urls.push(data.url)
     } catch (e) {
       console.error('Upload failed:', e)
+      toastStore.show('Failed to upload an image.', 'error')
     } finally {
       uploadingCount.value--
     }
@@ -649,13 +654,16 @@ async function submitForm() {
       const response = await listingsAPI.update(editingId.value, payload)
       const index = listings.value.findIndex(l => l.id === editingId.value)
       if (index !== -1) listings.value[index] = response.data
+      toastStore.show('Listing updated successfully.', 'success')
     } else {
       const response = await listingsAPI.create(payload)
       listings.value.unshift(response.data)
+      toastStore.show('Listing created successfully.', 'success')
     }
     closeFormModal()
   } catch (e) {
     formErrors.value.submit = e.response?.data?.detail || 'Failed to save listing. Please try again.'
+    toastStore.show('Failed to save listing.', 'error')
   } finally {
     formSubmitting.value = false
   }
@@ -679,8 +687,10 @@ async function confirmArchive() {
     if (index !== -1) listings.value[index] = { ...listings.value[index], status: 'inactive' }
     showArchiveModal.value = false
     listingToArchive.value = null
+    toastStore.show('Listing archived.', 'success')
   } catch (e) {
     console.error('Failed to archive listing:', e)
+    toastStore.show('Failed to archive listing.', 'error')
   } finally {
     archiveSubmitting.value = false
   }
@@ -691,8 +701,10 @@ async function unarchiveListing(item) {
     await listingsAPI.update(item.id, { status: 'active' })
     const index = listings.value.findIndex(l => l.id === item.id)
     if (index !== -1) listings.value[index] = { ...listings.value[index], status: 'active' }
+    toastStore.show('Listing restored.', 'success')
   } catch (e) {
     console.error('Failed to unarchive listing:', e)
+    toastStore.show('Failed to restore listing.', 'error')
   }
 }
 </script>

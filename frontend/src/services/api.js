@@ -5,6 +5,21 @@ import axios from 'axios';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
+let getAccessToken = () => null;
+let getRefreshToken = () => null;
+let setTokens = () => {};
+let handleUnauthorized = async () => {};
+
+export function registerAuthSessionHandlers(handlers = {}) {
+  if (handlers.getAccessToken) getAccessToken = handlers.getAccessToken;
+  if (handlers.getRefreshToken) getRefreshToken = handlers.getRefreshToken;
+  if (handlers.setTokens) setTokens = handlers.setTokens;
+}
+
+export function registerUnauthorizedHandler(handler) {
+  handleUnauthorized = handler || (async () => {});
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -15,7 +30,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -33,7 +48,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = getRefreshToken();
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
@@ -41,18 +56,17 @@ api.interceptors.response.use(
           });
           
           const { access_token, refresh_token } = response.data;
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
+          setTokens({ accessToken: access_token, refreshToken: refresh_token });
           
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return api(originalRequest);
         } catch (refreshError) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          await handleUnauthorized({ reason: 'refresh_failed' });
           return Promise.reject(refreshError);
         }
       }
+
+      await handleUnauthorized({ reason: 'missing_refresh_token' });
     }
     
     return Promise.reject(error);
@@ -139,6 +153,10 @@ export const businessesAPI = {
   update: (id, data) => api.put(`/api/businesses/${id}`, data),
   getListings: (params) => api.get('/api/businesses/listings', { params }),
   getTypes: () => api.get('/api/businesses/types'),
+};
+
+export const uploadsAPI = {
+  uploadImage: (formData) => api.post('/api/upload', formData),
 };
 
 export default api;

@@ -111,7 +111,7 @@
                 <router-link to="/listings" class="transition hover:text-white">Listings</router-link>
               </p>
               <p>
-                <router-link to="/favorites" class="transition hover:text-white">Favorites</router-link>
+                <router-link to="/favourites" class="transition hover:text-white">Favourites</router-link>
               </p>
               <p>
                 <router-link to="/bookings" class="transition hover:text-white">Bookings</router-link>

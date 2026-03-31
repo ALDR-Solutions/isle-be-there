@@ -9,7 +9,7 @@
           Create an account and keep every trip in one place.
         </h1>
         <p class="mt-3 max-w-sm text-sm leading-6 text-slate-800/80">
-          Save favorites, manage bookings, and personalize your travel experience.
+          Save favourites, manage bookings, and personalize your travel experience.
         </p>
       </div>
 

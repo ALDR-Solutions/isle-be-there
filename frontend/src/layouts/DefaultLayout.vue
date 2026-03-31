@@ -54,11 +54,11 @@
                   Profile
                 </router-link>
                 <router-link
-                  to="/favorites"
+                  to="/favourites"
                   @click="desktopDropdownOpen = false"
                   class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
                 >
-                  Favorites
+                  Favourites
                 </router-link>
                 <hr class="my-1 border-slate-100" />
                 <button
@@ -138,11 +138,11 @@
               Profile
             </router-link>
             <router-link
-              to="/favorites"
+              to="/favourites"
               @click="mobileMenuOpen = false"
               class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
-              Favorites
+              Favourites
             </router-link>
             <button
               @click="handleLogout"
@@ -211,7 +211,7 @@
                 <router-link to="/listings" class="transition hover:text-white">Listings</router-link>
               </p>
               <p>
-                <router-link to="/favorites" class="transition hover:text-white">Favorites</router-link>
+                <router-link to="/favourites" class="transition hover:text-white">Favourites</router-link>
               </p>
               <p>
                 <router-link to="/bookings" class="transition hover:text-white">Bookings</router-link>

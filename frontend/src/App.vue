@@ -9,7 +9,6 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
-import { useFavouritesStore } from './stores/favourites';
 import DefaultLayout from './layouts/DefaultLayout.vue';
 import AuthLayout from './layouts/AuthLayout.vue';
 import BusinessLayout from './layouts/BusinessLayout.vue';
@@ -18,13 +17,9 @@ import AdminLayout from './layouts/AdminLayout.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
-const favouritesStore = useFavouritesStore();
 
 onMounted(async () => {
   await authStore.initialize();
-  if (authStore.isAuthenticated) {
-    await favouritesStore.fetchAll();
-  }
 });
 
 const layoutComponent = computed(() => {

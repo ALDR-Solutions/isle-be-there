@@ -9,7 +9,7 @@
           Plan easier, travel smarter, and keep every booking in one place.
         </h1>
         <p class="mt-4 max-w-md text-base text-slate-800/80">
-          Sign in to explore listings, manage favorites, and pick up right where you left off.
+          Sign in to explore listings, manage favourites, and pick up right where you left off.
         </p>
       </div>
 
@@ -102,7 +102,7 @@
         </form>
 
         <p class="mt-6 text-center text-sm text-slate-500">
-          Don’t have an account?
+          Don't have an account?
           <router-link to="/register" class="font-semibold text-cyan-600 hover:text-cyan-500">
             Create one
           </router-link>
@@ -113,42 +113,43 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 
-const route = useRoute();
-const router = useRouter();
-const authStore = useAuthStore();
-const toastStore = useToastStore();
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const toastStore = useToastStore()
 
-const email = ref('');
-const password = ref('');
-const showPassword = ref(false);
-const error = ref('');
-const loading = ref(false);
+const email = ref('')
+const password = ref('')
+const showPassword = ref(false)
+const error = ref('')
+const loading = ref(false)
 
-const handleLogin = async () => {
-  error.value = '';
-  loading.value = true;
+async function handleLogin() {
+  error.value = ''
+  loading.value = true
 
-  const success = await authStore.login(email.value, password.value);
+  const success = await authStore.login(email.value, password.value)
 
   if (success) {
-    toastStore.show('Login Successful.', 'success');
+    toastStore.show('Login successful.', 'success')
+
     if (authStore.isBusiness) {
-      router.push('/business');
-    }else if (authStore.isAdmin){
-      router.push('/admin');  
+      router.push('/business')
+    } else if (authStore.isAdmin) {
+      router.push('/admin')
     } else {
-      router.push(route.query.redirect || '/');
+      router.push(route.query.redirect || '/')
     }
   } else {
-    error.value = authStore.error || 'Login failed';
-    toastStore.show('Incorrect email or password', 'error')
+    error.value = authStore.error || 'Login failed'
+    toastStore.show('Incorrect email or password.', 'error')
   }
 
-  loading.value = false;
-};
+  loading.value = false
+}
 </script>
