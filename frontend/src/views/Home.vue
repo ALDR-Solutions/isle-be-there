@@ -7,8 +7,7 @@
           v-show="currentSlide === i"
           :key="i"
           class="absolute inset-0 bg-cover bg-center"
-          :style="{ backgroundImage: `url(${img})` }"
-        >
+          :style="{ backgroundImage: `url(${img})` }">
           <div class="absolute inset-0 bg-slate-950/55"></div>
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"></div>
         </div>
@@ -25,14 +24,49 @@
             adventures, and coastal escapes curated for modern travelers.
           </p>
 
-          <div class="mt-10 flex flex-wrap justify-center gap-4">
-            <router-link
-              to="/listings"
-              class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
+          <div class="mt-10 w-full max-w-4xl">
+            <div
+              class="flex flex-col gap-4 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:flex-row sm:items-center"
             >
-              Plan Your Trip Now
-            </router-link>
+              <div class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 shrink-0 text-cyan-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+                  />
+                </svg>
+
+                <input
+                  type="text"
+                  placeholder="Search islands, stays, beaches, or experiences"
+                  class="w-full bg-transparent text-sm text-white placeholder:text-slate-300/80 focus:outline-none sm:text-base"
+                />
+              </div>
+
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300 px-6 py-4 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:px-7"
+              >
+                Search
+              </button>
+
+              <router-link
+                to="/listings"
+                class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
+              >
+                Plan Your Trip Now
+              </router-link>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -350,5 +384,9 @@ function onTouchEnd(e) {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+input::placeholder {
+  letter-spacing: 0.01em;
 }
 </style>
