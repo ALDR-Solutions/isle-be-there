@@ -82,3 +82,31 @@ class ListingInterest(SQLModel, table=True):
             server_default=text("now()"),
         )
     )
+
+
+class BusinessTypeInterest(SQLModel, table=True):
+    __tablename__ = "business_type_interests"
+
+    business_type_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("business_types.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    interest_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("interests.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )

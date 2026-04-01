@@ -9,7 +9,7 @@ from app.modules.favourites.models import Favourites
 from app.modules.interests.models import Interests, ListingInterest, UserInterest
 from app.modules.listings.models import Listing
 from app.modules.reviews.models import Review
-from app.modules.users.models import Profile, User
+from app.modules.users.models import User
 
 def init_db():
     SQLModel.metadata.create_all(get_engine())

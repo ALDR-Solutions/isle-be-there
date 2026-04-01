@@ -6,6 +6,8 @@ from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, String, Tex
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.modules.listings.models import Listing
+
 
 class Business(SQLModel, table=True):
     __tablename__ = "businesses"
