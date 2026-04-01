@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, Integer, Text, UniqueConstraint, text
+from sqlalchemy import BigInteger, CheckConstraint, Column, DateTime, ForeignKey, Identity, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
 
@@ -38,3 +38,36 @@ class Review(SQLModel, table=True):
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
+    detected_language: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+
+class BusinessReply(SQLModel, table=True):
+    __tablename__ = "business_replies"
+
+    id: int = Field(
+        sa_column=Column(
+            BigInteger,
+            Identity(always=False, start=1, increment=1),
+            primary_key=True,
+            nullable=False,
+            autoincrement=True,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    )
+    review_id: int = Field(
+        sa_column=Column(
+            BigInteger,
+            ForeignKey("reviews.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=True,
+        )
+    )
+    business_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("businesses.id", onupdate="CASCADE", ondelete="RESTRICT"),
+            nullable=True,
+        )
+    )
+    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))

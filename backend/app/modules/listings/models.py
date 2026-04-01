@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
 
 
+
 class Statuses(str, Enum):
     active = "active"
     inactive = "inactive"
@@ -82,3 +83,4 @@ class Listing(SQLModel, table=True):
         default=None,
         sa_column=Column(Vector(), nullable=True),
     )
+    details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
