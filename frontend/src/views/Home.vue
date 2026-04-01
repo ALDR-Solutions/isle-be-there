@@ -14,8 +14,8 @@
       </transition-group>
 
       <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div class="flex max-w-3x1 flex-col items-center text-center">
-          <h1 class="text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
+        <div class="flex max-w-3xl flex-col items-center text-center">
+          <h1 class="text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-7xl">
             Discover the Paradise of the Caribbean Islands
           </h1>
 
@@ -51,19 +51,21 @@
                 />
               </div>
 
-              <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300 px-6 py-4 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:px-7"
-              >
-                Search
-              </button>
+              <div class="flex gap-3 sm:contents">
+                <button
+                  type="button"
+                  class="inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4"
+                >
+                  Search
+                </button>
 
-              <router-link
-                to="/listings"
-                class="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15"
-              >
-                Plan Your Trip Now
-              </router-link>
+                <router-link
+                  to="/listings"
+                  class="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4"
+                >
+                  Plan Your Trip Now
+                </router-link>
+              </div>
             </div>
           </div>
 
@@ -81,9 +83,9 @@
       </div>
     </section>
 
-    <section class="relative px-4 py-20 sm:px-6 lg:px-8">
+    <section class="relative px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl">
-        <div class="mb-12 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end">
+        <div class="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end lg:mb-12">
           <div class="max-w-2xl">
             <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
               Featured Destinations
@@ -96,7 +98,7 @@
             </p>
           </div>
 
-          <div class="flex items-center gap-3">
+          <div class="hidden sm:flex items-center gap-3">
             <button
               @click="prevSlide"
               :disabled="carouselIndex === 0"
@@ -162,7 +164,7 @@
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"></div>
 
       <div class="relative mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center px-6 py-20 text-center text-white">
-        <p class="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
+        <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
           Start Exploring
         </p>
         <h2 class="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
@@ -184,14 +186,14 @@
       </div>
     </section>
 
-    <section class="px-4 py-20 sm:px-6 lg:px-8">
+    <section class="px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div class="mb-10 max-w-2xl">
           <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
             Popular Destinations
           </p>
           <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-            Travel inspiration, styled more cleanly
+            Find Your Perfect Caribbean Escape
           </h2>
         </div>
 
@@ -223,7 +225,7 @@
       </div>
     </section>
 
-    <section class="px-4 pb-20 sm:px-6 lg:px-8">
+    <section class="px-4 pb-12 sm:pb-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
         <div class="max-w-2xl">
           <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
@@ -233,8 +235,7 @@
             Most luxurious places to stay on your trip
           </h2>
           <p class="mt-4 text-base leading-7 text-slate-600">
-            Keep this section if you want a future featured collection for premium stays, villas,
-            and high-end destination experiences.
+            Explore hand-picked villas, boutique hotels, and luxury stays for an elevated island experience.
           </p>
         </div>
       </div>
