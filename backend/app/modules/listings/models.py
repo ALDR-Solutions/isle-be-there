@@ -103,7 +103,7 @@ class EmployeeListings(SQLModel, table=True):
     employee_id: UUID = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
-            ForeignKey("employees.id", onupdate="CASCADE", ondelete="CASCADE"),
+            ForeignKey("users.id", onupdate="CASCADE", ondelete="CASCADE"),
             nullable=False,
         )
     )

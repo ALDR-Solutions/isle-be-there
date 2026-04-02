@@ -20,7 +20,6 @@ from app.modules.reviews.models import Review
 from app.modules.interests.models import Interests, UserInterest, ListingInterest
 from app.modules.favourites.models import Favourites
 from app.modules.services.models import Service
-from app.modules.employees.models import Employee
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

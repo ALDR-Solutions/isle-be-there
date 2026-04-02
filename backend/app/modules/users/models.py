@@ -19,6 +19,7 @@ class UserTypes(str, Enum):
     regular = "regular"
     business = "business"
     admin = "admin"
+    employee = "employee"
 
 
 class User(SQLModel, table=True):
