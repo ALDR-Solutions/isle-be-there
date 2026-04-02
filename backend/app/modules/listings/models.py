@@ -16,6 +16,8 @@ class Statuses(str, Enum):
     active = "active"
     inactive = "inactive"
     pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
 
 
 class Listing(SQLModel, table=True):
@@ -84,3 +86,31 @@ class Listing(SQLModel, table=True):
         sa_column=Column(Vector(), nullable=True),
     )
     details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+
+
+
+class EmployeeListings(SQLModel, table=True):
+    __tablename__ = "employee_listings"
+
+    id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
+        )
+    )
+    employee_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("employees.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    listing_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("listings.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
