@@ -47,7 +47,7 @@ class User(SQLModel, table=True):
     user_type: UserTypes = Field(
         default=UserTypes.regular,
         sa_column=Column(
-            SAEnum(UserTypes), nullable=False, server_default=text("'regular'")
+            SAEnum(UserTypes, name="user_types"), nullable=False, server_default=text("'regular'")
         ),
     )
     is_active: bool = Field(
