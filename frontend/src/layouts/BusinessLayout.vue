@@ -20,18 +20,15 @@
           <div class="relative">
             <button
               @click="desktopDropdownOpen = !desktopDropdownOpen"
-              class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-            >
+              class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
               <img
                 v-if="authStore.user?.avatar_url"
                 :src="authStore.user.avatar_url"
                 alt="Profile"
-                class="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200"
-              />
+                class="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200"/>
               <div
                 v-else
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200"
-              >
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200">
                 {{ userInitial }}
               </div>
               <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': desktopDropdownOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -41,9 +38,7 @@
 
             <div
               v-if="desktopDropdownOpen"
-              class="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-            >
-              <!-- Business name -->
+              class="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
               <div class="border-b border-slate-100 px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
                 <p class="mt-0.5 truncate text-sm font-semibold text-slate-800">
@@ -51,7 +46,6 @@
                 </p>
               </div>
 
-              <!-- Listings switcher -->
               <div class="border-b border-slate-100">
                 <p class="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">My Listings</p>
                 <div class="max-h-48 overflow-y-auto">
@@ -62,19 +56,16 @@
                     :key="listing.id"
                     @click="switchListing(listing.id)"
                     class="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-slate-50"
-                    :class="businessStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'"
-                  >
+                    :class="businessStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'">
                     <span
                       class="h-2 w-2 shrink-0 rounded-full transition-colors"
-                      :class="businessStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"
-                    ></span>
+                      :class="businessStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"></span>
                     <span class="truncate">{{ listing.title }}</span>
                   </button>
                 </div>
                 <button
                   @click="triggerAddListing"
-                  class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-cyan-600 transition hover:bg-cyan-50"
-                >
+                  class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-cyan-600 transition hover:bg-cyan-50">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
                   </svg>
@@ -82,7 +73,6 @@
                 </button>
               </div>
 
-              <!-- Profile / Logout -->
               <div class="py-1">
                 <router-link
                   to="/business/profile"
@@ -98,11 +88,9 @@
           </div>
         </div>
 
-        <!-- Mobile hamburger -->
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
-          class="col-start-3 flex items-center justify-center justify-self-end rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden"
-        >
+          class="col-start-3 flex items-center justify-center justify-self-end rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden">
           <svg v-if="!mobileMenuOpen" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -111,8 +99,6 @@
           </svg>
         </button>
       </div>
-
-      <!-- Mobile menu -->
       <div v-if="mobileMenuOpen" class="border-t border-slate-200 bg-white md:hidden">
         <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">
@@ -120,12 +106,10 @@
               v-if="authStore.user?.avatar_url"
               :src="authStore.user.avatar_url"
               alt="Profile"
-              class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-200 shrink-0"
-            />
+              class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-200 shrink-0"/>
             <div
               v-else
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200"
-            >
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200">
               {{ userInitial }}
             </div>
             <div class="min-w-0">
@@ -141,18 +125,15 @@
               :key="listing.id"
               @click="switchListing(listing.id)"
               class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-slate-100"
-              :class="businessStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'"
-            >
+              :class="businessStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'">
               <span
                 class="h-2 w-2 shrink-0 rounded-full"
-                :class="businessStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"
-              ></span>
+                :class="businessStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"></span>
               {{ listing.title }}
             </button>
             <button
               @click="triggerAddListing"
-              class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-cyan-600 transition hover:bg-cyan-50"
-            >
+              class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-cyan-600 transition hover:bg-cyan-50">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
               </svg>
