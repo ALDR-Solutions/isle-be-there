@@ -28,6 +28,15 @@ class UserResponse(BaseModel):
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+    
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_url: str | None = None
+    phone: str | None = None
+    birth_date: datetime | None = None
 
 
 class TokenResponse(BaseModel):
