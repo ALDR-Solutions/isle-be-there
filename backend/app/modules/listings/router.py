@@ -83,7 +83,6 @@ def create_listing_endpoint(
 
 @router.put("/{listing_id}", response_model=dict)
 def update_listing_endpoint(
-    listing_id: str,
     listing_data: ListingUpdate,
     listing: Listing = Depends(require_listing_owner),
     current_user: User = Depends(require_roles("business", "admin")),
@@ -105,7 +104,6 @@ def update_listing_endpoint(
 
 @router.delete("/{listing_id}", status_code=204)
 def delete_listing_endpoint(
-    listing_id: str,
     listing: Listing = Depends(require_listing_owner),
     current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),

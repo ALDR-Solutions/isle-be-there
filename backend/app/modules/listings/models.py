@@ -16,6 +16,8 @@ class Statuses(str, Enum):
     active = "active"
     inactive = "inactive"
     pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
 
 
 class Listing(SQLModel, table=True):
@@ -69,7 +71,7 @@ class Listing(SQLModel, table=True):
     status: Optional[Statuses] = Field(
         default=None,
         sa_column=Column(
-            SAEnum(Statuses, name="statuses", schema="public", create_type=False),
+            SAEnum(Statuses, name="statuses", create_type=False),
             nullable=True,
         ),
     )
@@ -84,3 +86,33 @@ class Listing(SQLModel, table=True):
         sa_column=Column(Vector(), nullable=True),
     )
     details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    start_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    end_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+
+
+
+class EmployeeListings(SQLModel, table=True):
+    __tablename__ = "employee_listings"
+
+    id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
+        )
+    )
+    employee_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("users.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    listing_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("listings.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )

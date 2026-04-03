@@ -1,8 +1,21 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
+
+
+class RoomsJson(BaseModel):
+    room_amenities: Optional[List[str]] = None
+    room_type: Optional[str] = None
+
+
+class MenuItemJson(BaseModel):
+    menu_category: Optional[str] = None
+    allergens: Optional[List[str]] = None
+
+
+ServiceTypeData = Union[RoomsJson, MenuItemJson, Dict[str, Any]]
 
 
 class ServiceBase(BaseModel):
@@ -13,7 +26,7 @@ class ServiceBase(BaseModel):
     status: Optional[bool] = None
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
-    type_data: Optional[Dict[str, Any]] = None
+    type_data: Optional[ServiceTypeData] = None
     listing_id: Optional[UUID] = None
 
 

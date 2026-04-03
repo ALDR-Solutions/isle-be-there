@@ -39,6 +39,26 @@ class Review(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
     detected_language: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    classification_labels: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    is_flagged: bool = Field(
+        default=False,
+        sa_column=Column(Integer, nullable=False),
+    )
+    is_visible: bool = Field(
+        default=True,
+        sa_column=Column(Integer, nullable=False),
+    )
+    flag_reason: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    classified_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
 
 
 class BusinessReply(SQLModel, table=True):
