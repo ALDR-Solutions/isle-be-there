@@ -26,6 +26,13 @@ const routes = [
   },
 
   {
+    path: '/employee',
+    name: 'EmployeeHome',
+    component: () => import('./views/EmployeeHome.vue'),
+    meta: { requiresAuth: true, layout: 'employee', role: 'employee' }
+  },
+
+  {
     path: '/admin',
     name: 'AdminHome',
     component: () => import('./views/Admin.vue'),
@@ -102,6 +109,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.guest && authStore.isAuthenticated) {
     if (authStore.role === 'admin') return next({ name: 'AdminHome' })
     if (authStore.role === 'business') return next({ name: 'BusinessHome' })
+    if (authStore.role === 'employee') return next({ name: 'EmployeeHome' })
     return next({ name: 'Home' })
   }
 
@@ -110,6 +118,7 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.role !== authStore.role) {
       if (authStore.role === 'admin') return next({ name: 'AdminHome' })
       if (authStore.role === 'business') return next({ name: 'BusinessHome' })
+      if (authStore.role === 'employee') return next({ name: 'EmployeeHome' })
       return next({ name: 'Home' })
     }
   }

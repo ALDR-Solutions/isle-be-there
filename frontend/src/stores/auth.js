@@ -23,11 +23,13 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return null;
     if (user.value.user_type === 'admin') return 'admin';
     if (user.value.user_type === 'business') return 'business';
+    if (user.value.user_type === 'employee') return 'employee';
     return 'user';
   });
   const isAuthenticated = computed(() => hasToken.value && !!user.value);
   const isBusiness = computed(() => user.value?.user_type === 'business');
   const isAdmin = computed(() => user.value?.user_type === 'admin');
+  const isEmployee = computed(() => user.value?.user_type === 'employee');
   const shouldPromptForInterests = computed(
     () => isAuthenticated.value && !user.value?.interests_handled
   );
@@ -177,6 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isBusiness,
     isAdmin,
+    isEmployee,
     shouldPromptForInterests,
     setTokens,
     setInterestsHandled,
