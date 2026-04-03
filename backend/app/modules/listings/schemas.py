@@ -81,6 +81,7 @@ class ListingUpdate(BaseModel):
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
     location: Optional[str] = None
+    details: Optional[ListingDetails] = None
 
 
 class ListingLocation(BaseModel):
