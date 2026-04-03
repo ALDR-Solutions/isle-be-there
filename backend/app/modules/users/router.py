@@ -5,15 +5,15 @@ from app.infrastructure.database import get_db
 from app.shared.dependencies.permissions import get_current_user
 
 from .models import User
-from .schemas import ProfileResponse, ProfileUpdate
+from .schemas import UserResponse, UserUpdate
 from .service import get_profile, mark_interests_handled, update_profile
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
 
-def _serialize_profile(user: User) -> ProfileResponse:
-    return ProfileResponse(
-        user_id=user.id,
+def _serialize_profile(user: User) -> UserResponse:
+    return UserResponse(
+        id=user.id,
         first_name=user.first_name,
         last_name=user.last_name,
         username=user.username,
@@ -29,7 +29,7 @@ def _serialize_profile(user: User) -> ProfileResponse:
 
 @router.put("", response_model=dict, status_code=200)
 def update_profile_endpoint(
-    data: ProfileUpdate,
+    data: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -37,7 +37,7 @@ def update_profile_endpoint(
     return {"detail": "Profile updated", "profile": _serialize_profile(user)}
 
 
-@router.get("", response_model=ProfileResponse, status_code=200)
+@router.get("", response_model=UserResponse, status_code=200)
 def get_profile_endpoint(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

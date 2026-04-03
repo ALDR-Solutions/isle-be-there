@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from app.infrastructure.database import get_db
+from app.modules.listings.service import get_business_listings as get_business_listings_service
 from app.shared.dependencies.permissions import require_business_owner, require_roles
 
 from .models import Business
-from .schemas import BusinessCreate, BusinessUpdate
+from .schemas import BusinessCreate, BusinessUpdate, BusinessBase
 from .service import (
     create_business,
     get_business_by_id,
@@ -25,7 +26,7 @@ def _require_user_id(user_id: str | None):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
 
-@router.get("", response_model=List[dict])
+@router.get("", response_model=List[BusinessBase])
 def get_businesses(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -35,7 +36,7 @@ def get_businesses(
     return list_businesses(db, skip=skip, limit=limit, verified_only=verified_only)
 
 
-@router.get("/me", response_model=dict)
+@router.get("/me", response_model=BusinessBase)
 def get_my_business(
     current_user=Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
@@ -51,8 +52,6 @@ def get_business_listings(
     current_user=Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    from app.modules.listings.service import get_business_listings as get_business_listings_service
-
     _require_user_id(current_user.id)
     return get_business_listings_service(db, current_user.id)
 
