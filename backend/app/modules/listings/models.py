@@ -86,6 +86,8 @@ class Listing(SQLModel, table=True):
         sa_column=Column(Vector(), nullable=True),
     )
     details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    start_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    end_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
 
 
