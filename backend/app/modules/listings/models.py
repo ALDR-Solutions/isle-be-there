@@ -71,7 +71,7 @@ class Listing(SQLModel, table=True):
     status: Optional[Statuses] = Field(
         default=None,
         sa_column=Column(
-            SAEnum(Statuses, name="statuses", schema="public", create_type=False),
+            SAEnum(Statuses, name="statuses", create_type=False),
             nullable=True,
         ),
     )
