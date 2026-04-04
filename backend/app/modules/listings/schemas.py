@@ -96,5 +96,6 @@ class ListingResponse(ListingBase):
     location: Optional[ListingLocation] = None
     avg_rating: Optional[float] = None
     review_count: int = 0
+    business_type_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
