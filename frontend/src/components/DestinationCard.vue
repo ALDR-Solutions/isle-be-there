@@ -92,6 +92,12 @@
         New listing
       </div>
 
+      <component
+        :is="highlightComponent"
+        v-if="highlightComponent && listing.details"
+        :details="listing.details"
+      />
+
       <div class="mt-auto flex items-center justify-between gap-4">
         <div>
           <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Starting from</p>
@@ -117,6 +123,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useFavouritesStore } from '../stores/favourites'
 import { useToastStore } from '../stores/toast'
+import HotelCardHighlights from './listings/card-highlights/HotelCardHighlights.vue'
+import RestaurantCardHighlights from './listings/card-highlights/RestaurantCardHighlights.vue'
+import TourCardHighlights from './listings/card-highlights/TourCardHighlights.vue'
+import ActivityCardHighlights from './listings/card-highlights/ActivityCardHighlights.vue'
 
 const props = defineProps({
   listing: {
@@ -134,6 +144,16 @@ const toastStore = useToastStore()
 const isFavourited = computed(() =>
   favouritesStore.has(props.listing.id)
 )
+
+const highlightComponent = computed(() => {
+  switch (props.listing.business_type_name) {
+    case 'Hotel':      return HotelCardHighlights
+    case 'Restaurant': return RestaurantCardHighlights
+    case 'Tour':       return TourCardHighlights
+    case 'Activity':   return ActivityCardHighlights
+    default:           return null
+  }
+})
 
 const locationText = computed(() => {
   const address = props.listing.address
