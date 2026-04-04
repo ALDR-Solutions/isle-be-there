@@ -7,6 +7,7 @@ from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy import func
 from sqlalchemy.sql.functions import count
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, asc, desc, select
 
 from app.modules.businesses.models import Business
@@ -54,6 +55,10 @@ def _serialize_listing(listing: Listing, review_stats: dict | None = None) -> di
         data["location"] = {"lat": point.y, "lng": point.x}
     else:
         data["location"] = location
+
+    data["business_type_name"] = (
+        listing.business_type_rel.name if listing.business_type_rel else None
+    )
 
     if review_stats is not None:
         data.update(review_stats)
@@ -119,12 +124,17 @@ def list_listings(
         if sort_column is not None:
             query = query.order_by(asc(sort_column) if sort_order == "asc" else desc(sort_column))
 
+    query = query.options(selectinload(Listing.business_type_rel))
     listings = db.exec(query.offset(skip).limit(limit)).all()
     return _serialize_listings(db, listings)
 
 
 def get_listing_by_id(db: Session, listing_id: str):
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
+    listing = db.exec(
+        select(Listing)
+        .where(Listing.id == listing_id)
+        .options(selectinload(Listing.business_type_rel))
+    ).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     review_stats = get_listing_review_stats(db, listing_id)
