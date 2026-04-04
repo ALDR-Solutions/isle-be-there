@@ -109,6 +109,13 @@
               </p>
             </div>
 
+            <!-- Type-specific Details -->
+            <component
+              :is="detailsComponent"
+              v-if="detailsComponent && listing.details"
+              :details="listing.details"
+            />
+
           </div>
 
           <!-- Right: Booking Card -->
@@ -197,15 +204,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted} from 'vue';
+import { ref, computed, onMounted} from 'vue';
 import {useRoute } from 'vue-router';
 import { listingsAPI, reviewsAPI } from '../services/api';
+import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
+import RestaurantDetailSection from '../components/listings/detail-sections/RestaurantDetailSection.vue'
+import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
+import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
 
 const route = useRoute();
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+
+const detailsComponent = computed(() => {
+  switch (listing.value?.business_type_name) {
+    case 'Hotel':      return HotelDetailSection
+    case 'Restaurant': return RestaurantDetailSection
+    case 'Tour':       return TourDetailSection
+    case 'Activity':   return ActivityDetailSection
+    default:           return null
+  }
+})
 
 const fetchListings = async () => {
   try {
