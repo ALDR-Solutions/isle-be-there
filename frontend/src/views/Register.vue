@@ -323,7 +323,7 @@ async function handleRegister() {
     username: username.value,
     first_name: firstName.value,
     last_name: lastName.value,
-    is_business: accountType.value === 'business',
+    user_type: accountType.value === 'business' ? 'business' : 'regular',
   })
 
   if (success) {

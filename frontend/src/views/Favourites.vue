@@ -93,14 +93,7 @@
               {{ favourite.listing?.title || 'Listing' }}
             </h3>
 
-            <div v-if="favourite.listing?.location" class="mt-3 flex items-start text-sm text-slate-500">
-              <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span class="line-clamp-2">{{ favourite.listing.location.city }}, {{ favourite.listing.location.country }}</span>
-            </div>
-            <div v-else-if="favourite.listing?.address" class="mt-3 flex items-start text-sm text-slate-500">
+            <div v-if="favourite.listing?.address" class="mt-3 flex items-start text-sm text-slate-500">
               <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />

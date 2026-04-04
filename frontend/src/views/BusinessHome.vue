@@ -36,7 +36,7 @@
       <div class="bg-white border-b border-slate-200">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">
-            {{ businessStore.business?.name || 'Your Business' }}
+            {{ businessStore.business?.business_name || 'Your Business' }}
           </p>
           <div class="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex flex-wrap items-center gap-3">

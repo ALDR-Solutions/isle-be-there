@@ -163,10 +163,10 @@
               <div class="flex items-start justify-between gap-4">
                 <div class="flex items-center gap-3">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-sm font-bold text-cyan-700">
-                    {{ review.user?.username ? review.user.username.charAt(0).toUpperCase() : '?' }}
+                    {{ reviewAuthorInitial(review) }}
                   </div>
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ review.user?.username || 'Anonymous' }}</p>
+                    <p class="text-sm font-semibold text-slate-900">{{ reviewAuthorLabel(review) }}</p>
                     <p class="text-xs text-slate-400">{{ new Date(review.created_at).toLocaleDateString() }}</p>
                   </div>
                 </div>
@@ -231,6 +231,9 @@ const handleImageError = (event) => {
     </div>
   `;
 };
+
+const reviewAuthorLabel = () => 'Guest';
+const reviewAuthorInitial = () => 'G';
 
 onMounted(() => {
   fetchListings();

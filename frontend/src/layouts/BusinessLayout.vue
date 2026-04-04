@@ -42,7 +42,7 @@
               <div class="border-b border-slate-100 px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
                 <p class="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                  {{ businessStore.business?.name || authStore.user?.username }}
+                  {{ businessStore.business?.business_name || authStore.user?.username }}
                 </p>
               </div>
 
@@ -113,7 +113,7 @@
               {{ userInitial }}
             </div>
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-slate-800">{{ businessStore.business?.name || authStore.user?.username }}</p>
+              <p class="truncate text-sm font-semibold text-slate-800">{{ businessStore.business?.business_name || authStore.user?.username }}</p>
               <p class="truncate text-xs text-slate-400">{{ authStore.user?.email }}</p>
             </div>
           </div>
