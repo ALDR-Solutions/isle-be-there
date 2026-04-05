@@ -1,6 +1,3 @@
-/**
- * API service for communicating with the backend.
- */
 import axios from 'axios';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -111,8 +108,7 @@ export const bookingsAPI = {
 // Reviews API
 export const reviewsAPI = {
   getAll: (params) => api.get('/api/reviews', { params }),
-  getById: (id) => api.get(`/api/reviews/${id}`),
-  create: (data) => api.post('/api/reviews', data),
+  create: (data) => api.post('/api/reviews/submit', data),
   update: (id, data) => api.put(`/api/reviews/${id}`, data),
   delete: (id) => api.delete(`/api/reviews/${id}`),
 };

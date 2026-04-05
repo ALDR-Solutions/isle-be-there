@@ -14,6 +14,7 @@ import AuthLayout from './layouts/AuthLayout.vue';
 import BusinessLayout from './layouts/BusinessLayout.vue';
 import AppToast from './components/AppToast.vue';
 import AdminLayout from './layouts/AdminLayout.vue';
+import EmployeeLayout from './layouts/EmployeeLayout.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -27,6 +28,7 @@ const layoutComponent = computed(() => {
   if (layout === 'auth') return AuthLayout;
   if (layout === 'business') return BusinessLayout;
   if (layout === 'admin') return AdminLayout;
+  if (layout === 'employee') return EmployeeLayout;
   return DefaultLayout;
 })
 </script>

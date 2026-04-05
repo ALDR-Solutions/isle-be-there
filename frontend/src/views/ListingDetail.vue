@@ -109,6 +109,13 @@
               </p>
             </div>
 
+            <!-- Type-specific Details -->
+            <component
+              :is="detailsComponent"
+              v-if="detailsComponent && listing.details"
+              :details="listing.details"
+            />
+
           </div>
 
           <!-- Right: Booking Card -->
@@ -163,10 +170,10 @@
               <div class="flex items-start justify-between gap-4">
                 <div class="flex items-center gap-3">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-sm font-bold text-cyan-700">
-                    {{ review.user?.username ? review.user.username.charAt(0).toUpperCase() : '?' }}
+                    {{ reviewAuthorInitial(review) }}
                   </div>
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ review.user?.username || 'Anonymous' }}</p>
+                    <p class="text-sm font-semibold text-slate-900">{{ reviewAuthorLabel(review) }}</p>
                     <p class="text-xs text-slate-400">{{ new Date(review.created_at).toLocaleDateString() }}</p>
                   </div>
                 </div>
@@ -197,15 +204,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted} from 'vue';
+import { ref, computed, onMounted} from 'vue';
 import {useRoute } from 'vue-router';
 import { listingsAPI, reviewsAPI } from '../services/api';
+import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
+import RestaurantDetailSection from '../components/listings/detail-sections/RestaurantDetailSection.vue'
+import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
+import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
 
 const route = useRoute();
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+
+const detailsComponent = computed(() => {
+  switch (listing.value?.business_type_name) {
+    case 'Hotel':      return HotelDetailSection
+    case 'Restaurant': return RestaurantDetailSection
+    case 'Tour':       return TourDetailSection
+    case 'Activity':   return ActivityDetailSection
+    default:           return null
+  }
+})
 
 const fetchListings = async () => {
   try {
@@ -231,6 +252,9 @@ const handleImageError = (event) => {
     </div>
   `;
 };
+
+const reviewAuthorLabel = () => 'Guest';
+const reviewAuthorInitial = () => 'G';
 
 onMounted(() => {
   fetchListings();

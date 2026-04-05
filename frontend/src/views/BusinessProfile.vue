@@ -39,6 +39,13 @@
         <hr class="border-slate-100" />
 
         <form class="space-y-5" @submit.prevent="promptSave">
+          <div
+            v-if="updateAvailabilityError"
+            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            {{ updateAvailabilityError }}
+          </div>
+
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-700">Business Name</label>
             <input
@@ -124,7 +131,8 @@
               <button
                 type="button"
                 @click="startEditing"
-                class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                :disabled="!canSaveProfile"
+                class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Edit Profile
               </button>
@@ -139,7 +147,7 @@
             <template v-else>
               <button
                 type="submit"
-                :disabled="saving"
+                :disabled="saving || !canSaveProfile"
                 class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {{ saving ? 'Saving...' : 'Save Changes' }}
@@ -190,9 +198,11 @@
 
 <script setup>
 import {ref, computed, onMounted} from 'vue';
+import {useAuthStore} from '../stores/auth';
 import {useToastStore} from '../stores/toast';
 import {businessesAPI} from '../services/api';
 
+const authStore = useAuthStore();
 const toastStore = useToastStore();
 
 const loading = ref(true);
@@ -201,6 +211,8 @@ const editing = ref(false);
 const saving = ref(false);
 const showSaveModal = ref(false);
 const formError = ref('');
+const updateTargetId = ref(null);
+const updateAvailabilityError = ref('');
 
 const form = ref({
     business_name: '',
@@ -217,11 +229,14 @@ const businessInitials = computed(() => {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
 });
 
+const canSaveProfile = computed(() => !!updateTargetId.value);
+
 onMounted(async () => {
     try {
         const { data } = await businessesAPI.getMe();
         business.value = data;
         resetForm();
+        await resolveUpdateTargetId();
     } catch (err) {
         if (err.response?.status !== 404) {
         toastStore.show('Failed to load business profile.', 'error');
@@ -244,6 +259,10 @@ function resetForm() {
 }
 
 function startEditing(){
+    if (!canSaveProfile.value) {
+        formError.value = updateAvailabilityError.value || 'Profile editing unavailable.';
+        return;
+    }
     editing.value = true;
     formError.value = '';
 }
@@ -256,6 +275,10 @@ function cancelEditing() {
 
 function promptSave(){
     formError.value = '';
+    if (!canSaveProfile.value) {
+        formError.value = updateAvailabilityError.value || 'Profile editing unavailable.';
+        return;
+    }
     if (!form.value.business_name?.trim()) {
         formError.value = 'Business name is required.';
         return;
@@ -264,9 +287,15 @@ function promptSave(){
 }
 
 async function confirmSave() {
+  if (!canSaveProfile.value) {
+    showSaveModal.value = false;
+    formError.value = updateAvailabilityError.value || 'Profile editing unavailable.';
+    return;
+  }
+
   saving.value = true;
   try {
-    const { data } = await businessesAPI.update(business.value.id, form.value);
+    const { data } = await businessesAPI.update(updateTargetId.value, form.value);
     business.value = data;
     resetForm();
     editing.value = false;
@@ -278,6 +307,30 @@ async function confirmSave() {
     toastStore.show('Failed to update business profile.', 'error');
   } finally {
     saving.value = false;
+  }
+}
+
+async function resolveUpdateTargetId() {
+  updateTargetId.value = null;
+  updateAvailabilityError.value = '';
+
+  if (!authStore.user?.id) {
+    updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your account.';
+    return;
+  }
+
+  try {
+    const { data } = await businessesAPI.getAll();
+    const matchedBusiness = (data || []).find((item) => item.user_id === authStore.user.id);
+
+    if (!matchedBusiness?.id) {
+      updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your business record for updates.';
+      return;
+    }
+
+    updateTargetId.value = matchedBusiness.id;
+  } catch (err) {
+    updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your business record for updates.';
   }
 }
 

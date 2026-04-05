@@ -15,7 +15,7 @@
           <p class="font-semibold text-slate-900">{{ user?.first_name }} {{ user?.last_name }}</p>
           <p class="text-sm text-slate-500">{{ user?.email }}</p>
           <span
-            v-if="user?.is_business"
+            v-if="user?.user_type === 'business'"
             class="mt-1 inline-block rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-700"
           >Business Account</span>
           <span

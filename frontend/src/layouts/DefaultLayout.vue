@@ -35,9 +35,20 @@
             <div class="relative">
               <button
                 @click="desktopDropdownOpen = !desktopDropdownOpen"
-                class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
               >
-                {{ authStore.user?.username }}
+                <img
+                  v-if="authStore.user?.avatar_url"
+                  :src="authStore.user.avatar_url"
+                  alt="Profile"
+                  class="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200"
+                />
+                <div
+                  v-else
+                  class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200"
+                >
+                  {{ userInitial }}
+                </div>
                 <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': desktopDropdownOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06z" clip-rule="evenodd" />
                 </svg>
@@ -127,8 +138,23 @@
               Bookings
             </router-link>
             <hr class="border-slate-100" />
-            <div class="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              {{ authStore.user?.username }}
+            <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">
+              <img
+                v-if="authStore.user?.avatar_url"
+                :src="authStore.user.avatar_url"
+                alt="Profile"
+                class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-200 shrink-0"
+              />
+              <div
+                v-else
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200"
+              >
+                {{ userInitial }}
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-800">{{ authStore.user?.username }}</p>
+                <p class="truncate text-xs text-slate-400">{{ authStore.user?.email }}</p>
+              </div>
             </div>
             <router-link
               to="/profile"
@@ -275,6 +301,11 @@ const toastStore = useToastStore();
 const currentYear = computed(() => new Date().getFullYear());
 const desktopDropdownOpen = ref(false);
 const mobileMenuOpen = ref(false);
+
+const userInitial = computed(() => {
+  const name = authStore.user?.first_name || authStore.user?.username || '?'
+  return name.charAt(0).toUpperCase()
+});
 
 const handleLogout = () => {
   authStore.logout();

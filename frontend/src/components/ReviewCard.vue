@@ -3,10 +3,10 @@
     <div class="flex justify-between items-start">
       <div class="flex items-center">
         <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-          <span class="text-indigo-600 font-bold">{{ getInitial(review.user?.username) }}</span>
+          <span class="text-indigo-600 font-bold">{{ getInitial('Guest') }}</span>
         </div>
         <div class="ml-3">
-          <p class="text-sm font-medium text-gray-900">{{ review.user?.username || 'Anonymous' }}</p>
+          <p class="text-sm font-medium text-gray-900">Guest</p>
           <p class="text-sm text-gray-500">{{ formatDate(review.created_at) }}</p>
         </div>
       </div>
