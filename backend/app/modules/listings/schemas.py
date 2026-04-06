@@ -1,30 +1,39 @@
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from .models import Statuses
 
 
-class HotelListingJson(BaseModel):
+class _StrictDetailsBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _require_at_least_one_field(self):
+        if not any(v is not None for v in self.model_dump().values()):
+            raise ValueError("details must include at least one field")
+        return self
+
+
+class HotelListingJson(_StrictDetailsBase):
     room_count: Optional[int] = None
     star_level: Optional[int] = None
     hotel_amenities: Optional[List[str]] = None
     cancellation_until_hours: Optional[int] = None
     deposit_required: Optional[bool] = None
     total_rooms: Optional[int] = None
-    available_rooms: Optional[int] = None
 
 
-class TourListingJson(BaseModel):
+class TourListingJson(_StrictDetailsBase):
     duration: Optional[float] = None
     available_days: Optional[List[str]] = None
     max_capacity: Optional[int] = None
-    available_slots: Optional[int] = None
     service_availability: Optional[str] = None
 
 
-class RestaurantListingJson(BaseModel):
+class RestaurantListingJson(_StrictDetailsBase):
     table_seating: Optional[bool] = None
     has_delivery: Optional[bool] = None
     has_take_out: Optional[bool] = None
@@ -32,20 +41,27 @@ class RestaurantListingJson(BaseModel):
     service_availability: Optional[str] = None
 
 
-class ActivityListingJson(BaseModel):
+class ActivityListingJson(_StrictDetailsBase):
     estimated_duration: Optional[float] = None
     available_days: Optional[List[str]] = None
     is_indoor: Optional[bool] = None
     difficulty_level: Optional[str] = None
 
 
-ListingDetails = Union[
-    HotelListingJson,
-    TourListingJson,
-    RestaurantListingJson,
-    ActivityListingJson,
-    Dict[str, Any],
-]
+BUSINESS_TYPE_DETAILS_MAP = {
+    "hotel": HotelListingJson,
+    "tour": TourListingJson,
+    "restaurant": RestaurantListingJson,
+    "activity": ActivityListingJson,
+}
+
+
+def validate_details(business_type_name: str, details: dict) -> dict:
+    model = BUSINESS_TYPE_DETAILS_MAP.get(business_type_name.lower())
+    if not model:
+        raise ValueError(f"Unknown business type: {business_type_name}")
+    validated = model(**details)
+    return validated.model_dump(exclude_none=True)
 
 
 class ListingBase(BaseModel):
@@ -56,32 +72,28 @@ class ListingBase(BaseModel):
     base_price: Optional[float] = None
     business_type: Optional[UUID] = None
     image_urls: Optional[List[str]] = None
-    status: Optional[str] = None
+    status: Optional[Statuses] = None
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
-    location: Optional[str] = None
-    details: Optional[ListingDetails] = None
+    details: Optional[Dict[str, Any]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
 
 
 class ListingCreate(ListingBase):
-    pass
+    status: Statuses = Statuses.pending
 
 
 class ListingUpdate(BaseModel):
-    business_id: Optional[UUID] = None
     title: Optional[str] = None
     description: Optional[str] = None
     address: Optional[Dict[str, Any]] = None
     base_price: Optional[float] = None
-    business_type: Optional[UUID] = None
     image_urls: Optional[List[str]] = None
-    status: Optional[str] = None
+    status: Optional[Statuses] = None
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
-    location: Optional[str] = None
-    details: Optional[ListingDetails] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 class ListingLocation(BaseModel):
@@ -98,4 +110,4 @@ class ListingResponse(ListingBase):
     review_count: int = 0
     business_type_name: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
