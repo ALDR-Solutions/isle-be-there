@@ -54,7 +54,7 @@ def _serialize_listing(listing: Listing, review_stats: dict | None = None) -> di
         point = to_shape(location)
         data["location"] = {"lat": point.y, "lng": point.x}
     else:
-        data["location"] = location
+        data["location"] = None
 
     data["business_type_name"] = (
         listing.business_type_rel.name if listing.business_type_rel else None
@@ -144,12 +144,7 @@ def get_listing_by_id(db: Session, listing_id: str):
 def create_listing(db: Session, data: dict, user_id: str):
     business = db.exec(select(Business).where(Business.user_id == user_id)).first()
     if not business:
-        user = db.exec(select(User).where(User.id == user_id)).first()
-        business_name = user.username or user.email.split("@")[0] if user else "My Business"
-        business = Business(user_id=user_id, business_name=business_name)
-        db.add(business)
-        db.commit()
-        db.refresh(business)
+        raise HTTPException(status_code=400, detail="User does not have a business")
     data["business_id"] = business.id
     listing = Listing(**data)
     db.add(listing)
