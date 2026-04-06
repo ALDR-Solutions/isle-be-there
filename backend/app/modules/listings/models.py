@@ -69,7 +69,7 @@ class Listing(SQLModel, table=True):
         sa_column=Column(ARRAY(Text), nullable=True),
     )
     status: Optional[Statuses] = Field(
-        default=None,
+        default=Statuses.pending,
         sa_column=Column(
             SAEnum(Statuses, name="statuses", create_type=False),
             nullable=True,
