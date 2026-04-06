@@ -149,8 +149,8 @@ const highlightComponent = computed(() => {
   switch (props.listing.business_type_name) {
     case 'Hotel':      return HotelCardHighlights
     case 'Restaurant': return RestaurantCardHighlights
-    case 'Tour':       return TourCardHighlights
-    case 'Activity':   return ActivityCardHighlights
+    case 'Tour Operator':      return TourCardHighlights
+    case 'Activity Provider':  return ActivityCardHighlights
     default:           return null
   }
 })

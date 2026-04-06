@@ -13,12 +13,9 @@
           </div>
         </router-link>
 
-        <!-- Center label -->
         <div class="hidden items-center justify-center md:flex">
           <span class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Employee Portal</span>
         </div>
-
-        <!-- Desktop dropdown -->
         <div class="hidden items-center justify-end gap-3 md:flex">
           <div class="relative">
             <button
@@ -44,9 +41,7 @@
 
             <div
               v-if="desktopDropdownOpen"
-              class="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-            >
-              <!-- Business + listing context -->
+              class="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
               <div class="border-b border-slate-100 px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
                 <p class="mt-0.5 truncate text-sm font-semibold text-slate-800">
@@ -57,8 +52,6 @@
                   {{ employeeStore.assignedListing?.title || '—' }}
                 </p>
               </div>
-
-              <!-- Profile / Logout -->
               <div class="py-1">
                 <router-link
                   to="/profile"
@@ -74,11 +67,9 @@
           </div>
         </div>
 
-        <!-- Mobile hamburger -->
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
-          class="col-start-3 flex items-center justify-center justify-self-end rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden"
-        >
+          class="col-start-3 flex items-center justify-center justify-self-end rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden">
           <svg v-if="!mobileMenuOpen" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -88,11 +79,9 @@
         </button>
       </div>
 
-      <!-- Mobile menu -->
       <div v-if="mobileMenuOpen" class="border-t border-slate-200 bg-white md:hidden">
         <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6">
 
-          <!-- User card -->
           <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">
             <img
               v-if="authStore.user?.avatar_url"
@@ -102,8 +91,7 @@
             />
             <div
               v-else
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200"
-            >
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200">
               {{ userInitial }}
             </div>
             <div class="min-w-0">
@@ -112,7 +100,6 @@
             </div>
           </div>
 
-          <!-- Context info -->
           <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 mb-2 space-y-1">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
@@ -124,7 +111,6 @@
             </div>
           </div>
 
-          <!-- Profile / Logout -->
           <div class="border-t border-slate-100 pt-2">
             <router-link
               to="/profile"

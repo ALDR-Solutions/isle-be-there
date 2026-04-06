@@ -19,10 +19,8 @@
       </div>
     </div>
 
-    <!-- Listing Content -->
     <div v-else>
 
-      <!-- Hero Image -->
       <div class="relative h-72 w-full overflow-hidden bg-slate-200 sm:h-96 lg:h-[480px]">
         <img
           v-if="listing.image_urls && listing.image_urls.length > 0"
@@ -36,9 +34,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </div>
-        <!-- Gradient overlay -->
         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
-        <!-- Back button -->
         <div class="absolute left-4 top-4 sm:left-6 lg:left-8">
           <router-link
             to="/listings"
@@ -50,7 +46,6 @@
             Back
           </router-link>
         </div>
-        <!-- Title overlay at bottom of hero -->
         <div class="absolute bottom-6 left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8">
           <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
             {{ listing.address?.country }}
@@ -61,14 +56,12 @@
         </div>
       </div>
 
-      <!-- Main Content -->
       <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 
-          <!-- Left: Details -->
           <div class="lg:col-span-2 space-y-6">
 
-            <!-- Location & Meta -->
+  
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -101,7 +94,6 @@
               </div>
             </div>
 
-            <!-- Description -->
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-600">About this place</p>
               <p class="mt-3 text-base leading-7 text-slate-600">
@@ -109,7 +101,6 @@
               </p>
             </div>
 
-            <!-- Type-specific Details -->
             <component
               :is="detailsComponent"
               v-if="detailsComponent && listing.details"
@@ -118,7 +109,6 @@
 
           </div>
 
-          <!-- Right: Booking Card -->
           <div class="lg:col-span-1">
             <div class="sticky top-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Starting from</p>
@@ -144,23 +134,19 @@
 
         </div>
 
-        <!-- Reviews Section -->
         <div class="mt-10">
           <div class="mb-6">
             <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">Guest Feedback</p>
             <h2 class="mt-2 text-2xl font-bold text-slate-900">Reviews</h2>
           </div>
 
-          <!-- No Reviews -->
           <div
             v-if="reviews.length === 0"
-            class="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm"
-          >
+            class="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p class="text-base font-medium text-slate-500">No reviews yet.</p>
             <p class="mt-1 text-sm text-slate-400">Be the first to share your experience.</p>
           </div>
 
-          <!-- Reviews Grid -->
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div
               v-for="review in reviews"
@@ -222,8 +208,8 @@ const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
     case 'Hotel':      return HotelDetailSection
     case 'Restaurant': return RestaurantDetailSection
-    case 'Tour':       return TourDetailSection
-    case 'Activity':   return ActivityDetailSection
+    case 'Tour Operator':      return TourDetailSection
+    case 'Activity Provider':  return ActivityDetailSection
     default:           return null
   }
 })

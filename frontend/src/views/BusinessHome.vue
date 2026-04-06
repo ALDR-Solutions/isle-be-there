@@ -1,7 +1,6 @@
 <template>
   <div class="bg-slate-50 min-h-screen">
 
-    <!-- Loading -->
     <div v-if="businessStore.loading" class="flex min-h-screen items-center justify-center">
       <svg class="h-8 w-8 animate-spin text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -9,7 +8,6 @@
       </svg>
     </div>
 
-    <!-- No listings yet -->
     <div v-else-if="businessStore.listings.length === 0" class="flex min-h-screen flex-col items-center justify-center px-4 text-center">
       <div class="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,10 +27,8 @@
       </button>
     </div>
 
-    <!-- Per-listing view -->
     <template v-else>
 
-      <!-- Header -->
       <div class="bg-white border-b border-slate-200">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">
@@ -86,7 +82,6 @@
 
       <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
 
-        <!-- Stats -->
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p class="text-sm font-medium text-slate-500">Total Services</p>
@@ -108,7 +103,6 @@
           </div>
         </div>
 
-        <!-- Services -->
         <div>
           <div class="mb-6 flex items-center justify-between">
             <div>
@@ -165,7 +159,6 @@
           </div>
         </div>
 
-        <!-- Team -->
         <div>
           <div class="mb-6 flex items-center justify-between">
             <div>
@@ -216,8 +209,6 @@
 
       </div>
     </template>
-
-    <!-- Create / Edit Modal -->
     <div
       v-if="showFormModal"
       class="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -237,8 +228,7 @@
           </div>
           <button
             @click="closeFormModal"
-            class="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
-          >
+            class="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -257,17 +247,31 @@
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Business Type <span class="text-red-500">*</span></label>
-            <div v-if="businessTypes.length" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <button
-                v-for="type in businessTypes" :key="type.id" type="button"
-                @click="form.business_type = type.id"
-                class="flex flex-col items-center gap-2 rounded-2xl border py-3.5 text-xs font-semibold transition"
-                :class="form.business_type === type.id ? 'border-cyan-400 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-              >{{ type.name }}</button>
+            <div v-if="!isEditing">
+              <div v-if="businessTypes.length" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <button
+                  v-for="type in businessTypes" :key="type.id" type="button"
+                  @click="form.business_type = type.id"
+                  class="flex flex-col items-center gap-2 rounded-2xl border py-3.5 text-xs font-semibold transition"
+                  :class="form.business_type === type.id ? 'border-cyan-400 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+                >{{ type.name }}</button>
+              </div>
+              <p v-else class="text-sm text-slate-400">Loading types...</p>
+              <p v-if="formErrors.business_type" class="mt-1.5 text-xs text-red-500">{{ formErrors.business_type }}</p>
             </div>
-            <p v-else class="text-sm text-slate-400">Loading types...</p>
-            <p v-if="formErrors.business_type" class="mt-1.5 text-xs text-red-500">{{ formErrors.business_type }}</p>
+            <div v-else class="flex items-center gap-2">
+              <span class="rounded-2xl border border-cyan-400 bg-cyan-50 px-4 py-2 text-xs font-semibold text-cyan-700">
+                {{ selectedTypeName ?? 'Unknown type' }}
+              </span>
+              <span class="text-xs text-slate-400">Type cannot be changed after creation.</span>
+            </div>
           </div>
+
+          <component
+            v-if="detailFormComponent"
+            :is="detailFormComponent"
+            v-model="form.details"
+          />
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">Description <span class="text-red-500">*</span></label>
@@ -289,23 +293,29 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Street Address</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+              Street Address
+              <span v-if="isEditing" class="ml-1.5 text-xs font-normal text-slate-400">(locked after creation)</span>
+            </label>
             <input v-model="form.street" type="text" placeholder="e.g. 12 Bay Street"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
+              :disabled="isEditing"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50" />
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">City <span class="text-red-500">*</span></label>
               <input v-model="form.city" type="text" placeholder="e.g. Bridgetown"
-                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                :disabled="isEditing"
+                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition disabled:cursor-not-allowed disabled:opacity-50"
                 :class="formErrors.city ? 'border-red-300 bg-red-50 focus:border-red-400' : 'border-slate-200 bg-white focus:border-cyan-400'" />
               <p v-if="formErrors.city" class="mt-1.5 text-xs text-red-500">{{ formErrors.city }}</p>
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">State / Parish</label>
               <input v-model="form.state" type="text" placeholder="e.g. Saint Michael"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
+                :disabled="isEditing"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50" />
             </div>
           </div>
 
@@ -313,12 +323,14 @@
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">Postal Code</label>
               <input v-model="form.postal_code" type="text" placeholder="e.g. BB11000"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
+                :disabled="isEditing"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50" />
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5">Country / Island <span class="text-red-500">*</span></label>
               <input v-model="form.country" type="text" placeholder="e.g. Barbados"
-                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                :disabled="isEditing"
+                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition disabled:cursor-not-allowed disabled:opacity-50"
                 :class="formErrors.country ? 'border-red-300 bg-red-50 focus:border-red-400' : 'border-slate-200 bg-white focus:border-cyan-400'" />
               <p v-if="formErrors.country" class="mt-1.5 text-xs text-red-500">{{ formErrors.country }}</p>
             </div>
@@ -588,10 +600,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { businessesAPI, listingsAPI, uploadsAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
 import { useBusinessStore } from '../stores/business'
+import HotelDetailForm from '../components/listings/detail-forms/HotelDetailForm.vue'
+import RestaurantDetailForm from '../components/listings/detail-forms/RestaurantDetailForm.vue'
+import TourDetailForm from '../components/listings/detail-forms/TourDetailForm.vue'
+import ActivityDetailForm from '../components/listings/detail-forms/ActivityDetailForm.vue'
 
 const toastStore = useToastStore()
 const businessStore = useBusinessStore()
@@ -649,10 +665,29 @@ const blankForm = () => ({
   phone_number: '',
   email_address: '',
   image_urls: [],
+  details: {},
 })
 
 const form = ref(blankForm())
 const formErrors = ref({})
+
+const selectedTypeName = computed(() =>
+  businessTypes.value.find(t => t.id === form.value.business_type)?.name
+)
+
+const detailFormComponent = computed(() => {
+  switch (selectedTypeName.value) {
+    case 'Hotel':      return HotelDetailForm
+    case 'Restaurant': return RestaurantDetailForm
+    case 'Tour Operator':      return TourDetailForm
+    case 'Activity Provider':  return ActivityDetailForm
+    default:           return null
+  }
+})
+
+watch(() => form.value.business_type, () => {
+  if (!isEditing.value) form.value.details = {}
+})
 
 function openCreateModal() {
   isEditing.value = false
@@ -678,6 +713,7 @@ function openEditModal(item) {
     phone_number: item.phone_number ?? '',
     email_address: item.email_address ?? '',
     image_urls: item.image_urls?.length ? [...item.image_urls] : [],
+    details: item.details ? { ...item.details } : {},
   }
   formErrors.value = {}
   showFormModal.value = true
@@ -752,6 +788,7 @@ async function submitForm() {
     phone_number: form.value.phone_number.trim() || null,
     email_address: form.value.email_address.trim() || null,
     image_urls: form.value.image_urls,
+    details: Object.keys(form.value.details).length ? form.value.details : null,
   }
   try {
     if (isEditing.value) {

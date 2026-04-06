@@ -54,7 +54,7 @@ const loading = ref(true);
 
 onMounted(async () => {
   try {
-    const response = await listingsAPI.getAll({limit: 100});
+    const response = await listingsAPI.getAll();
     listings.value = response.data;
   } catch (err) {
     console.error('Failed to load listings', err);
