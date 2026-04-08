@@ -62,6 +62,8 @@ def get_user_role(user: User) -> str:
         return "admin"
     if user.user_type == "business":
         return "business"
+    if user.user_type == "employee":
+        return "employee"
     return "user"
 
 

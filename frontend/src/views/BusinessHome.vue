@@ -165,44 +165,37 @@
               <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">Listing</p>
               <h2 class="mt-1 text-xl font-bold text-slate-900">Team</h2>
             </div>
-            <button
-              @click="showEmployeeModal = true"
-              class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+            <router-link
+              to="/business/employees"
+              class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-              </svg>
-              Add Employee
-            </button>
+              Manage Employees
+            </router-link>
           </div>
 
-          <div v-if="employees.length === 0" class="rounded-3xl border-2 border-dashed border-slate-200 bg-white px-6 py-20 text-center">
+          <div v-if="listingEmployees.length === 0" class="rounded-3xl border-2 border-dashed border-slate-200 bg-white px-6 py-20 text-center">
             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <p class="mt-4 text-base font-semibold text-slate-700">No employees yet</p>
-            <p class="mt-1.5 text-sm text-slate-400">Add an employee account to give them access to this listing.</p>
+            <p class="mt-4 text-base font-semibold text-slate-700">No employees assigned</p>
+            <p class="mt-1.5 text-sm text-slate-400">Assign employees to this listing from the Employees page.</p>
           </div>
 
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div
-              v-for="emp in employees"
+              v-for="emp in listingEmployees"
               :key="emp.id"
               class="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white">
-                {{ emp.firstName.charAt(0).toUpperCase() }}
+                {{ (emp.first_name || emp.email || '?').charAt(0).toUpperCase() }}
               </div>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-semibold text-slate-900">{{ emp.firstName }} {{ emp.lastName }}</p>
+                <p class="truncate text-sm font-semibold text-slate-900">{{ emp.first_name }} {{ emp.last_name }}</p>
                 <p class="truncate text-xs text-slate-500">{{ emp.email }}</p>
               </div>
-              <button
-                @click="removeEmployee(emp.id)"
-                class="shrink-0 rounded-xl border border-red-100 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50"
-              >Remove</button>
             </div>
           </div>
         </div>
@@ -496,72 +489,6 @@
       </div>
     </div>
 
-    <!-- Add Employee Modal -->
-    <div
-      v-if="showEmployeeModal"
-      class="fixed inset-0 z-50 flex items-center justify-center px-4"
-      @click.self="showEmployeeModal = false"
-    >
-      <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl no-scrollbar">
-        <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-8 py-6">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">Team</p>
-            <h2 class="mt-1 text-xl font-bold text-slate-900">Add an employee</h2>
-          </div>
-          <button
-            @click="showEmployeeModal = false"
-            class="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form @submit.prevent="submitEmployee" class="px-8 py-6 space-y-5">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1.5">First Name <span class="text-red-500">*</span></label>
-              <input v-model="employeeForm.firstName" type="text" placeholder="Jane"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1.5">Last Name <span class="text-red-500">*</span></label>
-              <input v-model="employeeForm.lastName" type="text" placeholder="Doe"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Username <span class="text-red-500">*</span></label>
-            <input v-model="employeeForm.username" type="text" placeholder="janedoe"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email Address <span class="text-red-500">*</span></label>
-            <input v-model="employeeForm.email" type="email" placeholder="jane@example.com"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Password <span class="text-red-500">*</span></label>
-            <input v-model="employeeForm.password" type="password" placeholder="••••••••"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
-          </div>
-          <p v-if="employeeFormError" class="text-sm text-red-500 text-center">{{ employeeFormError }}</p>
-          <div class="flex gap-3 pt-2">
-            <button type="button" @click="showEmployeeModal = false"
-              class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-              Cancel
-            </button>
-            <button type="submit" :disabled="employeeSubmitting"
-              class="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50">
-              {{ employeeSubmitting ? 'Adding...' : 'Add Employee' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Archive Modal -->
     <div
       v-if="showArchiveModal"
@@ -601,7 +528,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { businessesAPI, listingsAPI, uploadsAPI } from '../services/api'
+import { businessesAPI, listingsAPI, uploadsAPI, employeesAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
 import { useBusinessStore } from '../stores/business'
 import HotelDetailForm from '../components/listings/detail-forms/HotelDetailForm.vue'
@@ -845,29 +772,24 @@ function removeService(id) {
   services.value = services.value.filter(s => s.id !== id)
 }
 
-// ── Employees (local state until backend ready) ────────────────────────────
-const employees = ref([])
-const showEmployeeModal = ref(false)
-const employeeSubmitting = ref(false)
-const employeeFormError = ref('')
-const employeeForm = ref({ firstName: '', lastName: '', username: '', email: '', password: '' })
+// ── Employees (read-only — managed from /business/employees) ──────────────
+const listingEmployees = ref([])
 
-function submitEmployee() {
-  employeeFormError.value = ''
-  const { firstName, lastName, username, email, password } = employeeForm.value
-  if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
-    employeeFormError.value = 'All fields are required.'
-    return
+async function fetchListingEmployees(listingId) {
+  if (!listingId) return
+  try {
+    const res = await employeesAPI.getListings(listingId)
+    listingEmployees.value = res.data ?? []
+  } catch (e) {
+    listingEmployees.value = []
   }
-  employees.value.unshift({ id: Date.now(), firstName: firstName.trim(), lastName: lastName.trim(), username: username.trim(), email: email.trim() })
-  employeeForm.value = { firstName: '', lastName: '', username: '', email: '', password: '' }
-  showEmployeeModal.value = false
-  toastStore.show('Employee account created.', 'success')
 }
 
-function removeEmployee(id) {
-  employees.value = employees.value.filter(e => e.id !== id)
-}
+watch(
+  () => businessStore.activeListingId,
+  (id) => fetchListingEmployees(id),
+  { immediate: true }
+)
 
 // ── Archive ────────────────────────────────────────────────────────────────
 const showArchiveModal = ref(false)

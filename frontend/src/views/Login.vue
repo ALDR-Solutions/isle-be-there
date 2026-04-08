@@ -142,6 +142,8 @@ async function handleLogin() {
       router.push('/business')
     } else if (authStore.isAdmin) {
       router.push('/admin')
+    } else if (authStore.isEmployee) {
+      router.push('/employee')
     } else {
       router.push(route.query.redirect || '/')
     }

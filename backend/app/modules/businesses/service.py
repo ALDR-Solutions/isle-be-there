@@ -84,6 +84,7 @@ def get_business_employees(db: Session, user_id: UUID) -> list[dict]:
     return [
         {
             "id": str(employee.id),
+            "employee_id": str(user.id),
             "first_name": user.first_name,
             "last_name": user.last_name,
             "email": user.email,

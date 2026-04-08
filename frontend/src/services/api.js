@@ -151,6 +151,14 @@ export const businessesAPI = {
   getTypes: () => api.get('/api/businesses/types'),
 };
 
+export const employeesAPI = {
+  getAll: ()                                    => api.get('/api/employees'),
+  create: (data)                                => api.post('/api/employees', data),
+  assignToListing: (employeeId, listingId)      => api.post(`/api/employees/${employeeId}/listings/${listingId}`),
+  unassignFromListing: (employeeId, listingId)  => api.delete(`/api/employees/${employeeId}/listings/${listingId}`),
+  getListings: (employeeId)                     => api.get(`/api/employees/${employeeId}/listings`),
+};
+
 export const uploadsAPI = {
   uploadImage: (formData) => api.post('/api/upload', formData),
 };

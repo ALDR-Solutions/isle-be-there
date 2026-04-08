@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.infrastructure.database import get_db
 from app.modules.businesses.service import (
     add_business_employee,
@@ -75,7 +75,12 @@ def remove_employee_from_listing(
 @router.get("/{employee_id}/listings")
 def list_employee_listings(
     employee_id: UUID,
-    current_user: User = Depends(require_roles("business", "admin")),
+    current_user: User = Depends(require_roles("business", "admin", "employee")),
     db: Session = Depends(get_db),
 ):
+    if current_user.user_type == "employee" and current_user.id != employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized for this resource",
+        )
     return get_employee_listings(db, employee_id)

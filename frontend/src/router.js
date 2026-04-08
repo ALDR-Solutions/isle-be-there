@@ -26,6 +26,13 @@ const routes = [
   },
 
   {
+    path: '/business/employees',
+    name: 'BusinessEmployees',
+    component: () => import('./views/BusinessEmployees.vue'),
+    meta: { requiresAuth: true, layout: 'business', role: 'business' }
+  },
+
+  {
     path: '/employee',
     name: 'EmployeeHome',
     component: () => import('./views/EmployeeHome.vue'),

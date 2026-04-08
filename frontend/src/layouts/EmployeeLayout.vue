@@ -43,15 +43,32 @@
               v-if="desktopDropdownOpen"
               class="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
               <div class="border-b border-slate-100 px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Employee Portal</p>
                 <p class="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                  {{ employeeStore.business?.name || '—' }}
-                </p>
-                <p class="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Assigned Listing</p>
-                <p class="mt-0.5 truncate text-sm font-medium text-slate-700">
-                  {{ employeeStore.assignedListing?.title || '—' }}
+                  {{ authStore.user?.username }}
                 </p>
               </div>
+
+              <div class="border-b border-slate-100">
+                <p class="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">My Listings</p>
+                <div class="max-h-48 overflow-y-auto">
+                  <p v-if="employeeStore.loading" class="px-4 py-3 text-xs text-slate-400">Loading...</p>
+                  <p v-else-if="employeeStore.loadError" class="px-4 py-3 text-xs text-red-500">{{ employeeStore.loadError }}</p>
+                  <p v-else-if="employeeStore.assignedListings.length === 0" class="px-4 py-3 text-xs text-slate-400">No listings assigned.</p>
+                  <button
+                    v-for="listing in employeeStore.assignedListings"
+                    :key="listing.id"
+                    @click="switchListing(listing.id)"
+                    class="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-slate-50"
+                    :class="employeeStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'">
+                    <span
+                      class="h-2 w-2 shrink-0 rounded-full"
+                      :class="employeeStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"></span>
+                    <span class="truncate">{{ listing.title }}</span>
+                  </button>
+                </div>
+              </div>
+
               <div class="py-1">
                 <router-link
                   to="/profile"
@@ -100,15 +117,21 @@
             </div>
           </div>
 
-          <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 mb-2 space-y-1">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Business</p>
-              <p class="mt-0.5 text-sm font-semibold text-slate-800">{{ employeeStore.business?.name || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Assigned Listing</p>
-              <p class="mt-0.5 text-sm font-medium text-slate-700">{{ employeeStore.assignedListing?.title || '—' }}</p>
-            </div>
+          <div class="border-t border-slate-100 py-2">
+            <p class="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">My Listings</p>
+            <p v-if="employeeStore.loadError" class="px-3 py-2 text-xs text-red-500">{{ employeeStore.loadError }}</p>
+            <p v-else-if="employeeStore.assignedListings.length === 0" class="px-3 py-2 text-xs text-slate-400">No listings assigned.</p>
+            <button
+              v-for="listing in employeeStore.assignedListings"
+              :key="listing.id"
+              @click="switchListing(listing.id)"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-slate-100"
+              :class="employeeStore.activeListingId === listing.id ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'">
+              <span
+                class="h-2 w-2 shrink-0 rounded-full"
+                :class="employeeStore.activeListingId === listing.id ? 'bg-cyan-400' : 'bg-slate-200'"></span>
+              {{ listing.title }}
+            </button>
           </div>
 
           <div class="border-t border-slate-100 pt-2">
@@ -165,8 +188,14 @@ const userInitial = computed(() => {
 })
 
 onMounted(() => {
-  employeeStore.fetchAssignment()
+  employeeStore.fetchAssignments()
 })
+
+function switchListing(id) {
+  employeeStore.setActiveListing(id)
+  desktopDropdownOpen.value = false
+  mobileMenuOpen.value = false
+}
 
 function handleLogout() {
   authStore.logout()

@@ -79,6 +79,11 @@
                   @click="desktopDropdownOpen = false"
                   class="block w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >Profile</router-link>
+                <router-link
+                  to="/business/employees"
+                  @click="desktopDropdownOpen = false"
+                  class="block w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >Employees</router-link>
                 <button
                   @click="handleLogout"
                   class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50"
@@ -147,6 +152,11 @@
               @click="mobileMenuOpen = false"
               class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >Profile</router-link>
+            <router-link
+              to="/business/employees"
+              @click="mobileMenuOpen = false"
+              class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >Employees</router-link>
             <button
               @click="handleLogout"
               class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100"
@@ -235,6 +245,9 @@ function switchListing(id) {
   businessStore.setActiveListing(id)
   desktopDropdownOpen.value = false
   mobileMenuOpen.value = false
+  if (router.currentRoute.value.name !== 'BusinessHome') {
+    router.push('/business')
+  }
 }
 
 function triggerAddListing() {
