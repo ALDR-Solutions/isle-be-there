@@ -163,6 +163,14 @@ export const employeesAPI = {
   getEmployeesForListing: (listingId) => api.get(`/api/employees/listings/${listingId}`),
 };
 
+export const servicesAPI = {
+  getAll: (params) => api.get('/api/services', { params }),
+  create: (data) => api.post('/api/services/create', data),
+  update: (serviceId, data) => api.put(`/api/services/update/${serviceId}`, data),
+  deactivate: (serviceId) => api.patch(`/api/services/${serviceId}`),
+  delete: (serviceId) => api.delete(`/api/services/${serviceId}`),
+};
+
 export const uploadsAPI = {
   uploadImage: (formData) => api.post('/api/upload', formData),
 };

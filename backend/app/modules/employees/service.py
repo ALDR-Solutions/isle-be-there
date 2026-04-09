@@ -1,13 +1,16 @@
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.modules.businesses.models import Business
 from app.modules.listings.models import EmployeeListings, Listing
+from app.modules.listings.service import _serialize_listings
 from app.modules.users.models import User
 
 from .models import Business_Employee
+
 
 def get_employee_listings(db: Session, employee_id: UUID):
     employee_link = db.exec(
@@ -20,12 +23,10 @@ def get_employee_listings(db: Session, employee_id: UUID):
         select(Listing)
         .join(EmployeeListings, EmployeeListings.listing_id == Listing.id)
         .where(EmployeeListings.employee_id == employee_id)
+        .options(selectinload(Listing.business_type_rel))
     ).all()
 
-    return [
-        listing.model_dump(exclude={"embedding", "location"})
-        for listing in listings
-    ]
+    return _serialize_listings(db, listings)
 
 
 def get_employees_for_listing(db: Session, listing_id: UUID, business_owner_id: UUID):
