@@ -28,21 +28,34 @@ def get_service_by_id(db: Session, service_id: str):
         raise HTTPException(status_code=404, detail="Service not found")
 
 
-def get_services(db: Session, limit: int = 100) -> list:
+def get_services(db: Session) -> list:
     services = db.exec(
         select(Service)
         .where(Service.status == "active")
         .order_by(asc(Service.created_at))
-        .limit(limit)
     ).all()
     return services
 
-def get_services_by_listing_id(db: Session, listing_id: str) -> list:
-    services = db.exec(
-        select(Service)
-        .where((Service.listing_id == listing_id)&(Service.status != "deleted"))
-        .order_by(asc(Service.created_at))
-    ).all()
+def get_services_by_listing_id(db: Session, listing_id: str, user_type: str) -> list:
+
+    if user_type in ["business", "employee"]:
+        services = db.exec(
+            select(Service)
+            .where((Service.listing_id == listing_id) & (Service.status != "deleted"))
+            .order_by(asc(Service.created_at))
+        ).all()
+    elif user_type in ["admin"]:
+        services = db.exec(
+            select(Service)
+            .where(Service.listing_id == listing_id)
+            .order_by(asc(Service.created_at))
+        ).all()
+    else:
+        services = db.exec(
+            select(Service)
+            .where((Service.listing_id == listing_id)&(Service.status == "active"))
+            .order_by(asc(Service.created_at))
+        ).all()
     return services
 
 def create_service(db: Session, service: Service, user_id: str) -> Service:

@@ -14,7 +14,6 @@ from .service import (
     create_service,
     deactivate_service,
     delete_service,
-    get_service_by_id,
     get_services,
     get_services_by_listing_id,
     update_service,
@@ -30,11 +29,11 @@ def _require_user_id(user_id: str | None):
 @router.get("", response_model=List[ServiceResponse])
 def get_services_by_listing_id_endpoint(
     listing_id: str | None = None,
-    limit: int = Query(100, ge=1, le=100),
+    current_user: User = Depends(require_roles("user", "business", "admin", "employee")),
     db: Session = Depends(get_db),
 ):
     
-    return get_services_by_listing_id(db=db, listing_id=listing_id)
+    return get_services_by_listing_id(db=db, listing_id=listing_id, user_type=current_user.user_type)
 
 @router.get("/", response_model=List[ServiceResponse])
 def get_service_endpoint(
