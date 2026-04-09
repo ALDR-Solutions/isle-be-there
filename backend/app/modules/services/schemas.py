@@ -23,7 +23,7 @@ class ServiceBase(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     season_price: Optional[float] = None
-    status: Optional[bool] = None
+    status: str | None = None
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[ServiceTypeData] = None
@@ -31,7 +31,7 @@ class ServiceBase(BaseModel):
 
 
 class ServiceCreate(ServiceBase):
-    pass
+    status: str = "active"
 
 
 class ServiceUpdate(BaseModel):
@@ -39,15 +39,14 @@ class ServiceUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     season_price: Optional[float] = None
-    status: Optional[bool] = None
+    status: str | None = None
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[Dict[str, Any]] = None
-    listing_id: Optional[UUID] = None
 
 
 class ServiceResponse(ServiceBase):
-    service_id: int
+    service_id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
 

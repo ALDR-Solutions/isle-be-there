@@ -20,6 +20,7 @@ from app.modules.recommendations.router import router as recommendations_router
 from app.modules.reviews.router import router as reviews_router
 from app.modules.users.router import router as profile_router
 from app.modules.employees.router import router as employees_router
+from app.modules.services.router import router as services_router
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -75,6 +76,7 @@ app.include_router(favourites_router)
 app.include_router(interests_router)
 app.include_router(businesses_router)
 app.include_router(employees_router)
+app.include_router(services_router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
