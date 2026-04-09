@@ -12,7 +12,7 @@ from sqlmodel import Session
 from uuid import UUID
 
 from .schemas import EmployeeCreate, EmployeeResponse
-from .service import get_employee_listings
+from .service import get_employee_listings, get_employees_for_listing
 
 
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
@@ -84,3 +84,13 @@ def list_employee_listings(
             detail="Not authorized for this resource",
         )
     return get_employee_listings(db, employee_id)
+
+
+@router.get("/listings/{listing_id}")
+def list_employees_for_listing(
+    listing_id: UUID,
+    current_user: User = Depends(require_roles("business", "admin")),
+    db: Session = Depends(get_db),
+):
+    return get_employees_for_listing(db, listing_id, current_user.id)
+
