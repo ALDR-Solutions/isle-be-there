@@ -15,6 +15,7 @@ from .service import (
     get_listing_by_id,
     get_personalized_listings,
     list_listings,
+    search_listings_combined,
     update_listing,
 )
 
@@ -63,6 +64,28 @@ def get_personalized_listings_endpoint(
 ):
     _require_user_id(current_user.id)
     return get_personalized_listings(db, current_user.id, limit)
+
+
+@router.get("/search")
+def search_listings(
+    q: str | None = Query(default=None, min_length=1),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float = Query(default=25, gt=0, le=200),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    if (lat is None) != (lng is None):
+        raise HTTPException(status_code=400, detail="Both lat and lng are required together")
+
+    return search_listings_combined(
+        db=db,
+        q=q,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+        limit=limit,
+    )
 
 
 @router.get("/{listing_id}", response_model=ListingResponse)

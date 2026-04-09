@@ -234,3 +234,69 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
         return _serialize_listings(db, listings)
     except Exception:
         return _serialize_listings(db, _fetch_active_listings(db, limit))
+
+
+def search_listings_combined(
+    db: Session,
+    q: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float = 25,
+    limit: int = 20,
+):
+    query = select(Listing).where(Listing.status == Statuses.active)
+
+    ts_vector = func.to_tsvector(
+        "english",
+        func.concat_ws(" ", Listing.title, func.coalesce(Listing.description, "")),
+    )
+    rank_expr = None
+    if q:
+        ts_query = func.plainto_tsquery("english", q)
+        rank_expr = func.ts_rank(ts_vector, ts_query).label("rank")
+        query = query.add_columns(rank_expr).where(ts_vector.op("@@")(ts_query))
+
+    distance_expr = None
+    if lat is not None and lng is not None:
+        point = f"SRID=4326;POINT({lng} {lat})"
+        distance_expr = func.ST_Distance(Listing.location, point).label("distance_m")
+        query = query.add_columns(distance_expr).where(
+            func.ST_DWithin(Listing.location, point, radius_km * 1000)
+        )
+
+    query = query.options(selectinload(Listing.business_type_rel))
+
+    if rank_expr is not None:
+        query = query.order_by(desc(rank_expr))
+    elif distance_expr is not None:
+        query = query.order_by(asc(distance_expr))
+    else:
+        query = query.order_by(desc(Listing.created_at))
+
+    rows = db.exec(query.limit(limit)).all()
+
+    if not rows:
+        return []
+
+    if isinstance(rows[0], Listing):
+        return _serialize_listings(db, rows)
+
+    listings = [row[0] for row in rows]
+    serialized = _serialize_listings(db, listings)
+    listing_data_by_id = {item["id"]: item for item in serialized}
+
+    for row in rows:
+        listing = row[0]
+        payload = listing_data_by_id.get(str(listing.id))
+        if not payload:
+            continue
+        idx = 1
+        if rank_expr is not None and len(row) > idx:
+            rank_val = row[idx]
+            payload["rank"] = float(rank_val) if rank_val is not None else None
+            idx += 1
+        if distance_expr is not None and len(row) > idx:
+            dist_val = row[idx]
+            payload["distance_m"] = float(dist_val) if dist_val is not None else None
+
+    return serialized

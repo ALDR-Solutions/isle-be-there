@@ -778,7 +778,7 @@ const listingEmployees = ref([])
 async function fetchListingEmployees(listingId) {
   if (!listingId) return
   try {
-    const res = await employeesAPI.getListings(listingId)
+    const res = await employeesAPI.getEmployeesForListing(listingId)
     listingEmployees.value = res.data ?? []
   } catch (e) {
     listingEmployees.value = []
