@@ -40,7 +40,7 @@ def get_services(db: Session, limit: int = 100) -> list:
 def get_services_by_listing_id(db: Session, listing_id: str) -> list:
     services = db.exec(
         select(Service)
-        .where(Service.listing_id == listing_id)
+        .where((Service.listing_id == listing_id)&(Service.status != "deleted"))
         .order_by(asc(Service.created_at))
     ).all()
     return services
