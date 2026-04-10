@@ -22,13 +22,51 @@
     <div v-else>
 
       <div class="relative h-72 w-full overflow-hidden bg-slate-200 sm:h-96 lg:h-[480px]">
-        <img
-          v-if="listing.image_urls && listing.image_urls.length > 0"
-          :src="listing.image_urls[0]"
-          :alt="listing.title"
-          class="h-full w-full object-cover"
-          @error="handleImageError($event)"
-        />
+
+      <template v-if="images.length">
+        <transition name="fade" mode="out-in">
+          <img
+            :key="currentImage"
+            :src="currentImage"
+            :alt="listing.title"
+            class="h-full w-full object-cover"
+            @error="handleImageError"
+          />
+        </transition>
+
+        <button
+          v-if="images.length > 1"
+          @click="prevImage"
+          class="absolute left-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <button
+          v-if="images.length > 1"
+          @click="nextImage"
+          class="absolute right-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div
+          v-if="images.length > 1"
+          class="absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 gap-2"
+        >
+          <button
+            v-for="(image, index) in images"
+            :key="image"
+            @click="goToImage(index)"
+            class="h-3 rounded-full transition-all duration-300"
+            :class="currentImageIndex === index ? 'w-8 bg-cyan-300' : 'w-3 bg-white/50 hover:bg-white/80'"
+          />
+        </div>
+      </template>
         <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -99,6 +137,35 @@
               <p class="mt-3 text-base leading-7 text-slate-600">
                 {{ listing.description || 'No description provided.' }}
               </p>
+            </div>
+
+            <div
+              v-if="hasLocation"
+              class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-600">
+                  Map Location
+                </p>
+                <a
+                  :href="mapExternalUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs font-semibold text-cyan-700 transition hover:text-cyan-600"
+                >
+                  Open in maps
+                </a>
+              </div>
+
+              <div class="mt-3 overflow-hidden rounded-2xl border border-slate-200">
+                <iframe
+                  :src="mapEmbedUrl"
+                  title="Listing location map"
+                  class="h-72 w-full"
+                  loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
             </div>
 
             <component
@@ -203,6 +270,9 @@ const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+const currentImageIndex = ref(0);
+const brokenImages = ref(new Set());
+let heroInterval = null;
 
 const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
@@ -213,6 +283,80 @@ const detailsComponent = computed(() => {
     default:           return null
   }
 })
+
+const mapCoordinates = computed(() => {
+  const lat = Number(listing.value?.location?.lat)
+  const lng = Number(listing.value?.location?.lng)
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return { lat, lng }
+})
+
+const hasLocation = computed(() => !!mapCoordinates.value)
+
+const mapEmbedUrl = computed(() => {
+  if (!mapCoordinates.value) return ''
+
+  const { lat, lng } = mapCoordinates.value
+  const delta = 0.01
+  const left = lng - delta
+  const right = lng + delta
+  const top = lat + delta
+  const bottom = lat - delta
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`
+})
+
+const mapExternalUrl = computed(() => {
+  if (!mapCoordinates.value) return '#'
+
+  const { lat, lng } = mapCoordinates.value
+  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
+})
+
+const images = computed(() => {
+  return (listing.value?.image_urls ?? []).filter(
+    (url) => url && !brokenImages.value.has(url)
+  );
+});
+
+const currentImage = computed(() => {
+  return images.value[currentImageIndex.value] ?? images.value[0] ?? null;
+
+});
+
+const nextImage = () => {
+  if (!images.value.length) return;
+  currentImageIndex.value = (currentImageIndex.value + 1) % images.value.length;
+};
+
+const prevImage = () => {
+  if(!images.value.length) return;
+  currentImageIndex.value = 
+    (currentImageIndex.value - 1 + images.value.length) % images.value.length;
+};
+
+const goToImage = (index) => {
+  currentImageIndex.value = index;
+  startSlideshow();
+};
+
+const startSlideshow = () => {
+  stopSlideshow();
+
+  if (images.value.length <= 1) return;
+
+  heroInterval = setInterval(() => {
+    nextImage();
+  }, 4000);
+};
+
+const stopSlideshow = () => {
+  if (heroInterval) {
+    clearInterval(heroInterval);
+    heroInterval = null;
+  }
+};
 
 const fetchListings = async () => {
   try {
