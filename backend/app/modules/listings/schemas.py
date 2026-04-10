@@ -35,12 +35,35 @@ class TourListingJson(_StrictDetailsBase):
     service_availability: Optional[str] = None
 
 
+class RestaurantMenuItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: Optional[str] = None
+    price: Optional[float] = None
+
+
+class RestaurantMenuSection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    items: List[RestaurantMenuItem]
+
+
+class RestaurantMenu(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sections: List[RestaurantMenuSection]
+
+
 class RestaurantListingJson(_StrictDetailsBase):
     table_seating: Optional[bool] = None
     has_delivery: Optional[bool] = None
     has_take_out: Optional[bool] = None
     has_dining: Optional[bool] = None
     service_availability: Optional[str] = None
+    menu: Optional[RestaurantMenu] = None
+    # Kept for backward compatibility with existing payloads.
     menu_items: Optional[List[str]] = None
 
 

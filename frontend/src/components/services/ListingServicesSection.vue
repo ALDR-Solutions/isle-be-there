@@ -330,57 +330,6 @@
             </div>
           </div>
 
-          <div v-if="isRestaurantType" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
-            <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Restaurant Service Details</p>
-              <p class="mt-1 text-xs text-slate-500">Stored in `type_data` for restaurant listings.</p>
-            </div>
-
-            <div>
-              <label class="mb-1.5 block text-sm font-semibold text-slate-700">Menu Category</label>
-              <input
-                v-model="serviceForm.menu_category"
-                type="text"
-                placeholder="e.g. Brunch Specials"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label class="mb-1.5 block text-sm font-semibold text-slate-700">Allergens</label>
-              <div class="flex gap-2">
-                <input
-                  v-model="allergenInput"
-                  @keydown.enter.prevent="addListValue('allergens', allergenInput)"
-                  type="text"
-                  placeholder="e.g. Shellfish"
-                  class="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-                />
-                <button
-                  type="button"
-                  @click="addListValue('allergens', allergenInput)"
-                  class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                  Add
-                </button>
-              </div>
-              <div v-if="serviceForm.allergens.length" class="mt-3 flex flex-wrap gap-2">
-                <span
-                  v-for="(allergen, index) in serviceForm.allergens"
-                  :key="`${allergen}-${index}`"
-                  class="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                >
-                  {{ allergen }}
-                  <button type="button" @click="removeListValue('allergens', index)" class="text-slate-400 hover:text-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              </div>
-            </div>
-          </div>
-
           <p v-if="serviceErrors.submit" class="text-sm text-red-500">{{ serviceErrors.submit }}</p>
 
           <div class="flex gap-3 pt-2">
@@ -433,13 +382,11 @@ const modalSubmitting = ref(false)
 const actionServiceId = ref(null)
 const serviceErrors = ref({})
 const roomAmenityInput = ref('')
-const allergenInput = ref('')
 const serviceImageInputRef = ref(null)
 const serviceImageUploading = ref(false)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
-const isRestaurantType = computed(() => businessTypeName.value === 'Restaurant')
 
 const blankServiceForm = () => ({
   name: '',
@@ -452,8 +399,6 @@ const blankServiceForm = () => ({
   availability_notes: '',
   room_type: '',
   room_amenities: [],
-  menu_category: '',
-  allergens: [],
   image_url: '',
 })
 
@@ -495,8 +440,6 @@ function mapServiceToForm(service) {
     availability_notes: availability.notes ?? '',
     room_type: typeData.room_type ?? '',
     room_amenities: normalizeStringArray(typeData.room_amenities),
-    menu_category: typeData.menu_category ?? '',
-    allergens: normalizeStringArray(typeData.allergens),
     image_url: typeData.image_url ?? '',
   }
 }
@@ -521,17 +464,6 @@ function buildTypeDataPayload() {
     return {
       room_type: room_type || null,
       room_amenities,
-      image_url: image_url || null,
-    }
-  }
-
-  if (isRestaurantType.value) {
-    const menu_category = serviceForm.value.menu_category.trim()
-    const allergens = normalizeStringArray(serviceForm.value.allergens)
-    if (!menu_category && !allergens.length && !image_url) return null
-    return {
-      menu_category: menu_category || null,
-      allergens,
       image_url: image_url || null,
     }
   }
@@ -604,7 +536,6 @@ function openServiceModal(service = null) {
   serviceForm.value = service ? mapServiceToForm(service) : blankServiceForm()
   serviceErrors.value = {}
   roomAmenityInput.value = ''
-  allergenInput.value = ''
   showServiceModal.value = true
 }
 
@@ -635,7 +566,6 @@ function closeServiceModal() {
   editingService.value = null
   serviceErrors.value = {}
   roomAmenityInput.value = ''
-  allergenInput.value = ''
 }
 
 async function submitService() {
@@ -767,15 +697,6 @@ function typeSummary(service) {
     if (typeData.room_type) parts.push(typeData.room_type)
     if (Array.isArray(typeData.room_amenities) && typeData.room_amenities.length) {
       parts.push(typeData.room_amenities.join(', '))
-    }
-    return parts.join(' | ')
-  }
-
-  if (businessTypeName.value === 'Restaurant') {
-    const parts = []
-    if (typeData.menu_category) parts.push(typeData.menu_category)
-    if (Array.isArray(typeData.allergens) && typeData.allergens.length) {
-      parts.push(`Allergens: ${typeData.allergens.join(', ')}`)
     }
     return parts.join(' | ')
   }

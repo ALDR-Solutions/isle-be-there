@@ -10,12 +10,7 @@ class RoomsJson(BaseModel):
     room_type: Optional[str] = None
 
 
-class MenuItemJson(BaseModel):
-    menu_category: Optional[str] = None
-    allergens: Optional[List[str]] = None
-
-
-ServiceTypeData = Union[RoomsJson, MenuItemJson, Dict[str, Any]]
+ServiceTypeData = Union[RoomsJson, Dict[str, Any]]
 
 
 class ServiceBase(BaseModel):
