@@ -164,6 +164,7 @@ export const employeesAPI = {
 };
 
 export const servicesAPI = {
+  getById: (serviceId) => api.get(`/api/services/${serviceId}`),
   getAll: (params) => api.get('/api/services', { params }),
   create: (data) => api.post('/api/services/create', data),
   update: (serviceId, data) => api.put(`/api/services/update/${serviceId}`, data),

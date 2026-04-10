@@ -3,6 +3,9 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.modules.listings.models import Listing
+from app.modules.services.models import Service
+from app.modules.services.service import get_service_by_id
 from .models import Booking
 
 
@@ -20,9 +23,12 @@ def get_booking_by_id(db: Session, booking_id: int, user_id: str):
     return booking.model_dump()
 
 
-def create_booking(db: Session, data: dict, user_id: str):
-    data["user_id"] = user_id
-    booking = Booking(**data)
+
+
+def create_booking(db: Session, booking_data: dict, user_id: str):
+    booking = Booking(**booking_data)
+    booking.user_id = user_id
+
     db.add(booking)
     db.commit()
     db.refresh(booking)
@@ -52,3 +58,4 @@ def cancel_booking(db: Session, booking_id: int, user_id: str):
 
     booking.status = "cancelled"
     db.commit()
+    db.refresh(booking)

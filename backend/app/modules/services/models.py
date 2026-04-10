@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import Column, BigInteger, Float, DateTime, ForeignKey, Text, Identity, text, Boolean, SmallInteger
+from sqlalchemy import Column, Float, DateTime, ForeignKey, Text, Identity, text, Boolean, SmallInteger
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlmodel import Enum as SAEnum, Field, Relationship, SQLModel
 from enum import Enum

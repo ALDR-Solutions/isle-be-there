@@ -38,11 +38,12 @@ def get_bookings(
 
 @router.get("/{booking_id}", response_model=dict)
 def get_booking(
-    booking_id: int,
     booking: Booking = Depends(require_booking_owner),
     db: Session = Depends(get_db),
 ):
     return get_booking_by_id(db, booking.id, booking.user_id)
+
+
 
 
 @router.post("", response_model=dict, status_code=201)
@@ -58,7 +59,6 @@ def create_booking_endpoint(
 
 @router.put("/{booking_id}", response_model=dict)
 def update_booking_endpoint(
-    booking_id: int,
     booking_data: BookingUpdate,
     booking: Booking = Depends(require_booking_owner),
     db: Session = Depends(get_db),
@@ -71,9 +71,8 @@ def update_booking_endpoint(
     return update_booking(db, booking.id, update_data, booking.user_id)
 
 
-@router.delete("/{booking_id}", status_code=204)
+@router.patch("/{booking_id}", status_code=204)
 def cancel_booking_endpoint(
-    booking_id: int,
     booking: Booking = Depends(require_booking_owner),
     db: Session = Depends(get_db),
 ):

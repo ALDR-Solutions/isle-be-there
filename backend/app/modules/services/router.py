@@ -14,6 +14,7 @@ from .service import (
     create_service,
     deactivate_service,
     delete_service,
+    get_service_by_id,
     get_services,
     get_services_by_listing_id,
     update_service,
@@ -41,6 +42,14 @@ def get_service_endpoint(
 ):
     
     return get_services(db=db)
+
+@router.get("/{service_id}", response_model=ServiceResponse)
+def get_service_by_id_endpoint(
+    service_id: str,
+    db: Session = Depends(get_db),
+):
+    
+    return get_service_by_id(db=db, service_id=service_id)
 
 
 @router.post("/create", response_model=ServiceResponse, status_code=201)
