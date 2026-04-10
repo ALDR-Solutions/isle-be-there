@@ -172,7 +172,21 @@ export const servicesAPI = {
 };
 
 export const uploadsAPI = {
-  uploadImage: (formData) => api.post('/api/upload', formData),
+  uploadImage: (formData, { folder = 'misc' } = {}) => {
+    formData.set('folder', folder);
+    return api.post('/api/upload', formData, {
+      transformRequest: [(data, headers) => {
+        if (headers?.set) {
+          headers.set('Content-Type', undefined);
+        }
+        if (headers && 'Content-Type' in headers) {
+          delete headers['Content-Type'];
+        }
+        return data;
+      }],
+    });
+  },
+  deleteImages: (urls) => api.delete('/api/upload', { data: { urls } }),
 };
 
 export default api;
