@@ -5,6 +5,8 @@ import { pinia } from './pinia'
 import { registerUnauthorizedHandler } from './services/api'
 import { useAuthStore } from './stores/auth'
 import './style.css'
+import VueTelInput from 'vue-tel-input';
+import 'vue-tel-input/vue-tel-input.css';
 
 const app = createApp(App)
 const authStore = useAuthStore(pinia)
@@ -24,5 +26,6 @@ registerUnauthorizedHandler(async () => {
 
 app.use(pinia)
 app.use(router)
+app.use(VueTelInput)
 
 app.mount('#app')
