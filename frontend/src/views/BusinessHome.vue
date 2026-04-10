@@ -590,12 +590,15 @@
               <label class="block text-sm font-semibold text-slate-700 mb-1.5"
                 >Phone Number</label
               >
-              <input
+              <vue-tel-input
                 v-model="form.phone_number"
-                type="tel"
-                placeholder="e.g. +1 246 555 0100"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
+                :style-classes="phoneInputWrapperClasses"
+                :input-options="phoneInputOptions"
+                style-classes="w-full bg-transparent px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none"
+                mode="international"
+               
+              >
+              </vue-tel-input>
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1.5"
@@ -1148,6 +1151,13 @@ let leafletApi = null;
 let listingMap = null;
 let listingMarker = null;
 const DEFAULT_MAP_CENTER = { lat: 13.1939, lng: -59.5432 };
+const phoneInputWrapperClasses =
+  "w-full rounded-2xl border border-slate-200 bg-white text-sm text-slate-900 transition focus-within:border-cyan-400";
+const phoneInputOptions = {
+  placeholder: "e.g. +1 246 555 0100",
+  styleClasses:
+    "w-full bg-transparent px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none",
+};
 
 const selectedTypeName = computed(
   () =>
