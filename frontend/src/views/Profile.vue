@@ -8,7 +8,13 @@
 
     <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
       <div class="flex items-center gap-5">
-        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl font-bold text-white select-none">
+        <img
+          v-if="avatarSrc"
+          :src="avatarSrc"
+          alt="Profile avatar"
+          class="h-16 w-16 rounded-2xl object-cover"
+        />
+        <div v-else class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl font-bold text-white select-none">
           {{ initials }}
         </div>
         <div>
@@ -23,6 +29,17 @@
             class="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
           >Personal Account</span>
         </div>
+      </div>
+      <div v-if="editing" class="space-y-2">
+        <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarFileChange" />
+        <button
+          type="button"
+          :disabled="avatarUploading"
+          @click="openAvatarPicker"
+          class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {{ avatarUploading ? 'Uploading...' : 'Upload Avatar' }}
+        </button>
       </div>
 
       <hr class="border-slate-100" />
@@ -180,7 +197,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter} from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
-import { profileAPI, authAPI } from '../services/api';
+import { profileAPI, authAPI, uploadsAPI } from '../services/api';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -194,12 +211,15 @@ const disabling = ref(false);
 const showSaveModal = ref(false);
 const showDisableModal = ref(false);
 const formError = ref('');
+const avatarUploading = ref(false);
+const avatarInputRef = ref(null);
 
 const form = ref({
   first_name: '',
   last_name: '',
   username: '',
   email: '',
+  avatar_url: '',
 });
 
 const initials = computed(() => {
@@ -208,6 +228,7 @@ const initials = computed(() => {
   return (f + l).toUpperCase() || user.value?.username?.[0]?.toUpperCase() || '?';
 
 });
+const avatarSrc = computed(() => form.value.avatar_url || user.value?.avatar_url || '');
 
 onMounted(() => {
   form.value = {
@@ -215,6 +236,7 @@ onMounted(() => {
     last_name: user.value?.last_name ?? '',
     username: user.value?.username ?? '',
     email: user.value?.email ?? '',
+    avatar_url: user.value?.avatar_url ?? '',
   };
 });
 
@@ -231,6 +253,7 @@ function cancelEditing() {
     last_name: user.value?.last_name ?? '',
     username: user.value?.username ?? '',
     email: user.value?.email ?? '',
+    avatar_url: user.value?.avatar_url ?? '',
   };
 }
 
@@ -241,6 +264,29 @@ function promptSave() {
     return;
   }
   showSaveModal.value = true;
+}
+
+function openAvatarPicker() {
+  avatarInputRef.value?.click();
+}
+
+async function onAvatarFileChange(event) {
+  const file = event.target?.files?.[0];
+  if (!file) return;
+
+  avatarUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await uploadsAPI.uploadImage(formData, { folder: 'profiles' });
+    form.value.avatar_url = response.data.url;
+    toastStore.show('Avatar uploaded.', 'success');
+  } catch (err) {
+    toastStore.show(err.response?.data?.detail || 'Failed to upload avatar.', 'error');
+  } finally {
+    avatarUploading.value = false;
+    event.target.value = '';
+  }
 }
 
 async function confirmSave() {
