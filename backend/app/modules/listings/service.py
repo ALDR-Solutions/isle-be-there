@@ -4,10 +4,11 @@ import random
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
-from geoalchemy2.shape import to_shape
+from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.orm import selectinload
+from shapely.geometry import Point
 from sqlmodel import Session, asc, desc, select
 
 from app.modules.businesses.models import Business
@@ -16,6 +17,22 @@ from app.modules.reviews.models import Review
 from app.modules.users.models import User
 
 from .models import Listing, Statuses
+
+
+def _build_location(location_data: dict | None):
+    if not location_data:
+        return None
+
+    try:
+        lat = float(location_data["lat"])
+        lng = float(location_data["lng"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid location payload") from exc
+
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        raise HTTPException(status_code=400, detail="Location coordinates are out of range")
+
+    return from_shape(Point(lng, lat), srid=4326)
 
 
 def _batch_review_stats(db: Session, listing_ids: list) -> dict:
@@ -145,8 +162,11 @@ def create_listing(db: Session, data: dict, user_id: str):
     business = db.exec(select(Business).where(Business.user_id == user_id)).first()
     if not business:
         raise HTTPException(status_code=400, detail="User does not have a business")
+    location_data = data.pop("location", None)
     data["business_id"] = business.id
     listing = Listing(**data)
+    if location_data:
+        listing.location = _build_location(location_data)
     db.add(listing)
     db.commit()
     db.refresh(listing)
@@ -168,6 +188,9 @@ def update_listing(
         business = db.exec(select(Business).where(Business.user_id == user_id)).first()
         if not business or str(listing.business_id) != str(business.id):
             raise HTTPException(status_code=403, detail="Not authorized")
+
+    if "location" in update_data:
+        listing.location = _build_location(update_data.pop("location"))
 
     for key, value in update_data.items():
         setattr(listing, key, value)
