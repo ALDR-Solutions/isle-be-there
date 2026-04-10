@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -24,6 +24,8 @@ class HotelListingJson(_StrictDetailsBase):
     cancellation_until_hours: Optional[int] = None
     deposit_required: Optional[bool] = None
     total_rooms: Optional[int] = None
+    check_in_time: Optional[time] = None
+    check_out_time: Optional[time] = None
 
 
 class TourListingJson(_StrictDetailsBase):
@@ -39,6 +41,7 @@ class RestaurantListingJson(_StrictDetailsBase):
     has_take_out: Optional[bool] = None
     has_dining: Optional[bool] = None
     service_availability: Optional[str] = None
+    menu_items: Optional[List[str]] = None
 
 
 class ActivityListingJson(_StrictDetailsBase):
