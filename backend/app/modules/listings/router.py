@@ -121,7 +121,7 @@ def update_listing_endpoint(
         listing.id,
         update_data,
         current_user.id,
-        is_admin=current_user.is_super_admin,
+        is_admin=current_user.user_type == "admin",
     )
 
 
