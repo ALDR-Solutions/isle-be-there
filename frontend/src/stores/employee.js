@@ -1,45 +1,74 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { listingsAPI, businessesAPI } from '../services/api'
+import { ref, computed } from 'vue'
+import { employeesAPI } from '../services/api'
 import { useAuthStore } from './auth'
 
 export const useEmployeeStore = defineStore('employee', () => {
-  const assignedListing = ref(null)
+  const assignedListings = ref([])
+  const activeListingId = ref(null)
   const business = ref(null)
   const loading = ref(false)
+  const loadError = ref(null)
 
-  async function fetchAssignment() {
+  const activeListing = computed(() =>
+    assignedListings.value.find(l => l.id === activeListingId.value) ?? assignedListings.value[0] ?? null
+  )
+  const hasAssignments = computed(() => assignedListings.value.length > 0)
+
+  async function fetchAssignments() {
     const authStore = useAuthStore()
+    const userId = authStore.user?.id
+    if (!userId) {
+      reset()
+      return
+    }
     loading.value = true
+    loadError.value = null
     try {
-      // When backend supports employee accounts, the user object will carry
-      // listing_id and business_id. Until then this resolves gracefully.
-      const listingId = authStore.user?.listing_id
-      if (listingId) {
-        const [listingRes, bizRes] = await Promise.all([
-          listingsAPI.getById(listingId),
-          businessesAPI.getById(authStore.user?.business_id),
-        ])
-        assignedListing.value = listingRes.data
-        business.value = bizRes.data
+      const res = await employeesAPI.getListings(userId)
+      assignedListings.value = res.data ?? []
+      if (!assignedListings.value.some(listing => listing.id === activeListingId.value)) {
+        activeListingId.value = null
+      }
+      if (assignedListings.value.length && !activeListingId.value) {
+        activeListingId.value = assignedListings.value[0].id
       }
     } catch (e) {
-      console.error('Failed to load employee assignment', e)
+      assignedListings.value = []
+      activeListingId.value = null
+      loadError.value = e.response?.data?.detail || 'Unable to load employee listings.'
+      console.error('Failed to load employee assignments', e)
     } finally {
       loading.value = false
     }
   }
 
+  // Keep old name as alias so EmployeeLayout's onMounted still works
+  // until we update the call site
+  const fetchAssignment = fetchAssignments
+
+  function setActiveListing(id) {
+    activeListingId.value = id
+  }
+
   function reset() {
-    assignedListing.value = null
+    assignedListings.value = []
+    activeListingId.value = null
     business.value = null
+    loadError.value = null
   }
 
   return {
-    assignedListing,
+    assignedListings,
+    activeListingId,
+    activeListing,
+    hasAssignments,
     business,
     loading,
+    loadError,
+    fetchAssignments,
     fetchAssignment,
+    setActiveListing,
     reset,
   }
 })

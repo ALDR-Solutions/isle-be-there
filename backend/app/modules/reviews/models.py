@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import BigInteger, CheckConstraint, Column, DateTime, ForeignKey, Identity, Integer, Text, UniqueConstraint, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, DateTime, ForeignKey, Identity, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
 
@@ -45,11 +45,11 @@ class Review(SQLModel, table=True):
     )
     is_flagged: bool = Field(
         default=False,
-        sa_column=Column(Integer, nullable=False),
+        sa_column=Column(Boolean, nullable=False, server_default=text("false")),
     )
     is_visible: bool = Field(
         default=True,
-        sa_column=Column(Integer, nullable=False),
+        sa_column=Column(Boolean, nullable=False, server_default=text("true")),
     )
     flag_reason: Optional[str] = Field(
         default=None,

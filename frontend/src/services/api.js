@@ -4,8 +4,8 @@ const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 let getAccessToken = () => null;
 let getRefreshToken = () => null;
-let setTokens = () => {};
-let handleUnauthorized = async () => {};
+let setTokens = () => { };
+let handleUnauthorized = async () => { };
 
 export function registerAuthSessionHandlers(handlers = {}) {
   if (handlers.getAccessToken) getAccessToken = handlers.getAccessToken;
@@ -14,7 +14,7 @@ export function registerAuthSessionHandlers(handlers = {}) {
 }
 
 export function registerUnauthorizedHandler(handler) {
-  handleUnauthorized = handler || (async () => {});
+  handleUnauthorized = handler || (async () => { });
 }
 
 const api = axios.create({
@@ -41,20 +41,20 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
+
       const refreshToken = getRefreshToken();
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
             refresh_token: refreshToken,
           });
-          
+
           const { access_token, refresh_token } = response.data;
           setTokens({ accessToken: access_token, refreshToken: refresh_token });
-          
+
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return api(originalRequest);
         } catch (refreshError) {
@@ -65,7 +65,7 @@ api.interceptors.response.use(
 
       await handleUnauthorized({ reason: 'missing_refresh_token' });
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -94,6 +94,9 @@ export const listingsAPI = {
   update: (id, data) => api.put(`/api/listings/${id}`, data),
   delete: (id) => api.delete(`/api/listings/${id}`),
   getPersonalized: (params) => api.get('/api/listings/personalized', { params }),
+  search: (query) => api.get('/api/listings/search', {
+    params: query?.trim() ? { q: query.trim() } : {},
+  }),
 };
 
 // Bookings API
@@ -145,14 +148,46 @@ export const interestsAPI = {
 export const businessesAPI = {
   getAll: (params) => api.get('/api/businesses', { params }),
   getById: (id) => api.get(`/api/businesses/${id}`),
-  getMe: () =>  api.get('/api/businesses/me'),
+  getMe: () => api.get('/api/businesses/me'),
   update: (id, data) => api.put(`/api/businesses/${id}`, data),
   getListings: (params) => api.get('/api/businesses/listings', { params }),
   getTypes: () => api.get('/api/businesses/types'),
 };
 
+export const employeesAPI = {
+  getAll: () => api.get('/api/employees'),
+  create: (data) => api.post('/api/employees', data),
+  assignToListing: (employeeId, listingId) => api.post(`/api/employees/${employeeId}/listings/${listingId}`),
+  unassignFromListing: (employeeId, listingId) => api.delete(`/api/employees/${employeeId}/listings/${listingId}`),
+  getListings: (employeeId) => api.get(`/api/employees/${employeeId}/listings`),
+  getEmployeesForListing: (listingId) => api.get(`/api/employees/listings/${listingId}`),
+};
+
+export const servicesAPI = {
+  getById: (serviceId) => api.get(`/api/services/${serviceId}`),
+  getAll: (params) => api.get('/api/services', { params }),
+  create: (data) => api.post('/api/services/create', data),
+  update: (serviceId, data) => api.put(`/api/services/update/${serviceId}`, data),
+  deactivate: (serviceId) => api.patch(`/api/services/${serviceId}`),
+  delete: (serviceId) => api.delete(`/api/services/${serviceId}`),
+};
+
 export const uploadsAPI = {
-  uploadImage: (formData) => api.post('/api/upload', formData),
+  uploadImage: (formData, { folder = 'misc' } = {}) => {
+    formData.set('folder', folder);
+    return api.post('/api/upload', formData, {
+      transformRequest: [(data, headers) => {
+        if (headers?.set) {
+          headers.set('Content-Type', undefined);
+        }
+        if (headers && 'Content-Type' in headers) {
+          delete headers['Content-Type'];
+        }
+        return data;
+      }],
+    });
+  },
+  deleteImages: (urls) => api.delete('/api/upload', { data: { urls } }),
 };
 
 export default api;

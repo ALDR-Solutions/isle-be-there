@@ -2,23 +2,29 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import Column, BigInteger, Float, DateTime, ForeignKey, Text, Identity, text, Boolean, SmallInteger
+from sqlalchemy import Column, Float, DateTime, ForeignKey, Text, Identity, text, Boolean, SmallInteger
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Enum as SAEnum, Field, Relationship, SQLModel
+from enum import Enum
 
 from app.modules.listings.models import Listing
+
+
+class StatusTypes(str, Enum):
+    active = "active"
+    inactive = "inactive"
+    deleted = "deleted"
 
 
 class Service(SQLModel, table=True):
     __tablename__ = "services"
 
-    service_id: int = Field(
+    service_id: UUID = Field(
         sa_column=Column(
-            BigInteger,
-            Identity(always=False, start=1, increment=1),
+            PGUUID(as_uuid=True),
             primary_key=True,
             nullable=False,
-            autoincrement=True,
+            server_default=text("gen_random_uuid()"),
         )
     )
     created_at: datetime = Field(
@@ -32,7 +38,14 @@ class Service(SQLModel, table=True):
     description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     price: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
     season_price: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
-    status: Optional[bool] = Field(default=None, sa_column=Column(Boolean, nullable=True))
+    status: StatusTypes = Field(
+        default=StatusTypes.active,
+        sa_column=Column(
+            SAEnum(StatusTypes, name="status_types"),
+            nullable=False,
+            server_default=text("'active'"),
+        ),
+    )
     capacity: Optional[int] = Field(default=None, sa_column=Column(SmallInteger, nullable=True))
     availability: Optional[dict[str, Any]] = Field(
         default=None, sa_column=Column(JSONB, nullable=True)
@@ -52,4 +65,4 @@ class Service(SQLModel, table=True):
             nullable=True,
         ),
     )
-    listing_rel: Optional["Listing"] = Relationship(back_populates="services")
+    # listing_rel: Optional["Listing"] = Relationship(back_populates="services")

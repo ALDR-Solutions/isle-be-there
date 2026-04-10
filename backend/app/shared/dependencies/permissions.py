@@ -62,6 +62,8 @@ def get_user_role(user: User) -> str:
         return "admin"
     if user.user_type == "business":
         return "business"
+    if user.user_type == "employee":
+        return "employee"
     return "user"
 
 
@@ -81,14 +83,14 @@ def require_roles(*roles: str) -> Callable[[User], User]:
 
 
 def require_booking_owner(
-    booking_id: int,
+    booking_id: UUID,
     user: User = Depends(require_roles("user", "admin")),
     db: Session = Depends(get_db),
 ) -> Booking:
     booking = db.exec(select(Booking).where(Booking.id == booking_id)).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if not user.is_super_admin and str(booking.user_id) != str(user.id):
+    if not user.user_type == "admin" and str(booking.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return booking
 
@@ -101,7 +103,7 @@ def require_review_owner(
     review = db.exec(select(Review).where(Review.id == review_id)).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    if not user.is_super_admin and str(review.user_id) != str(user.id):
+    if not user.user_type == "admin" and str(review.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return review
 
@@ -114,7 +116,7 @@ def require_business_owner(
     business = db.exec(select(Business).where(Business.id == business_id)).first()
     if not business:
         raise HTTPException(status_code=404, detail="Business not found")
-    if not user.is_super_admin and str(business.user_id) != str(user.id):
+    if not user.user_type == "admin" and str(business.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return business
 
@@ -128,7 +130,7 @@ def require_listing_owner(
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    if user.is_super_admin:
+    if user.user_type == "admin":
         return listing
 
     if not listing.business_id:

@@ -45,15 +45,18 @@
                 </svg>
 
                 <input
+                  v-model="searchQuery"
                   type="text"
                   placeholder="Search islands, stays, beaches, or experiences"
                   class="w-full bg-transparent text-sm text-white placeholder:text-slate-300/80 focus:outline-none sm:text-base"
+                  @keyup.enter="submitSearch"
                 />
               </div>
 
               <div class="flex gap-3 sm:contents">
                 <button
                   type="button"
+                  @click="submitSearch"
                   class="inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4"
                 >
                   Search
@@ -251,12 +254,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { listingsAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import DestinationCard from '../components/DestinationCard.vue'
 import InterestsModal from '../components/InterestsModal.vue'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const heroImages = [
   '/images/trinidad.jpg',
@@ -271,6 +276,7 @@ let heroInterval = null
 
 const loading = ref(true)
 const personalizedListings = ref([])
+const searchQuery = ref('')
 
 const trackRef = ref(null)
 const carouselIndex = ref(0)
@@ -305,6 +311,14 @@ function maybeShowInterestsModal() {
 
 function onInterestsSaved() {
   fetchPersonalizedListings()
+}
+
+function submitSearch() {
+  const q = searchQuery.value.trim()
+  router.push({
+    path: '/listings',
+    query: q ? { q } : {},
+  })
 }
 
 async function fetchPersonalizedListings() {

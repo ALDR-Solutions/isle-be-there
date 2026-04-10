@@ -21,12 +21,11 @@ class Business_Employee(SQLModel, table=True):
             nullable=False,
         )
     )
-    user_id: UUID = Field(
+    employee_id: UUID = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
             ForeignKey("users.id", onupdate="CASCADE", ondelete="CASCADE"),
             nullable=False,
         )
     )
-    role: str = Field(sa_column=Column(String, nullable=False))
     

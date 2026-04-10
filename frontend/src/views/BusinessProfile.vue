@@ -232,19 +232,22 @@ const businessInitials = computed(() => {
 const canSaveProfile = computed(() => !!updateTargetId.value);
 
 onMounted(async () => {
-    try {
-        const { data } = await businessesAPI.getMe();
-        business.value = data;
-        resetForm();
-        await resolveUpdateTargetId();
-    } catch (err) {
-        if (err.response?.status !== 404) {
-        toastStore.show('Failed to load business profile.', 'error');
-        }
-    } finally {
-        loading.value = false;
+  try {
+    const { data } = await businessesAPI.getMe()
+    business.value = data
+    updateTargetId.value = data?.id ?? null
+    if (!updateTargetId.value) {
+      updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your business record.'
     }
-});
+    resetForm()
+  } catch (err) {
+    if (err.response?.status !== 404) {
+      toastStore.show('Failed to load business profile.', 'error')
+    }
+  } finally {
+    loading.value = false
+  }
+})
 
 function resetForm() {
   form.value = {
@@ -307,30 +310,6 @@ async function confirmSave() {
     toastStore.show('Failed to update business profile.', 'error');
   } finally {
     saving.value = false;
-  }
-}
-
-async function resolveUpdateTargetId() {
-  updateTargetId.value = null;
-  updateAvailabilityError.value = '';
-
-  if (!authStore.user?.id) {
-    updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your account.';
-    return;
-  }
-
-  try {
-    const { data } = await businessesAPI.getAll();
-    const matchedBusiness = (data || []).find((item) => item.user_id === authStore.user.id);
-
-    if (!matchedBusiness?.id) {
-      updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your business record for updates.';
-      return;
-    }
-
-    updateTargetId.value = matchedBusiness.id;
-  } catch (err) {
-    updateAvailabilityError.value = 'Profile editing unavailable. We could not resolve your business record for updates.';
   }
 }
 

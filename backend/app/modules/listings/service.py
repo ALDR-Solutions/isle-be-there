@@ -4,10 +4,11 @@ import random
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
-from geoalchemy2.shape import to_shape
+from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.orm import selectinload
+from shapely.geometry import Point
 from sqlmodel import Session, asc, desc, select
 
 from app.modules.businesses.models import Business
@@ -16,6 +17,22 @@ from app.modules.reviews.models import Review
 from app.modules.users.models import User
 
 from .models import Listing, Statuses
+
+
+def _build_location(location_data: dict | None):
+    if not location_data:
+        return None
+
+    try:
+        lat = float(location_data["lat"])
+        lng = float(location_data["lng"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid location payload") from exc
+
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        raise HTTPException(status_code=400, detail="Location coordinates are out of range")
+
+    return from_shape(Point(lng, lat), srid=4326)
 
 
 def _batch_review_stats(db: Session, listing_ids: list) -> dict:
@@ -145,8 +162,11 @@ def create_listing(db: Session, data: dict, user_id: str):
     business = db.exec(select(Business).where(Business.user_id == user_id)).first()
     if not business:
         raise HTTPException(status_code=400, detail="User does not have a business")
+    location_data = data.pop("location", None)
     data["business_id"] = business.id
     listing = Listing(**data)
+    if location_data:
+        listing.location = _build_location(location_data)
     db.add(listing)
     db.commit()
     db.refresh(listing)
@@ -168,6 +188,9 @@ def update_listing(
         business = db.exec(select(Business).where(Business.user_id == user_id)).first()
         if not business or str(listing.business_id) != str(business.id):
             raise HTTPException(status_code=403, detail="Not authorized")
+
+    if "location" in update_data:
+        listing.location = _build_location(update_data.pop("location"))
 
     for key, value in update_data.items():
         setattr(listing, key, value)
@@ -234,3 +257,69 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
         return _serialize_listings(db, listings)
     except Exception:
         return _serialize_listings(db, _fetch_active_listings(db, limit))
+
+
+def search_listings_combined(
+    db: Session,
+    q: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float = 25,
+    limit: int = 20,
+):
+    query = select(Listing).where(Listing.status == Statuses.active)
+
+    ts_vector = func.to_tsvector(
+        "english",
+        func.concat_ws(" ", Listing.title, func.coalesce(Listing.description, "")),
+    )
+    rank_expr = None
+    if q:
+        ts_query = func.plainto_tsquery("english", q)
+        rank_expr = func.ts_rank(ts_vector, ts_query).label("rank")
+        query = query.add_columns(rank_expr).where(ts_vector.op("@@")(ts_query))
+
+    distance_expr = None
+    if lat is not None and lng is not None:
+        point = f"SRID=4326;POINT({lng} {lat})"
+        distance_expr = func.ST_Distance(Listing.location, point).label("distance_m")
+        query = query.add_columns(distance_expr).where(
+            func.ST_DWithin(Listing.location, point, radius_km * 1000)
+        )
+
+    query = query.options(selectinload(Listing.business_type_rel))
+
+    if rank_expr is not None:
+        query = query.order_by(desc(rank_expr))
+    elif distance_expr is not None:
+        query = query.order_by(asc(distance_expr))
+    else:
+        query = query.order_by(desc(Listing.created_at))
+
+    rows = db.exec(query.limit(limit)).all()
+
+    if not rows:
+        return []
+
+    if isinstance(rows[0], Listing):
+        return _serialize_listings(db, rows)
+
+    listings = [row[0] for row in rows]
+    serialized = _serialize_listings(db, listings)
+    listing_data_by_id = {item["id"]: item for item in serialized}
+
+    for row in rows:
+        listing = row[0]
+        payload = listing_data_by_id.get(str(listing.id))
+        if not payload:
+            continue
+        idx = 1
+        if rank_expr is not None and len(row) > idx:
+            rank_val = row[idx]
+            payload["rank"] = float(rank_val) if rank_val is not None else None
+            idx += 1
+        if distance_expr is not None and len(row) > idx:
+            dist_val = row[idx]
+            payload["distance_m"] = float(dist_val) if dist_val is not None else None
+
+    return serialized

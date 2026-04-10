@@ -33,3 +33,7 @@ class BusinessUpdate(BaseModel):
     is_verified: Optional[bool] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+
+
+class BusinessResponse(BusinessBase):
+    id: UUID

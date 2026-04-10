@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -24,6 +24,8 @@ class HotelListingJson(_StrictDetailsBase):
     cancellation_until_hours: Optional[int] = None
     deposit_required: Optional[bool] = None
     total_rooms: Optional[int] = None
+    check_in_time: Optional[time] = None
+    check_out_time: Optional[time] = None
 
 
 class TourListingJson(_StrictDetailsBase):
@@ -33,12 +35,36 @@ class TourListingJson(_StrictDetailsBase):
     service_availability: Optional[str] = None
 
 
+class RestaurantMenuItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: Optional[str] = None
+    price: Optional[float] = None
+
+
+class RestaurantMenuSection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    items: List[RestaurantMenuItem]
+
+
+class RestaurantMenu(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sections: List[RestaurantMenuSection]
+
+
 class RestaurantListingJson(_StrictDetailsBase):
     table_seating: Optional[bool] = None
     has_delivery: Optional[bool] = None
     has_take_out: Optional[bool] = None
     has_dining: Optional[bool] = None
     service_availability: Optional[str] = None
+    menu: Optional[RestaurantMenu] = None
+    # Kept for backward compatibility with existing payloads.
+    menu_items: Optional[List[str]] = None
 
 
 class ActivityListingJson(_StrictDetailsBase):
@@ -80,7 +106,13 @@ class ListingBase(BaseModel):
     end_time: Optional[datetime] = None
 
 
+class ListingLocation(BaseModel):
+    lat: float
+    lng: float
+
+
 class ListingCreate(ListingBase):
+    location: Optional[ListingLocation] = None
     status: Statuses = Statuses.pending
 
 
@@ -94,11 +126,7 @@ class ListingUpdate(BaseModel):
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
-
-
-class ListingLocation(BaseModel):
-    lat: float
-    lng: float
+    location: Optional[ListingLocation] = None
 
 
 class ListingResponse(ListingBase):

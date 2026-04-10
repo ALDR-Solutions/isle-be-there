@@ -74,30 +74,3 @@ class BusinessType(SQLModel, table=True):
     description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     listings: list["Listing"] = Relationship(back_populates="business_type_rel")
-
-class BusinessEmployees(SQLModel, table=True):
-    __tablename__ = "business_employees"
-
-    id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            primary_key=True,
-            nullable=False,
-            server_default=text("gen_random_uuid()"),
-        )
-    )
-    business_id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("businesses.id", onupdate="CASCADE", ondelete="CASCADE"),
-            nullable=False,
-        )
-    )
-    employee_id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("users.id", onupdate="CASCADE", ondelete="CASCADE"),
-            nullable=False,
-        )
-    )
-    role: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))

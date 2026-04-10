@@ -1,9 +1,15 @@
 <template>
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <div class="mb-8">
-      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">Trips</p>
+      <p
+        class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500"
+      >
+        Trips
+      </p>
       <h1 class="mt-2 text-3xl font-bold text-slate-900">My Bookings</h1>
-      <p class="mt-2 text-sm text-slate-500">Track upcoming reservations and manage pending bookings.</p>
+      <p class="mt-2 text-sm text-slate-500">
+        Track upcoming reservations and manage pending bookings.
+      </p>
     </div>
 
     <div
@@ -33,9 +39,22 @@
       v-else-if="bookings.length === 0"
       class="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm"
     >
-      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+      <div
+        class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z"
+          />
         </svg>
       </div>
       <h2 class="mt-5 text-lg font-bold text-slate-900">No bookings yet</h2>
@@ -58,8 +77,14 @@
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Booking</p>
-            <h2 class="mt-2 text-xl font-bold text-slate-900">#{{ booking.id }}</h2>
+            <p
+              class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400"
+            >
+              Booking
+            </p>
+            <h2 class="mt-2 text-xl font-bold text-slate-900">
+              #{{ booking.id }}
+            </h2>
           </div>
           <span
             class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -71,19 +96,72 @@
 
         <div class="mt-6 space-y-4 rounded-2xl bg-slate-50 p-4">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Service</p>
-            <p class="mt-1 text-sm font-medium text-slate-700">Service ID: {{ booking.service_id }}</p>
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              Listing
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              Listing Name: {{ getListingName(booking.service_id) }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-4 rounded-2xl bg-slate-50 p-4">
+          <div>
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              Service
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              Service Name: {{ getServiceName(booking.service_id) }}
+            </p>
           </div>
 
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Booking Time</p>
-            <p class="mt-1 text-sm font-medium text-slate-700">{{ formatDate(booking.booking_time) }}</p>
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              Booking Time
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              {{ formatDate(booking.booking_from_time) }}
+              to {{ formatDate(booking.booking_to_time) }}
+            </p>
           </div>
+
+          <div>
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              Name On Booking
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              {{ booking.bookers_name }}
+            </p>
+          </div>
+
+          <div>
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+            >
+              Amount of People
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              {{ booking.amount_of_people }}
+            </p>
+          </div>
+
         </div>
 
         <div class="mt-6 flex items-center justify-between gap-3">
           <p class="text-sm text-slate-500">
-            {{ booking.status === 'pending' ? 'This booking is still awaiting confirmation.' : 'Your booking status is up to date.' }}
+            {{
+              booking.status === "pending"
+                ? "This booking is still awaiting confirmation."
+                : "Your booking status is up to date."
+            }}
           </p>
           <button
             v-if="booking.status === 'pending'"
@@ -102,11 +180,26 @@
       @click.self="bookingToCancel = null"
     >
       <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
+      <div
+        class="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl"
+      >
         <div class="flex items-start gap-4">
-          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <div
+            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 text-red-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
           <div>
@@ -129,7 +222,7 @@
             :disabled="cancelling"
             class="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
           >
-            {{ cancelling ? 'Cancelling...' : 'Cancel Booking' }}
+            {{ cancelling ? "Cancelling..." : "Cancel Booking" }}
           </button>
         </div>
       </div>
@@ -138,73 +231,130 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { bookingsAPI } from '../services/api'
-import { useToastStore } from '../stores/toast'
+import { ref, onMounted } from "vue";
+import { bookingsAPI, servicesAPI, listingsAPI } from "../services/api";
+import { useToastStore } from "../stores/toast";
 
-const toastStore = useToastStore()
+const toastStore = useToastStore();
 
-const bookings = ref([])
-const loading = ref(true)
-const cancelling = ref(false)
-const bookingToCancel = ref(null)
-const error = ref('')
+const bookings = ref([]);
+const serviceDetails = ref({});
+const listingNames = ref({});
+const loading = ref(true);
+const cancelling = ref(false);
+const bookingToCancel = ref(null);
+const error = ref("");
 
 async function fetchBookings() {
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
 
   try {
-    const response = await bookingsAPI.getAll()
-    bookings.value = response.data
+    const response = await bookingsAPI.getAll();
+    bookings.value = response.data;
+    await fetchServiceNames(bookings.value);
   } catch (err) {
-    error.value = 'Failed to load bookings.'
+    error.value = "Failed to load bookings.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
+}
+
+async function fetchServiceNames(bookingsList) {
+  const uniqueIds = [
+    ...new Set(
+      bookingsList.map((booking) => booking.service_id).filter(Boolean),
+    ),
+  ];
+  await Promise.all(uniqueIds.map((serviceId) => fetchService(serviceId)));
+}
+
+async function fetchService(serviceId) {
+  if (serviceDetails.value[serviceId]) {
+    return;
+  }
+
+  try {
+    const response = await servicesAPI.getById(serviceId);
+    serviceDetails.value[serviceId] = {
+      name: response.data.name,
+      listing_id: response.data.listing_id,
+    };
+
+    if (response.data.listing_id) {
+      await fetchListingName(response.data.listing_id);
+    }
+  } catch (err) {
+    error.value = "Failed to load service.";
+  }
+}
+
+async function fetchListingName(listingId) {
+  if (listingNames.value[listingId]) {
+    return;
+  }
+
+  try {
+    const response = await listingsAPI.getById(listingId);
+    listingNames.value[listingId] = response.data.title;
+  } catch (err) {
+    error.value = "Failed to load listing.";
+  }
+}
+
+function getServiceName(serviceId) {
+  return serviceDetails.value[serviceId]?.name || "Service not found";
+}
+
+function getListingName(serviceId) {
+  const listingId = serviceDetails.value[serviceId]?.listing_id;
+  if (!listingId) {
+    return "Listing not found";
+  }
+  return listingNames.value[listingId] || "Loading listing...";
 }
 
 async function confirmCancelBooking() {
   if (!bookingToCancel.value) {
-    return
+    return;
   }
 
-  cancelling.value = true
+  cancelling.value = true;
 
   try {
-    await bookingsAPI.cancel(bookingToCancel.value.id)
-    toastStore.show('Booking cancelled successfully.', 'success')
-    bookingToCancel.value = null
-    await fetchBookings()
+    await bookingsAPI.cancel(bookingToCancel.value.id);
+    toastStore.show("Booking cancelled successfully.", "success");
+    bookingToCancel.value = null;
+    await fetchBookings();
   } catch (err) {
-    error.value = 'Failed to cancel booking.'
-    toastStore.show('Failed to cancel booking.', 'error')
+    error.value = "Failed to cancel booking.";
+    toastStore.show("Failed to cancel booking.", "error");
   } finally {
-    cancelling.value = false
+    cancelling.value = false;
   }
 }
 
 function formatDate(date) {
-  return new Date(date).toLocaleString()
+  return new Date(date).toLocaleString();
 }
 
 function statusLabel(status) {
-  if (status === 'pending') return 'Pending'
-  if (status === 'confirmed') return 'Confirmed'
-  if (status === 'cancelled') return 'Cancelled'
-  if (status === 'completed') return 'Completed'
-  return status
+  if (status === "pending") return "Pending";
+  if (status === "confirmed") return "Confirmed";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "completed") return "Completed";
+  return status;
 }
 
 function statusClasses(status) {
-  if (status === 'pending') return 'bg-amber-100 text-amber-800'
-  if (status === 'confirmed') return 'bg-emerald-100 text-emerald-800'
-  if (status === 'cancelled') return 'bg-red-100 text-red-800'
-  if (status === 'completed') return 'bg-cyan-100 text-cyan-800'
-  return 'bg-slate-100 text-slate-700'
+  if (status === "pending") return "bg-amber-100 text-amber-800";
+  if (status === "confirmed") return "bg-emerald-100 text-emerald-800";
+  if (status === "cancelled") return "bg-red-100 text-red-800";
+  if (status === "completed") return "bg-cyan-100 text-cyan-800";
+  return "bg-slate-100 text-slate-700";
 }
 
 onMounted(() => {
-  fetchBookings()
-})
+  fetchBookings();
+});
 </script>
