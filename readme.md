@@ -23,6 +23,14 @@ Backend URLs:
 - Docs: `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
 
+Backend environment variables for image uploads:
+
+- `SUPABASE_URL` (your project URL, e.g. `https://<project-ref>.supabase.co`)
+- `SUPABASE_SERVICE_ROLE_KEY` (server-side key for Storage upload API)
+- `SUPABASE_STORAGE_BUCKET` (optional, defaults to `uploads`)
+- `MAX_UPLOAD_FILE_SIZE_MB` (optional, defaults to `10`)
+- `ALLOWED_IMAGE_MIME_TYPES` (optional CSV, defaults to `image/jpeg,image/png,image/webp,image/gif`)
+
 ## Frontend
 
 ```bash

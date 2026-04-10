@@ -12,7 +12,47 @@
     </div>
 
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
+      <div
+        v-if="loading"
+        class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm"
+      >
+        <svg
+          class="mx-auto h-8 w-8 animate-spin text-cyan-500"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+        <p class="mt-4 text-sm text-slate-500">Loading admin data...</p>
+      </div>
 
+      <div
+        v-else-if="loadError"
+        class="rounded-3xl border border-red-200 bg-white px-6 py-8 text-center shadow-sm"
+      >
+        <p class="text-sm font-semibold text-red-600">{{ loadError }}</p>
+        <button
+          @click="loadAdminData"
+          class="mt-4 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Retry
+        </button>
+      </div>
+
+      <template v-else>
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p class="text-sm font-medium text-slate-500">Total Businesses</p>
@@ -87,11 +127,11 @@
           >
             <div class="flex items-center gap-4">
               <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-lg font-bold text-slate-500">
-                {{ biz.username.charAt(0).toUpperCase() }}
+                {{ (biz.business_name || '?').charAt(0).toUpperCase() }}
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <p class="text-base font-bold text-slate-900">{{ biz.username }}</p>
+                  <p class="text-base font-bold text-slate-900">{{ biz.business_name }}</p>
                   <span
                     class="rounded-xl px-2.5 py-0.5 text-xs font-semibold"
                     :class="statusBadgeClass(biz.status)"
@@ -99,8 +139,8 @@
                     {{ statusLabel(biz.status) }}
                   </span>
                 </div>
-                <p class="mt-0.5 text-sm text-slate-500">{{ biz.email }}</p>
-                <p class="mt-0.5 text-xs text-slate-400">Registered {{ biz.registeredAt }}</p>
+                <p class="mt-0.5 text-sm text-slate-500">{{ biz.business_email || 'No email set' }}</p>
+                <p class="mt-0.5 text-xs text-slate-400">Registered {{ formatDate(biz.created_at) }}</p>
               </div>
             </div>
 
@@ -108,16 +148,10 @@
               <button
                 v-if="biz.status !== 'approved'"
                 @click="openConfirmModal('approve', 'business', biz)"
-                class="rounded-2xl bg-emerald-500 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                :disabled="decisionSubmitting"
+                class="rounded-2xl bg-emerald-500 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 Approve
-              </button>
-              <button
-                v-if="biz.status !== 'rejected'"
-                @click="openConfirmModal('reject', 'business', biz)"
-                class="rounded-2xl border border-red-100 px-5 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50"
-              >
-                Reject
               </button>
               <span
                 v-if="biz.status === 'approved'"
@@ -150,9 +184,9 @@
           >
             <div class="relative h-48 bg-slate-100 overflow-hidden">
               <img
-                v-if="listing.images && listing.images.length > 0"
-                :src="listing.images[0]"
-                :alt="listing.name"
+                v-if="listing.image_urls && listing.image_urls.length > 0"
+                :src="listing.image_urls[0]"
+                :alt="listing.title"
                 class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
               <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
@@ -170,22 +204,22 @@
               </div>
               <div class="absolute top-3 right-3">
                 <span class="rounded-xl bg-slate-900/70 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                  {{ listing.category }}
+                  {{ listing.business_type_name || 'Listing' }}
                 </span>
               </div>
             </div>
 
             <div class="p-6">
-              <h3 class="text-base font-bold text-slate-900 leading-snug">{{ listing.name }}</h3>
+              <h3 class="text-base font-bold text-slate-900 leading-snug">{{ listing.title }}</h3>
               <p class="mt-1 flex items-center gap-1 text-sm text-slate-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {{ listing.city }}, {{ listing.country }}
+                {{ [listing.address?.city, listing.address?.country].filter(Boolean).join(', ') || 'No location set' }}
               </p>
               <p class="mt-1 text-xs text-slate-400">
-                Submitted by <span class="font-semibold text-slate-600">{{ listing.businessName }}</span> &middot; {{ listing.submittedAt }}
+                Submitted by <span class="font-semibold text-slate-600">{{ businessNameById[listing.business_id] || 'Unknown business' }}</span> &middot; {{ formatDate(listing.created_at) }}
               </p>
               <p class="mt-2 text-sm text-slate-500 line-clamp-2">{{ listing.description }}</p>
 
@@ -193,14 +227,16 @@
                 <button
                   v-if="listing.status !== 'approved'"
                   @click="openConfirmModal('approve', 'listing', listing)"
-                  class="flex-1 rounded-2xl bg-emerald-500 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                  :disabled="decisionSubmitting"
+                  class="flex-1 rounded-2xl bg-emerald-500 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                 >
                   Approve
                 </button>
                 <button
                   v-if="listing.status !== 'rejected'"
                   @click="openConfirmModal('reject', 'listing', listing)"
-                  class="flex-1 rounded-2xl border border-red-100 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+                  :disabled="decisionSubmitting"
+                  class="flex-1 rounded-2xl border border-red-100 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Reject
                 </button>
@@ -215,13 +251,14 @@
           </div>
         </div>
       </template>
+      </template>
 
     </div>
 
     <div
       v-if="showConfirmModal"
       class="fixed inset-0 z-50 flex items-center justify-center px-4"
-      @click.self="showConfirmModal = false"
+      @click.self="!decisionSubmitting && (showConfirmModal = false)"
     >
       <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"></div>
       <div class="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
@@ -243,7 +280,7 @@
               {{ confirmType === 'business' ? 'Business' : 'Listing' }}?
             </h3>
             <p class="mt-2 text-sm leading-6 text-slate-600">
-              <span class="font-semibold text-slate-800">{{ confirmTarget?.name || confirmTarget?.username }}</span>
+              <span class="font-semibold text-slate-800">{{ confirmTargetLabel }}</span>
               will be marked as
               <span :class="confirmAction === 'approve' ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'">
                 {{ confirmAction === 'approve' ? 'approved' : 'rejected' }}
@@ -255,16 +292,20 @@
         <div class="mt-6 flex gap-3">
           <button
             @click="showConfirmModal = false"
-            class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            :disabled="decisionSubmitting"
+            class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             @click="confirmDecision"
+            :disabled="decisionSubmitting"
             class="flex-1 rounded-2xl py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
-            :class="confirmAction === 'approve' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-red-500 hover:bg-red-400'"
+            :class="confirmAction === 'approve'
+              ? 'bg-emerald-500 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0'
+              : 'bg-red-500 hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0'"
           >
-            {{ confirmAction === 'approve' ? 'Approve' : 'Reject' }}
+            {{ decisionSubmitting ? 'Processing...' : (confirmAction === 'approve' ? 'Approve' : 'Reject') }}
           </button>
         </div>
       </div>
@@ -274,81 +315,49 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { businessesAPI, listingsAPI } from '../services/api'
+import { useToastStore } from '../stores/toast'
 
+const toastStore = useToastStore()
+const loading = ref(true)
+const loadError = ref('')
+const decisionSubmitting = ref(false)
 
-const businesses = ref([
-  {
-    id: 1,
-    username: 'sunsetresorts',
-    email: 'contact@sunsetresorts.com',
-    registeredAt: 'Mar 10, 2026',
-    status: 'pending',
-  },
-  {
-    id: 2,
-    username: 'coraldivers',
-    email: 'info@coraldivers.lc',
-    registeredAt: 'Mar 12, 2026',
-    status: 'approved',
-  },
-  {
-    id: 3,
-    username: 'spicegarden',
-    email: 'hello@spicegarden.gd',
-    registeredAt: 'Mar 15, 2026',
-    status: 'rejected',
-  },
-])
-
-const listings = ref([
-  {
-    id: 1,
-    name: 'Sunset Bay Resort',
-    category: 'Hotel',
-    description: 'A stunning luxury resort perched above the turquoise bay with panoramic ocean views.',
-    city: 'Bridgetown',
-    country: 'Barbados',
-    businessName: 'sunsetresorts',
-    submittedAt: 'Mar 10, 2026',
-    images: [],
-    status: 'pending',
-  },
-  {
-    id: 2,
-    name: 'Coral Reef Diving Tour',
-    category: 'Tour',
-    description: 'Guided snorkelling and diving experience through the vibrant coral reefs of St. Lucia.',
-    city: 'Castries',
-    country: 'St. Lucia',
-    businessName: 'coraldivers',
-    submittedAt: 'Mar 12, 2026',
-    images: [],
-    status: 'approved',
-  },
-  {
-    id: 3,
-    name: 'Spice Garden Restaurant',
-    category: 'Restaurant',
-    description: 'Farm-to-table dining featuring authentic Grenadian spices and fresh seafood.',
-    city: "St. George's",
-    country: 'Grenada',
-    businessName: 'spicegarden',
-    submittedAt: 'Mar 15, 2026',
-    images: [],
-    status: 'rejected',
-  },
-])
+const businesses = ref([])
+const listings = ref([])
 
 const mainTab = ref('businesses')
 const filterTab = ref('all')
 
-const filterTabs = [
-    { label: 'All', value: 'all' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Approved', value: 'approved' },
-    { label: 'Rejected', value: 'rejected' },
-]
+const filterTabs = computed(() => {
+    const baseTabs = [
+        { label: 'All', value: 'all' },
+        { label: 'Pending', value: 'pending' },
+        { label: 'Approved', value: 'approved' },
+    ]
+
+    if (mainTab.value === 'listings') {
+        baseTabs.push({ label: 'Rejected', value: 'rejected' })
+    }
+
+    return baseTabs
+})
+
+const businessNameById = computed(() =>
+  Object.fromEntries(
+    businesses.value.map((business) => [business.id, business.business_name]),
+  ),
+)
+
+const confirmTargetLabel = computed(
+  () =>
+    confirmTarget.value?.title ||
+    confirmTarget.value?.business_name ||
+    confirmTarget.value?.name ||
+    confirmTarget.value?.username ||
+    'this item',
+)
 
 const filteredBusinesses = computed(() => {
     if(filterTab.value === 'all') return businesses.value
@@ -377,7 +386,7 @@ function statusLabel(status) {
 function statusBadgeClass(status) {
     if (status === 'approved') return 'bg-emerald-500 text-white'
     if (status === 'pending') return 'bg-amber-400 text-slate-900'
-     if (status === 'rejected') return 'bg-red-500 text-white'
+    if (status === 'rejected') return 'bg-red-500 text-white'
     return 'bg-slate-300 text-slate-900'
 }
 
@@ -387,23 +396,100 @@ const confirmType = ref('')
 const confirmTarget = ref(null)
 
 function openConfirmModal(action, type, target){
+    if (decisionSubmitting.value) return
     confirmAction.value = action
     confirmType.value = type
     confirmTarget.value = target
     showConfirmModal.value = true
 }
 
-function confirmDecision() {
-    const collection = confirmType.value === 'business' ? businesses : listings
-    const index = collection.value.findIndex(item => item.id === confirmTarget.value.id)
-    if (index !== -1) {
-        collection.value[index] = {
-            ...collection.value[index],
-            status: confirmAction.value === 'approve' ? 'approved' : 'rejected',
-
-        }
-    }
-    showConfirmModal.value = false
-    confirmTarget.value = null
+function formatDate(value) {
+    if (!value) return 'Unknown date'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'Unknown date'
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(date)
 }
+
+function normalizeBusinessStatus(business) {
+    return {
+        ...business,
+        status: business.is_verified ? 'approved' : 'pending',
+    }
+}
+
+async function loadAdminData() {
+    loading.value = true
+    loadError.value = ''
+    try {
+        const [businessesResponse, listingsResponse] = await Promise.all([
+            businessesAPI.getAll({ limit: 100 }),
+            listingsAPI.getAll({ limit: 100 }),
+        ])
+
+        businesses.value = (businessesResponse.data ?? []).map(normalizeBusinessStatus)
+        listings.value = listingsResponse.data ?? []
+    } catch (error) {
+        loadError.value = 'Failed to load admin data.'
+        toastStore.show('Failed to load admin data.', 'error')
+    } finally {
+        loading.value = false
+    }
+}
+
+async function confirmDecision() {
+    if (!confirmTarget.value || decisionSubmitting.value) return
+    decisionSubmitting.value = true
+
+    try {
+        if (confirmType.value === 'business') {
+            if (confirmAction.value !== 'approve') {
+                throw new Error('Business rejection is not supported by the current backend.')
+            }
+
+            const response = await businessesAPI.update(confirmTarget.value.id, {
+                is_verified: true,
+            })
+            const updatedBusiness = normalizeBusinessStatus(response.data)
+            const index = businesses.value.findIndex((item) => item.id === updatedBusiness.id)
+            if (index !== -1) {
+                businesses.value[index] = updatedBusiness
+            }
+            toastStore.show('Business approved.', 'success')
+        } else {
+            const nextStatus = confirmAction.value === 'approve' ? 'approved' : 'rejected'
+            const response = await listingsAPI.update(confirmTarget.value.id, {
+                status: nextStatus,
+            })
+            const index = listings.value.findIndex((item) => item.id === response.data.id)
+            if (index !== -1) {
+                listings.value[index] = response.data
+            }
+            toastStore.show(`Listing ${nextStatus}.`, 'success')
+        }
+
+        showConfirmModal.value = false
+        confirmTarget.value = null
+    } catch (error) {
+        toastStore.show(
+            error.response?.data?.detail || error.message || 'Failed to update status.',
+            'error',
+        )
+    } finally {
+        decisionSubmitting.value = false
+    }
+}
+
+onMounted(() => {
+    loadAdminData()
+})
+
+watch(mainTab, () => {
+    if (!filterTabs.value.some((tab) => tab.value === filterTab.value)) {
+        filterTab.value = 'all'
+    }
+})
 </script>

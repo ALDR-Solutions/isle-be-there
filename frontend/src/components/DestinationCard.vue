@@ -43,9 +43,17 @@
 
     <div class="flex flex-1 flex-col p-6">
       <div class="mb-4">
-        <h3 class="text-xl font-bold leading-tight text-slate-900">
-          {{ listing.title }}
-        </h3>
+        <div class="flex items-start gap-2">
+          <h3 class="text-xl font-bold leading-tight text-slate-900">
+            {{ listing.title }}
+          </h3>
+          <span
+            v-if="hotelStarLabel"
+            class="mt-1 inline-flex shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700"
+          >
+            {{ hotelStarLabel }}
+          </span>
+        </div>
 
         <div v-if="listing.address" class="mt-3 flex items-start text-sm text-slate-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -153,6 +161,15 @@ const highlightComponent = computed(() => {
     case 'Activity Provider':  return ActivityCardHighlights
     default:           return null
   }
+})
+
+const hotelStarLabel = computed(() => {
+  if (props.listing.business_type_name !== 'Hotel') return null
+
+  const starLevel = Number(props.listing?.details?.star_level)
+  if (!Number.isFinite(starLevel) || starLevel <= 0) return null
+
+  return `${Math.round(starLevel)}-star`
 })
 
 const locationText = computed(() => {

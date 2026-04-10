@@ -42,6 +42,12 @@
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
         :class="{ 'opacity-60': service.status === 'inactive' }"
       >
+        <img
+          v-if="service.type_data?.image_url"
+          :src="service.type_data.image_url"
+          alt="Service image"
+          class="mb-4 h-40 w-full rounded-2xl object-cover"
+        />
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="truncate text-base font-bold text-slate-900">{{ service.name }}</p>
@@ -147,6 +153,30 @@
               placeholder="Describe this service..."
               class="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
             ></textarea>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Service Image</label>
+            <input ref="serviceImageInputRef" type="file" accept="image/*" class="hidden" @change="onServiceImageChange" />
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                :disabled="serviceImageUploading"
+                @click="openServiceImagePicker"
+                class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {{ serviceImageUploading ? 'Uploading...' : 'Upload Image' }}
+              </button>
+              <button
+                v-if="serviceForm.image_url"
+                type="button"
+                @click="serviceForm.image_url = ''"
+                class="rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+              >
+                Remove
+              </button>
+            </div>
+            <img v-if="serviceForm.image_url" :src="serviceForm.image_url" alt="Service preview" class="mt-3 h-36 w-full rounded-2xl object-cover" />
           </div>
 
           <div class="grid gap-4 sm:grid-cols-3">
@@ -379,7 +409,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 
-import { servicesAPI } from '../../services/api'
+import { servicesAPI, uploadsAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 
 const props = defineProps({
@@ -404,6 +434,8 @@ const actionServiceId = ref(null)
 const serviceErrors = ref({})
 const roomAmenityInput = ref('')
 const allergenInput = ref('')
+const serviceImageInputRef = ref(null)
+const serviceImageUploading = ref(false)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
@@ -422,6 +454,7 @@ const blankServiceForm = () => ({
   room_amenities: [],
   menu_category: '',
   allergens: [],
+  image_url: '',
 })
 
 const serviceForm = ref(blankServiceForm())
@@ -464,6 +497,7 @@ function mapServiceToForm(service) {
     room_amenities: normalizeStringArray(typeData.room_amenities),
     menu_category: typeData.menu_category ?? '',
     allergens: normalizeStringArray(typeData.allergens),
+    image_url: typeData.image_url ?? '',
   }
 }
 
@@ -478,27 +512,32 @@ function buildAvailabilityPayload() {
 }
 
 function buildTypeDataPayload() {
+  const image_url = serviceForm.value.image_url.trim()
+
   if (isHotelType.value) {
     const room_type = serviceForm.value.room_type.trim()
     const room_amenities = normalizeStringArray(serviceForm.value.room_amenities)
-    if (!room_type && !room_amenities.length) return null
+    if (!room_type && !room_amenities.length && !image_url) return null
     return {
       room_type: room_type || null,
       room_amenities,
+      image_url: image_url || null,
     }
   }
 
   if (isRestaurantType.value) {
     const menu_category = serviceForm.value.menu_category.trim()
     const allergens = normalizeStringArray(serviceForm.value.allergens)
-    if (!menu_category && !allergens.length) return null
+    if (!menu_category && !allergens.length && !image_url) return null
     return {
       menu_category: menu_category || null,
       allergens,
+      image_url: image_url || null,
     }
   }
 
-  return null
+  if (!image_url) return null
+  return { image_url }
 }
 
 function buildServicePayload() {
@@ -567,6 +606,28 @@ function openServiceModal(service = null) {
   roomAmenityInput.value = ''
   allergenInput.value = ''
   showServiceModal.value = true
+}
+
+function openServiceImagePicker() {
+  serviceImageInputRef.value?.click()
+}
+
+async function onServiceImageChange(event) {
+  const file = event.target?.files?.[0]
+  if (!file) return
+
+  serviceImageUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await uploadsAPI.uploadImage(formData, { folder: 'services' })
+    serviceForm.value.image_url = response.data.url
+  } catch (error) {
+    toastStore.show(error.response?.data?.detail || 'Failed to upload service image.', 'error')
+  } finally {
+    serviceImageUploading.value = false
+    event.target.value = ''
+  }
 }
 
 function closeServiceModal() {

@@ -8,7 +8,7 @@ from app.modules.listings.service import get_business_listings as get_business_l
 from app.shared.dependencies.permissions import require_business_owner, require_roles
 
 from .models import Business
-from .schemas import BusinessCreate, BusinessUpdate, BusinessBase
+from .schemas import BusinessCreate, BusinessUpdate, BusinessResponse
 from .service import (
     create_business,
     get_business_by_id,
@@ -26,7 +26,7 @@ def _require_user_id(user_id: str | None):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
 
-@router.get("", response_model=List[BusinessBase])
+@router.get("", response_model=List[BusinessResponse])
 def get_businesses(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -36,7 +36,7 @@ def get_businesses(
     return list_businesses(db, skip=skip, limit=limit, verified_only=verified_only)
 
 
-@router.get("/me", response_model=BusinessBase)
+@router.get("/me", response_model=BusinessResponse)
 def get_my_business(
     current_user=Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ def get_business(business_id: str, db: Session = Depends(get_db)):
     return get_business_by_id(db, business_id)
 
 
-@router.post("", response_model=dict, status_code=201)
+@router.post("", response_model=BusinessResponse, status_code=201)
 def create_business_endpoint(
     business_data: BusinessCreate,
     current_user=Depends(require_roles("business", "admin")),
@@ -78,7 +78,7 @@ def create_business_endpoint(
     return create_business(db, data, current_user.id)
 
 
-@router.put("/{business_id}", response_model=dict)
+@router.put("/{business_id}", response_model=BusinessResponse)
 def update_business_endpoint(
     business_data: BusinessUpdate,
     business: Business = Depends(require_business_owner),
@@ -95,5 +95,5 @@ def update_business_endpoint(
         business.id,
         update_data,
         current_user.id,
-        is_admin=current_user.is_super_admin,
+        is_admin=current_user.user_type == "admin",
     )

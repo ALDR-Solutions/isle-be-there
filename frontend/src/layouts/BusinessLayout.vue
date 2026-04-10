@@ -75,10 +75,15 @@
 
               <div class="py-1">
                 <router-link
+                  to="/business/account"
+                  @click="desktopDropdownOpen = false"
+                  class="block w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >My Account</router-link>
+                <router-link
                   to="/business/profile"
                   @click="desktopDropdownOpen = false"
                   class="block w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >Profile</router-link>
+                >Business Profile</router-link>
                 <router-link
                   to="/business/employees"
                   @click="desktopDropdownOpen = false"
@@ -148,10 +153,15 @@
 
           <div class="border-t border-slate-100 pt-2">
             <router-link
+              to="/business/account"
+              @click="mobileMenuOpen = false"
+              class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >My Account</router-link>
+            <router-link
               to="/business/profile"
               @click="mobileMenuOpen = false"
               class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >Profile</router-link>
+            >Business Profile</router-link>
             <router-link
               to="/business/employees"
               @click="mobileMenuOpen = false"
