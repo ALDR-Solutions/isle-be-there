@@ -80,7 +80,13 @@ class ListingBase(BaseModel):
     end_time: Optional[datetime] = None
 
 
+class ListingLocation(BaseModel):
+    lat: float
+    lng: float
+
+
 class ListingCreate(ListingBase):
+    location: Optional[ListingLocation] = None
     status: Statuses = Statuses.pending
 
 
@@ -94,11 +100,7 @@ class ListingUpdate(BaseModel):
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
-
-
-class ListingLocation(BaseModel):
-    lat: float
-    lng: float
+    location: Optional[ListingLocation] = None
 
 
 class ListingResponse(ListingBase):
