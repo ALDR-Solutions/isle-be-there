@@ -130,7 +130,7 @@ def require_listing_owner(
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    if user.is_super_admin:
+    if user.user_type == "admin":
         return listing
 
     if not listing.business_id:
