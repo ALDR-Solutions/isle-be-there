@@ -105,7 +105,7 @@ export const bookingsAPI = {
   getById: (id) => api.get(`/api/bookings/${id}`),
   create: (data) => api.post('/api/bookings', data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
-  cancel: (id) => api.delete(`/api/bookings/${id}`),
+  cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
 };
 
 // Reviews API
