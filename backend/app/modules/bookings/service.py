@@ -1,5 +1,7 @@
 """Business logic for booking operations."""
 
+from typing import List
+
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlmodel import UUID, Session, select
@@ -10,7 +12,7 @@ from app.modules.services.models import Service
 from .models import Booking, BookingStatus
 
 
-def list_bookings(db: Session, user_id: UUID):
+def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
     query = (
         select(
             Booking, 
@@ -36,7 +38,7 @@ def list_bookings(db: Session, user_id: UUID):
     ]
 
 
-def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID):
+def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingResponse:
     query = (
         select(
             Booking,
@@ -65,7 +67,7 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID):
     )
 
 
-def create_booking(db: Session, booking: BookingCreate, user_id: UUID):
+def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
     booking = Booking(**booking.model_dump())
     booking.user_id = user_id
 
@@ -75,7 +77,7 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID):
     return booking
 
 
-def update_booking(db: Session, booking: Booking, update_data: dict):
+def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
 
     for key, value in update_data.items():
         setattr(booking, key, value)
@@ -85,9 +87,9 @@ def update_booking(db: Session, booking: Booking, update_data: dict):
     return booking
 
 
-def cancel_booking(db: Session, booking: Booking):
-
+def cancel_booking(db: Session, booking: Booking) -> Booking:
     booking.status = BookingStatus.cancelled
 
     db.commit()
     db.refresh(booking)
+    return booking
