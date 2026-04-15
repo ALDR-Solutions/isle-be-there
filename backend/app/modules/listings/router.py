@@ -30,7 +30,7 @@ def _require_user_id(user_id: str | None):
 @router.get("", response_model=List[ListingResponse])
 def get_listings(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100),
     city: str | None = None,
     country: str | None = None,
     business_type: str | None = None,
