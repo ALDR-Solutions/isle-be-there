@@ -1,6 +1,7 @@
 """Business logic for listings."""
 
 import random
+from uuid import UUID
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
@@ -12,7 +13,11 @@ from shapely.geometry import Point
 from sqlmodel import Session, asc, desc, select
 
 from app.modules.businesses.models import Business
-from app.modules.interests.models import ListingInterest, UserInterest
+from app.modules.interests.models import (
+    BusinessTypeInterest,
+    ListingInterest,
+    UserInterest,
+)
 from app.modules.reviews.models import Review
 from app.modules.users.models import User
 
@@ -63,7 +68,93 @@ def _batch_review_stats(db: Session, listing_ids: list) -> dict:
     return stats
 
 
-def _serialize_listing(listing: Listing, review_stats: dict | None = None) -> dict:
+def _normalize_interest_ids(interest_ids: list[UUID] | None) -> list[UUID]:
+    if not interest_ids:
+        return []
+
+    deduplicated: list[UUID] = []
+    seen: set[UUID] = set()
+    for interest_id in interest_ids:
+        if interest_id in seen:
+            continue
+        seen.add(interest_id)
+        deduplicated.append(interest_id)
+    return deduplicated
+
+
+def _get_allowed_interest_ids(db: Session, business_type_id: UUID | None) -> set[UUID]:
+    if not business_type_id:
+        return set()
+
+    rows = db.exec(
+        select(BusinessTypeInterest.interest_id).where(
+            BusinessTypeInterest.business_type_id == business_type_id
+        )
+    ).all()
+    return set(rows)
+
+
+def _validate_interest_ids_for_business_type(
+    db: Session,
+    business_type_id: UUID | None,
+    interest_ids: list[UUID] | None,
+) -> list[UUID]:
+    normalized_interest_ids = _normalize_interest_ids(interest_ids)
+    if not normalized_interest_ids:
+        return []
+
+    allowed_interest_ids = _get_allowed_interest_ids(db, business_type_id)
+    invalid_interest_ids = [
+        str(interest_id)
+        for interest_id in normalized_interest_ids
+        if interest_id not in allowed_interest_ids
+    ]
+    if invalid_interest_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid interests for this listing type: {', '.join(invalid_interest_ids)}",
+        )
+
+    return normalized_interest_ids
+
+
+def _sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UUID]) -> None:
+    existing_rows = db.exec(
+        select(ListingInterest).where(ListingInterest.listing_id == listing_id)
+    ).all()
+    existing_interest_ids = {row.interest_id for row in existing_rows}
+    target_interest_ids = set(interest_ids)
+
+    for row in existing_rows:
+        if row.interest_id not in target_interest_ids:
+            db.delete(row)
+
+    for interest_id in interest_ids:
+        if interest_id in existing_interest_ids:
+            continue
+        db.add(ListingInterest(listing_id=listing_id, interest_id=interest_id))
+
+
+def _batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UUID, list[UUID]]:
+    if not listing_ids:
+        return {}
+
+    rows = db.exec(
+        select(ListingInterest.listing_id, ListingInterest.interest_id).where(
+            ListingInterest.__table__.c.listing_id.in_(listing_ids)
+        )
+    ).all()
+    interest_map: dict[UUID, list[UUID]] = {listing_id: [] for listing_id in listing_ids}
+    for row in rows:
+        interest_map[row.listing_id].append(row.interest_id)
+    return interest_map
+
+
+def _serialize_listing(
+    listing: Listing,
+    review_stats: dict | None = None,
+    interest_ids: list[UUID] | None = None,
+) -> dict:
     data = listing.model_dump(exclude={"embedding", "location"})
 
     location = listing.location
@@ -80,6 +171,8 @@ def _serialize_listing(listing: Listing, review_stats: dict | None = None) -> di
     if review_stats is not None:
         data.update(review_stats)
 
+    data["interest_ids"] = interest_ids or []
+
     return data
 
 
@@ -88,7 +181,15 @@ def _serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
         return []
     listing_ids = [listing.id for listing in listings]
     stats_map = _batch_review_stats(db, listing_ids)
-    return [_serialize_listing(listing, stats_map[listing.id]) for listing in listings]
+    interest_map = _batch_listing_interest_ids(db, listing_ids)
+    return [
+        _serialize_listing(
+            listing,
+            stats_map[listing.id],
+            interest_map.get(listing.id, []),
+        )
+        for listing in listings
+    ]
 
 
 def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
@@ -112,7 +213,7 @@ def get_listing_review_stats(db: Session, listing_id) -> dict:
 def list_listings(
     db: Session,
     skip: int = 0,
-    limit: int = 20,
+    limit: int | None = None,
     city: str | None = None,
     country: str | None = None,
     business_type: str | None = None,
@@ -141,8 +242,10 @@ def list_listings(
         if sort_column is not None:
             query = query.order_by(asc(sort_column) if sort_order == "asc" else desc(sort_column))
 
-    query = query.options(selectinload(Listing.business_type_rel))
-    listings = db.exec(query.offset(skip).limit(limit)).all()
+    query = query.options(selectinload(Listing.business_type_rel)).offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    listings = db.exec(query).all()
     return _serialize_listings(db, listings)
 
 
@@ -155,23 +258,34 @@ def get_listing_by_id(db: Session, listing_id: str):
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     review_stats = get_listing_review_stats(db, listing_id)
-    return _serialize_listing(listing, review_stats)
+    interest_map = _batch_listing_interest_ids(db, [listing.id])
+    return _serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
 def create_listing(db: Session, data: dict, user_id: str):
     business = db.exec(select(Business).where(Business.user_id == user_id)).first()
     if not business:
         raise HTTPException(status_code=400, detail="User does not have a business")
+
+    interest_ids = data.pop("interest_ids", None)
     location_data = data.pop("location", None)
     data["business_id"] = business.id
+    validated_interest_ids = _validate_interest_ids_for_business_type(
+        db,
+        data.get("business_type"),
+        interest_ids,
+    )
+
     listing = Listing(**data)
     if location_data:
         listing.location = _build_location(location_data)
     db.add(listing)
+    db.flush()
+    _sync_listing_interests(db, listing.id, validated_interest_ids)
     db.commit()
     db.refresh(listing)
     review_stats = get_listing_review_stats(db, listing.id)
-    return _serialize_listing(listing, review_stats)
+    return _serialize_listing(listing, review_stats, validated_interest_ids)
 
 
 def update_listing(
@@ -189,15 +303,32 @@ def update_listing(
         if not business or str(listing.business_id) != str(business.id):
             raise HTTPException(status_code=403, detail="Not authorized")
 
+    should_update_interests = "interest_ids" in update_data
+    requested_interest_ids = update_data.pop("interest_ids", None)
+
     if "location" in update_data:
         listing.location = _build_location(update_data.pop("location"))
 
+    next_business_type = update_data.get("business_type", listing.business_type)
     for key, value in update_data.items():
         setattr(listing, key, value)
+
+    updated_interest_ids: list[UUID] | None = None
+    if should_update_interests:
+        updated_interest_ids = _validate_interest_ids_for_business_type(
+            db,
+            next_business_type,
+            requested_interest_ids,
+        )
+        _sync_listing_interests(db, listing.id, updated_interest_ids)
+
     db.commit()
     db.refresh(listing)
     review_stats = get_listing_review_stats(db, listing.id)
-    return _serialize_listing(listing, review_stats)
+    if updated_interest_ids is None:
+        interest_map = _batch_listing_interest_ids(db, [listing.id])
+        updated_interest_ids = interest_map.get(listing.id, [])
+    return _serialize_listing(listing, review_stats, updated_interest_ids)
 
 
 def delete_listing(
