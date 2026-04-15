@@ -65,6 +65,8 @@ def get_user_role(user: User) -> str:
         return "business"
     if user.user_type == "employee":
         return "employee"
+    if user.user_type == "regular":
+        return "regular"
     return "user"
 
 
@@ -85,7 +87,7 @@ def require_roles(*roles: str) -> Callable[[User], User]:
 
 def require_booking_owner(
     booking_id: UUID,
-    user: User = Depends(require_roles("user", "admin")),
+    user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Booking:
     booking = db.exec(select(Booking).where(Booking.id == booking_id)).first()
@@ -98,7 +100,7 @@ def require_booking_owner(
 
 def require_review_owner(
     review_id: int,
-    user: User = Depends(require_roles("user", "admin")),
+    user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
     review = db.exec(select(Review).where(Review.id == review_id)).first()

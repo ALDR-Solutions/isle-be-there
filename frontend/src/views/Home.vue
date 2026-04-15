@@ -1,34 +1,48 @@
 <template>
   <div class="bg-slate-50 text-slate-900">
-    <section class="relative -mt-20 flex min-h-screen w-full items-center overflow-hidden pt-20">
+    <section
+      class="relative -mt-20 flex min-h-screen w-full items-center overflow-hidden pt-20"
+    >
       <transition-group name="fade" tag="div" class="absolute inset-0">
         <div
           v-for="(img, i) in heroImages"
           v-show="currentSlide === i"
           :key="i"
           class="absolute inset-0 bg-cover bg-center"
-          :style="{ backgroundImage: `url(${img})` }">
+          :style="{ backgroundImage: `url(${img})` }"
+        >
           <div class="absolute inset-0 bg-slate-950/55"></div>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"></div>
+          <div
+            class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"
+          ></div>
         </div>
       </transition-group>
 
-      <div class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div
+        class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8"
+      >
         <div class="flex max-w-3xl flex-col items-center text-center">
-          <h1 class="text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-7xl">
+          <h1
+            class="text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-7xl"
+          >
             Discover the Paradise of the Caribbean Islands
           </h1>
 
-          <p class="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
-            Experience a once in a lifetime trip to the hidden gems of the Caribbean with stays,
-            adventures, and coastal escapes curated for modern travelers.
+          <p
+            class="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg"
+          >
+            Experience a once in a lifetime trip to the hidden gems of the
+            Caribbean with stays, adventures, and coastal escapes curated for
+            modern travelers.
           </p>
 
           <div class="mt-10 w-full max-w-4xl">
             <div
               class="flex flex-col gap-4 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:flex-row sm:items-center"
             >
-              <div class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white">
+              <div
+                class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5 shrink-0 text-cyan-300"
@@ -71,7 +85,6 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -81,23 +94,32 @@
           :key="i"
           @click="currentSlide = i"
           class="h-3 rounded-full transition-all duration-500"
-          :class="currentSlide === i ? 'w-10 bg-cyan-300' : 'w-3 bg-white/45 hover:bg-white/70'"
+          :class="
+            currentSlide === i
+              ? 'w-10 bg-cyan-300'
+              : 'w-3 bg-white/45 hover:bg-white/70'
+          "
         />
       </div>
     </section>
 
     <section class="relative px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl">
-        <div class="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end lg:mb-12">
+        <div
+          class="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end lg:mb-12"
+        >
           <div class="max-w-2xl">
-            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+            <p
+              class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
+            >
               Featured Destinations
             </p>
             <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
               Recommended for You
             </h2>
             <p class="mt-4 text-base leading-7 text-slate-600">
-              Browse these amazing places that are tailored to your desires and interests.
+              Browse these amazing places that are tailored to your desires and
+              interests.
             </p>
           </div>
 
@@ -107,8 +129,19 @@
               :disabled="carouselIndex === 0"
               class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
 
@@ -117,21 +150,51 @@
               :disabled="carouselIndex >= maxIndex"
               class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
           </div>
         </div>
 
         <div v-if="loading" class="flex justify-center py-20">
-          <svg class="h-8 w-8 animate-spin text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          <svg
+            class="h-8 w-8 animate-spin text-cyan-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
           </svg>
         </div>
 
-        <div v-else-if="personalizedListings.length === 0" class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-slate-500 shadow-sm">
+        <div
+          v-else-if="personalizedListings.length === 0"
+          class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-slate-500 shadow-sm"
+        >
           No destinations available.
         </div>
 
@@ -162,20 +225,32 @@
 
     <section
       class="relative mx-4 overflow-hidden rounded-[2rem] sm:mx-6 lg:mx-8"
-      style="background-image: linear-gradient(rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.82)), url('/images/bay.jpg'); background-size: cover; background-position: center;"
+      style="
+        background-image:
+          linear-gradient(rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.82)),
+          url(&quot;/images/bay.jpg&quot;);
+        background-size: cover;
+        background-position: center;
+      "
     >
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"></div>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"
+      ></div>
 
-      <div class="relative mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center px-6 py-20 text-center text-white">
-        <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
+      <div
+        class="relative mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center px-6 py-20 text-center text-white"
+      >
+        <p
+          class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300"
+        >
           Start Exploring
         </p>
         <h2 class="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
           Ready for your Caribbean adventure?
         </h2>
         <p class="mt-5 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
-          Join thousands of travelers discovering places to stay, local gems, and unforgettable
-          island experiences.
+          Join thousands of travelers discovering places to stay, local gems,
+          and unforgettable island experiences.
         </p>
 
         <div class="mt-10 flex flex-wrap justify-center gap-4">
@@ -192,7 +267,9 @@
     <section class="px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div class="mb-10 max-w-2xl">
-          <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+          <p
+            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
+          >
             Popular Destinations
           </p>
           <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
@@ -201,27 +278,42 @@
         </div>
 
         <div class="grid gap-6 md:grid-cols-3">
-          <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div
+            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+          >
             <p class="text-sm font-semibold text-slate-500">Beach Escapes</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">Crystal water and quiet mornings</h3>
+            <h3 class="mt-3 text-xl font-bold text-slate-900">
+              Crystal water and quiet mornings
+            </h3>
             <p class="mt-3 text-sm leading-6 text-slate-600">
-              Discover coastlines, hidden coves, and stays built for slow island days.
+              Discover coastlines, hidden coves, and stays built for slow island
+              days.
             </p>
           </div>
 
-          <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div
+            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+          >
             <p class="text-sm font-semibold text-slate-500">Cultural Spots</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">Local rhythm, food, and festivals</h3>
+            <h3 class="mt-3 text-xl font-bold text-slate-900">
+              Local rhythm, food, and festivals
+            </h3>
             <p class="mt-3 text-sm leading-6 text-slate-600">
-              Explore destinations known for history, music, and authentic local experiences.
+              Explore destinations known for history, music, and authentic local
+              experiences.
             </p>
           </div>
 
-          <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div
+            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+          >
             <p class="text-sm font-semibold text-slate-500">Nature Retreats</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">Rainforests, cliffs, and trails</h3>
+            <h3 class="mt-3 text-xl font-bold text-slate-900">
+              Rainforests, cliffs, and trails
+            </h3>
             <p class="mt-3 text-sm leading-6 text-slate-600">
-              Perfect for travelers who want hiking, views, and a little more adventure.
+              Perfect for travelers who want hiking, views, and a little more
+              adventure.
             </p>
           </div>
         </div>
@@ -229,16 +321,21 @@
     </section>
 
     <section class="px-4 pb-12 sm:pb-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
+      <div
+        class="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10"
+      >
         <div class="max-w-2xl">
-          <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+          <p
+            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
+          >
             Hotels and Villas
           </p>
           <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
             Most luxurious places to stay on your trip
           </h2>
           <p class="mt-4 text-base leading-7 text-slate-600">
-            Explore hand-picked villas, boutique hotels, and luxury stays for an elevated island experience.
+            Explore hand-picked villas, boutique hotels, and luxury stays for an
+            elevated island experience.
           </p>
         </div>
       </div>
@@ -253,140 +350,144 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-import { listingsAPI } from '../services/api'
-import { useAuthStore } from '../stores/auth'
-import DestinationCard from '../components/DestinationCard.vue'
-import InterestsModal from '../components/InterestsModal.vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
+import { listingsAPI } from "../services/api";
+import { useAuthStore } from "../stores/auth";
+import DestinationCard from "../components/DestinationCard.vue";
+import InterestsModal from "../components/InterestsModal.vue";
 
-const authStore = useAuthStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const router = useRouter();
 
 const heroImages = [
-  '/images/trinidad.jpg',
-  '/images/barbados.jpg',
-  '/images/carib-bkg.jpg',
-  '/images/beach-bkg.jpg',
-  '/images/island-bkg.jpg',
-]
+  "/images/trinidad.jpg",
+  "/images/barbados.jpg",
+  "/images/carib-bkg.jpg",
+  "/images/beach-bkg.jpg",
+  "/images/island-bkg.jpg",
+];
 
-const currentSlide = ref(0)
-let heroInterval = null
+const currentSlide = ref(0);
+let heroInterval = null;
 
-const loading = ref(true)
-const personalizedListings = ref([])
-const searchQuery = ref('')
+const loading = ref(true);
+const personalizedListings = ref([]);
+const searchQuery = ref("");
 
-const trackRef = ref(null)
-const carouselIndex = ref(0)
-const cardWidth = ref(350)
-const gap = 24
+const trackRef = ref(null);
+const carouselIndex = ref(0);
+const cardWidth = ref(350);
+const gap = 24;
 
-const showInterestsModal = ref(false)
+const showInterestsModal = ref(false);
 
 onMounted(() => {
   heroInterval = setInterval(() => {
-    currentSlide.value = (currentSlide.value + 1) % heroImages.length
-  }, 4000)
+    currentSlide.value = (currentSlide.value + 1) % heroImages.length;
+  }, 4000);
 
-  fetchPersonalizedListings()
-  window.addEventListener('resize', updateCardWidth)
-  updateCardWidth()
-  maybeShowInterestsModal()
-})
+  fetchPersonalizedListings();
+  window.addEventListener("resize", updateCardWidth);
+  updateCardWidth();
+  maybeShowInterestsModal();
+});
 
 onUnmounted(() => {
-  clearInterval(heroInterval)
-  window.removeEventListener('resize', updateCardWidth)
-})
+  clearInterval(heroInterval);
+  window.removeEventListener("resize", updateCardWidth);
+});
 
 function maybeShowInterestsModal() {
   if (authStore.shouldPromptForInterests) {
     setTimeout(() => {
-      showInterestsModal.value = true
-    }, 700)
+      showInterestsModal.value = true;
+    }, 700);
   }
 }
 
 function onInterestsSaved() {
-  fetchPersonalizedListings()
+  fetchPersonalizedListings();
 }
 
 function submitSearch() {
-  const q = searchQuery.value.trim()
+  const q = searchQuery.value.trim();
   router.push({
-    path: '/listings',
+    path: "/listings",
     query: q ? { q } : {},
-  })
+  });
 }
 
 async function fetchPersonalizedListings() {
   try {
     if (!authStore.isAuthenticated) {
-      const response = await listingsAPI.getAll({ limit: 20 })
-      personalizedListings.value = response.data
-      return
+      const response = await listingsAPI.getAll({ limit: 20 });
+      personalizedListings.value = response.data;
+      return;
     }
 
-    const response = await listingsAPI.getPersonalized({ limit: 20 })
-    personalizedListings.value = response.data
+    const response = await listingsAPI.getPersonalized({ limit: 20 });
+    personalizedListings.value = response.data;
   } catch (e) {
     if (e?.response?.status === 401) {
       try {
-        const response = await listingsAPI.getAll({ limit: 20 })
-        personalizedListings.value = response.data
-        return
+        const response = await listingsAPI.getAll({ limit: 20 });
+        personalizedListings.value = response.data;
+        return;
       } catch (fallbackError) {
-        console.error('Failed to load fallback listings', fallbackError)
+        console.error("Failed to load fallback listings", fallbackError);
       }
     } else {
-      console.error('Failed to load personalized listings', e)
+      console.error("Failed to load personalized listings", e);
     }
   } finally {
-    loading.value = false
-    nextTick(() => updateCardWidth())
+    loading.value = false;
+    nextTick(() => updateCardWidth());
   }
 }
 
 function visibleCount() {
-  if (window.innerWidth <= 576) return 1
-  if (window.innerWidth <= 1000) return 2
-  return 3
+  if (window.innerWidth <= 576) return 1;
+  if (window.innerWidth <= 1000) return 2;
+  return 3;
 }
 
 function updateCardWidth() {
-  const containerWidth = trackRef.value?.parentElement?.offsetWidth || 900
-  const count = visibleCount()
-  cardWidth.value = (containerWidth - gap * (count - 1)) / count
+  const containerWidth = trackRef.value?.parentElement?.offsetWidth || 900;
+  const count = visibleCount();
+  cardWidth.value = (containerWidth - gap * (count - 1)) / count;
 
   if (carouselIndex.value > maxIndex.value) {
-    carouselIndex.value = maxIndex.value
+    carouselIndex.value = maxIndex.value;
   }
 }
 
-const maxIndex = computed(() => Math.max(0, personalizedListings.value.length - visibleCount()))
-const carouselOffset = computed(() => carouselIndex.value * (cardWidth.value + gap))
+const maxIndex = computed(() =>
+  Math.max(0, personalizedListings.value.length - visibleCount()),
+);
+const carouselOffset = computed(
+  () => carouselIndex.value * (cardWidth.value + gap),
+);
 
 function prevSlide() {
-  if (carouselIndex.value > 0) carouselIndex.value--
+  if (carouselIndex.value > 0) carouselIndex.value--;
 }
 
 function nextSlide() {
-  if (carouselIndex.value < maxIndex.value) carouselIndex.value++
+  if (carouselIndex.value < maxIndex.value) carouselIndex.value++;
 }
 
-let touchStartX = 0
+let touchStartX = 0;
 
 function onTouchStart(e) {
-  touchStartX = e.touches[0].clientX
+  touchStartX = e.touches[0].clientX;
 }
 
 function onTouchEnd(e) {
-  const delta = touchStartX - e.changedTouches[0].clientX
-  if (Math.abs(delta) < 50) return
-  if (delta > 0) nextSlide()
-  else prevSlide()
+  const delta = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(delta) < 50) return;
+  if (delta > 0) nextSlide();
+  else prevSlide();
 }
 </script>
 
