@@ -66,12 +66,12 @@ def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
     return service
 
 
-def update_service(db: Session, service_id: UUID, data: dict) -> Service:
+def update_service(db: Session, service_id: UUID, data: ServiceUpdate) -> Service:
     service = _get_service(db, service_id)
     if not service:
         raise HTTPException(404, "Service not found")
 
-    for k, v in data.items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(service, k, v)
 
     service.updated_at = func.now()

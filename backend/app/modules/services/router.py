@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/services", tags=["Services"])
 @router.get("", response_model=List[ServiceResponse])
 def get_services_endpoint(
     listing_id: UUID | None = None,
-    user: User = Depends(require_roles("user", "business", "admin", "employee")),
+    user: User = Depends(require_roles("regular", "business", "admin", "employee")),
     db: Session = Depends(get_db),
 ):
 

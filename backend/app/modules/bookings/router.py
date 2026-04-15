@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
 
 @router.get("", response_model=List[BookingResponse])
 def get_bookings(
-    current_user: User = Depends(require_roles("user", "admin")),
+    current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
     return list_bookings(db, current_user.id)
@@ -32,7 +32,7 @@ def get_bookings(
 
 @router.get("/{booking_id}", response_model=BookingResponse)
 def get_booking(
-    current_user: User = Depends(require_roles("user", "admin")),
+    current_user: User = Depends(require_roles("regular", "admin")),
     booking: Booking = Depends(require_booking_owner),
     db: Session = Depends(get_db),
 ):
@@ -44,7 +44,7 @@ def get_booking(
 @router.post("", response_model=BookingCreateResponse, status_code=201)
 def create_booking_endpoint(
     booking_data: BookingCreate,
-    current_user: User = Depends(require_roles("user")),
+    current_user: User = Depends(require_roles("regular")),
     db: Session = Depends(get_db),
 ):
     return create_booking(db, booking_data, current_user.id)
