@@ -544,13 +544,6 @@ const steps = computed(() => [
     description: 'Start broad. These categories decide which specific interests appear next.',
   },
 
-  {
-    key: 'destination',
-    type: 'destination',
-    title: 'Choose your destination',
-    description: 'Pick the country and city you want this itinerary to focus on.',
-  },
-
   ...interestPages.value.map((_, pageIndex) => ({
     key: `interests-${pageIndex}`,
     type: 'interests',
@@ -558,6 +551,12 @@ const steps = computed(() => [
     title: 'Choose specific interests',
     description: 'Pick the activities, food, places, and travel themes that should influence the itinerary.',
   })),
+  {
+    key: 'destination',
+    type: 'destination',
+    title: 'Choose your destination',
+    description: 'Pick the country and city you want this itinerary to focus on.',
+  },
   {
     key: 'dates',
     type: 'dates',
