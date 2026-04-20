@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 from uuid import UUID
@@ -16,6 +16,12 @@ class PaceLevel(str, Enum):
     relaxed = "relaxed"
     balanced = "balanced"
     packed = "packed"
+
+
+class ItineraryStatus(str, Enum):
+    draft = "draft"
+    saved = "saved"
+    archived = "archived"
 
 
 class ItineraryPlanRequest(BaseModel):
@@ -99,6 +105,63 @@ class ItineraryPlanResponse(BaseModel):
     target_total_budget: Optional[float] = None
     daily_target_budget: float
     days: list[ItineraryDay] = Field(default_factory=list)
+
+
+class ItinerarySaveRequest(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+    status: ItineraryStatus = ItineraryStatus.saved
+    plan_request: ItineraryPlanRequest
+    plan_response: Optional[ItineraryPlanResponse] = None
+
+
+class ItineraryItemResponse(BaseModel):
+    id: UUID
+    itinerary_id: UUID
+    listing_id: Optional[UUID] = None
+    linked_booking_id: Optional[UUID] = None
+    item_type: str
+    title: str
+    description: Optional[str] = None
+    day_date: date
+    start_at: datetime
+    end_at: datetime
+    sort_order: int
+    estimated_cost: float
+    address_snapshot: Optional[dict] = None
+    reason_tags: list[str] = Field(default_factory=list)
+    extra_metadata: Optional[dict] = None
+
+
+class SavedItinerarySummaryResponse(BaseModel):
+    id: UUID
+    title: str
+    status: ItineraryStatus
+    start_date: date
+    end_date: date
+    total_estimated_cost: float
+    item_count: int
+    created_at: datetime
+
+
+class SavedItineraryResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    title: str
+    status: ItineraryStatus
+    start_date: date
+    end_date: date
+    budget_level: BudgetLevel
+    pace: PaceLevel
+    total_budget: Optional[float] = None
+    strict_budget: bool
+    city: Optional[str] = None
+    country: Optional[str] = None
+    interests: list[str] = Field(default_factory=list)
+    preferred_business_types: list[str] = Field(default_factory=list)
+    total_estimated_cost: float
+    created_at: datetime
+    updated_at: datetime
+    items: list[ItineraryItemResponse] = Field(default_factory=list)
 
 
 def _normalize_strings(items: list[str]) -> list[str]:

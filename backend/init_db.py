@@ -11,6 +11,7 @@ from app.modules.listings.models import Listing
 from app.modules.reviews.models import Review
 from app.modules.users.models import User
 from app.modules.employees.models import Business_Employee
+from app.modules.itineraries.model import Itinerary, ItineraryItem
 
 def init_db():
     SQLModel.metadata.create_all(get_engine())

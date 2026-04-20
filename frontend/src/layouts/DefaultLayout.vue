@@ -27,6 +27,9 @@
             <router-link to="/bookings" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">
               Bookings
             </router-link>
+            <router-link to="/calendar" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">
+              Calendar
+            </router-link>
           </template>
         </nav>
 
@@ -136,6 +139,13 @@
               class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
               Bookings
+            </router-link>
+            <router-link
+              to="/calendar"
+              @click="mobileMenuOpen = false"
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Calendar
             </router-link>
             <hr class="border-slate-100" />
             <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">

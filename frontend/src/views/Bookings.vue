@@ -10,6 +10,12 @@
       <p class="mt-2 text-sm text-slate-500">
         Track upcoming reservations and manage pending bookings.
       </p>
+      <router-link
+        to="/calendar"
+        class="mt-4 inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+      >
+        Open Calendar
+      </router-link>
     </div>
 
     <div
@@ -340,7 +346,7 @@ function formatDate(date) {
 
 function statusLabel(status) {
   if (status === "pending") return "Pending";
-  if (status === "confirmed") return "Confirmed";
+  if (status === "approved") return "Approved";
   if (status === "cancelled") return "Cancelled";
   if (status === "completed") return "Completed";
   return status;
@@ -348,7 +354,7 @@ function statusLabel(status) {
 
 function statusClasses(status) {
   if (status === "pending") return "bg-amber-100 text-amber-800";
-  if (status === "confirmed") return "bg-emerald-100 text-emerald-800";
+  if (status === "approved") return "bg-emerald-100 text-emerald-800";
   if (status === "cancelled") return "bg-red-100 text-red-800";
   if (status === "completed") return "bg-cyan-100 text-cyan-800";
   return "bg-slate-100 text-slate-700";

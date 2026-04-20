@@ -5,9 +5,9 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Column, DateTime, Field, ForeignKey, SQLModel, Text
+from sqlmodel import Column, Field, ForeignKey, SQLModel, Text
 from sqlmodel import UUID as PGUUID
 
 
@@ -37,8 +37,8 @@ class Itinerary(SQLModel, table=True):
         )
     )
     title: str = Field(sa_column=Column(Text, nullable=False))
-    start_date: date = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
-    end_date: date = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
+    start_date: date = Field(sa_column=Column(Date, nullable=False))
+    end_date: date = Field(sa_column=Column(Date, nullable=False))
     status: ItineraryStatus = Field(
         default=ItineraryStatus.draft,
         sa_column=Column(Text, nullable=False, server_default=text("'draft'")),
@@ -46,8 +46,13 @@ class Itinerary(SQLModel, table=True):
     budget_level: str = Field(sa_column=Column(Text, nullable=False))
     pace: str = Field(sa_column=Column(Text, nullable=False))
 
-    total_budget: Optional[float] = Field(default=None, nullable=True)
-    strict_budget: bool = Field(default=True, nullable=False)
+    total_budget: Optional[float] = Field(
+        default=None, sa_column=Column(Float, nullable=True)
+    )
+    strict_budget: bool = Field(
+        default=True,
+        sa_column=Column(Boolean, nullable=False, server_default=text("true")),
+    )
     city: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     country: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
@@ -58,7 +63,9 @@ class Itinerary(SQLModel, table=True):
         default=None, sa_column=Column(JSONB, nullable=True)
     )
 
-    total_estimated_cost: float = Field(default=0.0, nullable=False)
+    total_estimated_cost: float = Field(
+        default=0.0, sa_column=Column(Float, nullable=False, server_default=text("0"))
+    )
 
     created_at: datetime = Field(
         sa_column=Column(
@@ -120,12 +127,16 @@ class ItineraryItem(SQLModel, table=True):
     title: str = Field(sa_column=Column(Text, nullable=False))
     description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
-    day_date: date = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
-    start_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
-    end_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    day_date: date = Field(sa_column=Column(Date, nullable=False))
+    start_at: datetime = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
+    end_at: datetime = Field(sa_column=Column(DateTime(timezone=False), nullable=False))
 
-    sort_order: int = Field(default=0, nullable=False)
-    estimated_cost: float = Field(default=0.0, nullable=False)
+    sort_order: int = Field(
+        default=0, sa_column=Column(Integer, nullable=False, server_default=text("0"))
+    )
+    estimated_cost: float = Field(
+        default=0.0, sa_column=Column(Float, nullable=False, server_default=text("0"))
+    )
 
     address_snapshot: Optional[dict[str, Any]] = Field(
         default=None, sa_column=Column(JSONB, nullable=True)

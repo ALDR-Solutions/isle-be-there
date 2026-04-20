@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from math import atan2, cos, radians, sin, sqrt
 from typing import Optional
+from uuid import UUID
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
+from sqlalchemy import desc
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from .model import Itinerary, ItineraryItem
 from app.modules.listings.models import Listing, Statuses
 
 from .schemas import (
@@ -18,8 +21,12 @@ from .schemas import (
     ItineraryDay,
     ItineraryPlanRequest,
     ItineraryPlanResponse,
+    ItinerarySaveRequest,
+    ItineraryStatus,
     ItineraryStop,
     PaceLevel,
+    SavedItineraryResponse,
+    SavedItinerarySummaryResponse,
 )
 
 
@@ -142,6 +149,115 @@ def plan_itinerary(db: Session, request: ItineraryPlanRequest) -> ItineraryPlanR
         daily_target_budget=round(daily_budget_target, 2),
         days=day_rows,
     )
+
+
+def list_saved_itineraries(db: Session, user_id: UUID) -> list[SavedItinerarySummaryResponse]:
+    itineraries = db.exec(
+        select(Itinerary)
+        .where(Itinerary.user_id == user_id)
+        .order_by(desc(Itinerary.created_at))
+    ).all()
+
+    if not itineraries:
+        return []
+
+    itinerary_ids = [itinerary.id for itinerary in itineraries]
+    item_rows = db.exec(
+        select(ItineraryItem)
+        .where(ItineraryItem.itinerary.__table__.c.id.in_(itinerary_ids))
+    ).all()
+
+    item_counts: dict[UUID, int] = {itinerary_id: 0 for itinerary_id in itinerary_ids}
+    for item in item_rows:
+        item_counts[item.itinerary_id] = item_counts.get(item.itinerary_id, 0) + 1
+
+    return [
+        SavedItinerarySummaryResponse(
+            id=itinerary.id,
+            title=itinerary.title,
+            status=ItineraryStatus(itinerary.status),
+            start_date=itinerary.start_date,
+            end_date=itinerary.end_date,
+            total_estimated_cost=float(itinerary.total_estimated_cost or 0),
+            item_count=item_counts.get(itinerary.id, 0),
+            created_at=itinerary.created_at,
+        )
+        for itinerary in itineraries
+    ]
+
+
+def get_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> SavedItineraryResponse:
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id)
+        .where(Itinerary.user_id == user_id)
+    ).first()
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    items = db.exec(
+        select(ItineraryItem)
+        .where(ItineraryItem.itinerary_id == itinerary.id)
+        .order_by(ItineraryItem.day_date, ItineraryItem.sort_order, ItineraryItem.start_at)
+    ).all()
+
+    return _serialize_saved_itinerary(itinerary, items)
+
+
+def save_itinerary(
+    db: Session,
+    user_id: UUID,
+    payload: ItinerarySaveRequest,
+) -> SavedItineraryResponse:
+    planned = payload.plan_response or plan_itinerary(db, payload.plan_request)
+    if len(planned.days) != payload.plan_request.resolved_trip_days:
+        raise HTTPException(status_code=400, detail="Saved itinerary does not match requested trip length")
+
+    itinerary = Itinerary(
+        user_id=user_id,
+        title=_resolved_title(payload),
+        start_date=payload.plan_request.start_date,
+        end_date=_resolved_end_date(payload.plan_request),
+        status=payload.status.value,
+        budget_level=payload.plan_request.budget_level.value,
+        pace=payload.plan_request.pace.value,
+        total_budget=payload.plan_request.total_budget,
+        strict_budget=payload.plan_request.strict_budget,
+        city=payload.plan_request.city,
+        country=payload.plan_request.country,
+        interests=payload.plan_request.interests,
+        preferred_business_types=payload.plan_request.preferred_business_types,
+        total_estimated_cost=float(planned.total_estimated_cost),
+    )
+    db.add(itinerary)
+    db.flush()
+
+    items = _build_items_for_saved_itinerary(itinerary.id, planned)
+    for item in items:
+        db.add(item)
+
+    db.commit()
+    db.refresh(itinerary)
+    saved_items = db.exec(
+        select(ItineraryItem)
+        .where(ItineraryItem.itinerary_id == itinerary.id)
+        .order_by(ItineraryItem.day_date, ItineraryItem.sort_order, ItineraryItem.start_at)
+    ).all()
+
+    return _serialize_saved_itinerary(itinerary, saved_items)
+
+
+def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> None:
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id)
+        .where(Itinerary.user_id == user_id)
+    ).first()
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    db.delete(itinerary)
+    db.commit()
 
 
 def _load_candidates(db: Session, request: ItineraryPlanRequest) -> list[Candidate]:
@@ -331,6 +447,110 @@ def _format_hour(hour_value: float) -> str:
     hours = (total_minutes // 60) % 24
     minutes = total_minutes % 60
     return f"{hours:02d}:{minutes:02d}"
+
+
+def _parse_hour_value(hour_value: str) -> time:
+    try:
+        hour_part, minute_part = hour_value.split(":", maxsplit=1)
+        parsed_hour = int(hour_part)
+        parsed_minute = int(minute_part)
+    except (AttributeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid itinerary stop time format") from exc
+
+    return time(hour=parsed_hour, minute=parsed_minute)
+
+
+def _resolved_end_date(request: ItineraryPlanRequest) -> date:
+    if request.end_date is not None:
+        return request.end_date
+    return _day_at(request.start_date, request.resolved_trip_days - 1)
+
+
+def _resolved_title(payload: ItinerarySaveRequest) -> str:
+    if payload.title and payload.title.strip():
+        return payload.title.strip()
+
+    location = payload.plan_request.city or payload.plan_request.country or "Trip"
+    return f"{location} itinerary"
+
+
+def _build_items_for_saved_itinerary(
+    itinerary_id: UUID,
+    planned: ItineraryPlanResponse,
+) -> list[ItineraryItem]:
+    items: list[ItineraryItem] = []
+
+    for day_index, day in enumerate(planned.days):
+        for stop_index, stop in enumerate(day.stops):
+            start_at = datetime.combine(day.date, _parse_hour_value(stop.start_time))
+            end_at = datetime.combine(day.date, _parse_hour_value(stop.end_time))
+            items.append(
+                ItineraryItem(
+                    itinerary_id=itinerary_id,
+                    listing_id=stop.listing_id,
+                    item_type="stop",
+                    title=stop.title,
+                    day_date=day.date,
+                    start_at=start_at,
+                    end_at=end_at,
+                    sort_order=(day_index * 100) + stop_index,
+                    estimated_cost=float(stop.estimated_cost),
+                    address_snapshot=stop.address,
+                    reason_tags=stop.reason_tags,
+                    extra_metadata={
+                        "score": stop.score,
+                        "business_type_name": stop.business_type_name,
+                        "estimated_duration_hours": stop.estimated_duration_hours,
+                    },
+                )
+            )
+
+    return items
+
+
+def _serialize_saved_itinerary(
+    itinerary: Itinerary,
+    items: list[ItineraryItem],
+) -> SavedItineraryResponse:
+    return SavedItineraryResponse(
+        id=itinerary.id,
+        user_id=itinerary.user_id,
+        title=itinerary.title,
+        status=ItineraryStatus(itinerary.status),
+        start_date=itinerary.start_date,
+        end_date=itinerary.end_date,
+        budget_level=BudgetLevel(itinerary.budget_level),
+        pace=PaceLevel(itinerary.pace),
+        total_budget=itinerary.total_budget,
+        strict_budget=itinerary.strict_budget,
+        city=itinerary.city,
+        country=itinerary.country,
+        interests=list(itinerary.interests or []),
+        preferred_business_types=list(itinerary.preferred_business_types or []),
+        total_estimated_cost=float(itinerary.total_estimated_cost or 0),
+        created_at=itinerary.created_at,
+        updated_at=itinerary.updated_at,
+        items=[
+            {
+                "id": item.id,
+                "itinerary_id": item.itinerary_id,
+                "listing_id": item.listing_id,
+                "linked_booking_id": item.linked_booking_id,
+                "item_type": item.item_type,
+                "title": item.title,
+                "description": item.description,
+                "day_date": item.day_date,
+                "start_at": item.start_at,
+                "end_at": item.end_at,
+                "sort_order": item.sort_order,
+                "estimated_cost": float(item.estimated_cost or 0),
+                "address_snapshot": item.address_snapshot,
+                "reason_tags": list(item.reason_tags or []),
+                "extra_metadata": item.extra_metadata,
+            }
+            for item in items
+        ],
+    )
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

@@ -105,7 +105,19 @@ export const bookingsAPI = {
   getById: (id) => api.get(`/api/bookings/${id}`),
   create: (data) => api.post('/api/bookings', data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
-  cancel: (id) => api.delete(`/api/bookings/${id}`),
+  cancel: (id) => api.patch(`/api/bookings/${id}`),
+};
+
+export const itinerariesAPI = {
+  plan: (data) => api.post('/api/itineraries/plan', data),
+  getAll: () => api.get('/api/itineraries'),
+  getById: (id) => api.get(`/api/itineraries/${id}`),
+  save: (data) => api.post('/api/itineraries', data),
+  delete: (id) => api.delete(`/api/itineraries/${id}`),
+};
+
+export const calendarAPI = {
+  getAll: (params) => api.get('/api/calendar', { params }),
 };
 
 // Reviews API
