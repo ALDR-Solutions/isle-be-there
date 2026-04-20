@@ -63,7 +63,7 @@
                 </button>
 
                 <router-link
-                  to="/listings"
+                  to="/itinerary"
                   class="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4"
                 >
                   Plan Your Trip Now

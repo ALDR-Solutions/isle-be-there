@@ -78,6 +78,11 @@ const routes = [
     component: () => import('./views/ListingDetail.vue')
   },
   {
+    path: '/itinerary',
+    name: 'ItineraryPlanner',
+    component: () => import('./views/Itinerary.vue')
+  },
+  {
     path: '/bookings',
     name: 'Bookings',
     component: () => import('./views/Bookings.vue'),
