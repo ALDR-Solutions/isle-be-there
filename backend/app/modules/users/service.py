@@ -1,13 +1,19 @@
 from datetime import datetime
+import secrets
+import logging
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.core.email import send_verification_email
 from app.core.security import get_password_hash
 
 from .models import User
 from .schemas import ProfileUpdate, UserCreate
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -36,10 +42,17 @@ def create_user(db: Session, user_data: UserCreate) -> User:
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         user_type=user_data.user_type,
+        verification_token=secrets.token_urlsafe(32)
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    try:
+        send_verification_email(user.email, user.verification_token)
+    except Exception:
+        logger.exception("Failed to send verification email for user %s", user.email)
+    
     return user
 
 
