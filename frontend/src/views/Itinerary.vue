@@ -124,7 +124,7 @@
               </div>
               
               <!-- Detination Modal -->
-              <div v-else-if="activeStep.type === 'destination'" class="grid gap-5 md:grid-cols-2">
+              <div v-else-if="activeStep.type === 'destination'" class="grid gap-5">
                 <label class="block">
                   <span class="text-sm font-semibold text-slate-700">Country</span>
                   <select
@@ -133,22 +133,6 @@
                     <option value="">Select a country</option>
                     <option
                       v-for="option in countryOptions"
-                      :key="option.name"
-                      :value="option.name">
-                      {{ option.name }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="text-sm font-semibold text-slate-700">City</span>
-                  <select
-                    v-model="city"
-                    :disabled="!country"
-                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
-                    <option value="">Select a city</option>
-                    <option
-                      v-for="option in cityOptions"
                       :key="option"
                       :value="option">
                       {{ option }}
@@ -156,16 +140,16 @@
                   </select>
                 </label>
 
-                <div class="rounded-3xl border border-slate-200 bg-white p-5 md:col-span-2">
+                <div class="rounded-3xl border border-slate-200 bg-white p-5">
                   <p class="text-sm font-semibold text-slate-900">
                     Destination
                   </p>
                   <p class="mt-1 text-sm text-slate-500">
-                    <template v-if="country && city">
-                      Your itinerary will focus on {{ city }}, {{ country }}.
+                    <template v-if="country">
+                      Your itinerary will focus on listings in {{ country }}.
                     </template>
                     <template v-else>
-                      Choose a country first, then pick a city.
+                      Choose a country to guide the itinerary.
                     </template>
                   </p>
                 </div>
@@ -300,7 +284,7 @@
                     </div>
                     <div>
                       <p class="font-semibold text-slate-900">Destination</p>
-                      <p class="mt-1 text-slate-500">{{ city }}, {{ country }}</p>
+                      <p class="mt-1 text-slate-500">{{ country }}</p>
                     </div>
                     <div>
                       <p class="font-semibold text-slate-900">Dates</p>
@@ -342,7 +326,7 @@
             </h2>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
               Estimated total: ${{ generatedItinerary.total_estimated_cost.toFixed(2) }}.
-              This preview is using the frontend mock planner.
+              Built from the live itinerary planner.
             </p>
           </div>
 
@@ -355,15 +339,10 @@
             </button>
             <button
               type="button"
-              class="rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-3 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100"
-              @click="handleProtectedItineraryAction('edit')">
-              Edit itinerary
-            </button>
-            <button
-              type="button"
-              class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              @click="handleProtectedItineraryAction('save')">
-              Save itinerary
+              class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSaving"
+              @click="handleSaveItinerary">
+              {{ isSaving ? 'Saving...' : 'Save itinerary' }}
             </button>
           </div>
         </div>
@@ -380,7 +359,7 @@
                   <h3 class="mt-1 text-xl font-bold text-slate-950">{{ formatDisplayDate(day.date) }}</h3>
                 </div>
                 <p class="text-sm font-semibold text-slate-500">
-                  ${{ day.total_estimated_cost.toFixed(2) }} estimated · {{ day.total_duration_hours }} hours
+                  ${{ day.total_estimated_cost.toFixed(2) }} estimated | {{ day.total_duration_hours }} hours
                 </p>
               </div>
             </div>
@@ -400,7 +379,6 @@
                   <p class="mt-1 text-sm font-medium text-slate-500">
                     {{ stop.address?.city }}, {{ stop.address?.country }}
                   </p>
-                  <p class="mt-2 text-sm leading-6 text-slate-500">{{ stop.description }}</p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
                       v-for="tag in stop.reason_tags"
@@ -425,8 +403,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ItineraryWizardShell from '../components/itinerary/ItineraryWizardShell.vue'
-import { interestsAPI } from '../services/api'
-import { generateItinerary } from '../services/itinerary'
+import { interestsAPI, itinerariesAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 
@@ -441,7 +418,6 @@ const selectedCategories = ref([])
 const selectedInterestIds = ref([])
 
 const country = ref('')
-const city = ref('')
 const startDate = ref('')
 const endDate = ref('')
 const adults = ref(2)
@@ -450,27 +426,11 @@ const budgetLevel = ref('medium')
 const pace = ref('balanced')
 const generatedItinerary = ref(null)
 const isGenerating = ref(false)
+const isSaving = ref(false)
 const errorMessage = ref('')
 const slideDirection = ref('slide-left')
 
-const countryOptions = [
-  {
-    name: 'Barbados',
-    cities: ['Bridgetown', 'Holetown', 'Oistins', 'Speightstown'],
-  },
-  {
-    name: 'Jamaica',
-    cities: ['Kingston', 'Montego Bay', 'Negril', 'Ocho Rios'],
-  },
-  {
-    name: 'Trinidad and Tobago',
-    cities: ['Port of Spain', 'San Fernando', 'Scarborough'],
-  },
-  {
-    name: 'Guyana',
-    cities: ['Georgetown', 'Linden', 'New Amsterdam'],
-  },
-]
+const countryOptions = ['Barbados', 'Guyana', 'Jamaica', 'Trinidad and Tobago']
 
 
 const budgetOptions = [
@@ -486,10 +446,6 @@ const paceOptions = [
 ]
 
 const today = computed(() => toDateInputValue(new Date()))
-
-const cityOptions = computed(() => {
-  return countryOptions.find((item) => item.name === country.value)?.cities || []
-})
 
 
 onMounted(async () => {
@@ -555,7 +511,7 @@ const steps = computed(() => [
     key: 'destination',
     type: 'destination',
     title: 'Choose your destination',
-    description: 'Pick the country and city you want this itinerary to focus on.',
+    description: 'Pick the country you want this itinerary to focus on.',
   },
   {
     key: 'dates',
@@ -567,7 +523,7 @@ const steps = computed(() => [
     key: 'travelers',
     type: 'travelers',
     title: 'Who is going?',
-    description: 'Traveler counts are kept in the frontend payload so the backend can use them later.',
+    description: 'Traveler counts stay in this planner for trip context, but do not affect the backend request yet.',
   },
   {
     key: 'style',
@@ -616,11 +572,6 @@ watch(selectedCategories, () => {
   const validIds = new Set(filteredInterests.value.map((interest) => String(interest.id)))
   selectedInterestIds.value = selectedInterestIds.value.filter((id) => validIds.has(String(id)))
 })
-
-watch(country, () => {
-  city.value = ''
-})
-
 
 watch(steps, () => {
   if (currentStepIndex.value > steps.value.length - 1) {
@@ -674,11 +625,12 @@ async function handleGenerate() {
   isGenerating.value = true
 
   try {
-    generatedItinerary.value = await generateItinerary(buildPayload())
+    const response = await itinerariesAPI.plan(buildPayload())
+    generatedItinerary.value = response.data
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (error) {
     console.error('Failed to generate itinerary', error)
-    errorMessage.value = 'Could not generate an itinerary right now.'
+    errorMessage.value = extractApiError(error, 'Could not generate an itinerary right now.')
   } finally {
     isGenerating.value = false
   }
@@ -688,16 +640,10 @@ function buildPayload() {
   return {
     start_date: startDate.value,
     end_date: endDate.value,
-    city: city.value,
     country: country.value,
     interests: selectedInterestNames.value,
-    preferred_business_types: selectedCategories.value,
     budget_level: budgetLevel.value,
     pace: pace.value,
-    travelers: {
-      adults: adults.value,
-      children: children.value,
-    },
   }
 }
 
@@ -714,7 +660,6 @@ function getValidationMessage() {
 
   if (activeStep.value.type === 'destination') {
     if (!country.value) return 'Choose a country.'
-    if (!city.value) return 'Choose a city.'
   }
 
 
@@ -731,14 +676,37 @@ function getValidationMessage() {
   return ''
 }
 
-function handleProtectedItineraryAction(action) {
+async function handleSaveItinerary() {
   if (!authStore.isAuthenticated) {
-    toastStore.show(`Sign in to ${action} your itinerary.`, 'info')
+    toastStore.show('Sign in to save your itinerary.', 'info')
     router.push({ name: 'Login', query: { redirect: '/itinerary' } })
     return
   }
 
-  toastStore.show('Saving and editing itineraries will be available when the backend is ready.', 'info')
+  if (!['user', 'admin'].includes(authStore.role)) {
+    toastStore.show('Saved itineraries are only available for traveler accounts right now.', 'info')
+    return
+  }
+
+  if (!generatedItinerary.value || isSaving.value) {
+    return
+  }
+
+  isSaving.value = true
+
+  try {
+    await itinerariesAPI.save({
+      plan_request: buildPayload(),
+      plan_response: generatedItinerary.value,
+    })
+    toastStore.show('Itinerary saved to your account.', 'success')
+    router.push({ name: 'Calendar' })
+  } catch (error) {
+    console.error('Failed to save itinerary', error)
+    toastStore.show(extractApiError(error, 'Could not save itinerary right now.'), 'error')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function formatDisplayDate(value) {
@@ -760,6 +728,14 @@ function toDateInputValue(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function extractApiError(error, fallbackMessage) {
+  const detail = error?.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail
+  }
+  return fallbackMessage
 }
 </script>
 
