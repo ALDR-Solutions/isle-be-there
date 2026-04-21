@@ -161,7 +161,7 @@
             <button type="submit" :disabled="loading"
               class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
               <span v-if="loading">Creating account...</span>
-              <span v-else>{{ accountType === 'business' ? 'Continue' : 'Create account' }}</span>
+              <span v-else>Create account</span>
             </button>
           </form>
 
@@ -327,12 +327,11 @@ async function handleRegister() {
   })
 
   if (success) {
-    toastStore.show('Account created successfully.', 'success')
-    if (accountType.value === 'business') {
-      step.value = 2
-    } else {
-      router.push('/')
-    }
+    toastStore.show('Account created. Check your email to verify your account.', 'success')
+    router.push({
+      name: 'Login',
+      query: { email: email.value },
+    })
   } else {
     error.value = authStore.error || 'Registration failed'
     toastStore.show(error.value, 'error')
