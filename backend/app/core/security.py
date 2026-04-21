@@ -3,23 +3,13 @@ Security utilities for JWT authentication and password hashing.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+import bcrypt
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer
-from pydantic_settings import BaseSettings
-import bcrypt
 
-
-class Settings(BaseSettings):
-    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    
-    model_config = {"env_file": ".env", "extra": "ignore"}
-
-
-settings = Settings()
+from app.core.config import settings
 
 # Password hashing
 # bcrypt_sha256 avoids bcrypt's 72-byte password limit
@@ -67,3 +57,27 @@ def decode_token(token: str) -> dict:
         return payload
     except JWTError:
         return None
+    
+def create_reset_password_token(email: str):
+    data = {
+        "sub": email,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES),
+        "type": "password_reset",
+    }
+    token = jwt.encode(data, settings.FORGET_PWD_SECRET_KEY, settings.JWT_ALGORITHM)
+    return token
+
+
+def decode_reset_password_token(token: str) -> str | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.FORGET_PWD_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
