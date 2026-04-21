@@ -320,9 +320,11 @@
       <div v-else class="mx-auto max-w-7xl">
         <div class="mb-8 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-600">Generated itinerary</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-600">
+              {{ savedItinerary ? 'Saved itinerary' : 'Generated itinerary' }}
+            </p>
             <h2 class="mt-3 text-3xl font-bold text-slate-950 sm:text-4xl">
-              Your {{ generatedItinerary.trip_days }} day trip preview
+              {{ savedItinerary?.title || `Your ${generatedItinerary.trip_days} day trip preview` }}
             </h2>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
               Estimated total: ${{ generatedItinerary.total_estimated_cost.toFixed(2) }}.
@@ -330,13 +332,14 @@
             </p>
           </div>
 
-          <div class="flex flex-col gap-3 sm:flex-row">
+          <div v-if="!savedItinerary" class="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
               @click="generatedItinerary = null">
               Adjust answers
             </button>
+
             <button
               type="button"
               class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -345,6 +348,16 @@
               {{ isSaving ? 'Saving...' : 'Save itinerary' }}
             </button>
           </div>
+
+          <div v-else>
+            <RouterLink
+              to="/profile"
+              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Back to profile
+            </RouterLink>
+          </div>
+
         </div>
 
         <div class="grid gap-6">
@@ -401,7 +414,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ItineraryWizardShell from '../components/itinerary/ItineraryWizardShell.vue'
 import { interestsAPI, itinerariesAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
@@ -410,6 +423,11 @@ import { useToastStore } from '../stores/toast'
 const router = useRouter()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
+
+const route = useRoute()
+const savedItinerary = ref(null)
+const isLoadingSavedItinerary = ref(false)
+
 
 const allInterests = ref([])
 const loadingInterests = ref(true)
@@ -449,6 +467,11 @@ const today = computed(() => toDateInputValue(new Date()))
 
 
 onMounted(async () => {
+  if (route.params.id) {
+    await loadSavedItinerary(route.params.id)
+    return
+  }
+
   try {
     const response = await interestsAPI.getAll()
     allInterests.value = Array.isArray(response.data) ? response.data : []
@@ -459,6 +482,7 @@ onMounted(async () => {
     loadingInterests.value = false
   }
 })
+
 
 const groupedInterests = computed(() => {
   return allInterests.value.reduce((groups, interest) => {
@@ -675,6 +699,79 @@ function getValidationMessage() {
 
   return ''
 }
+
+async function loadSavedItinerary(id) {
+  isLoadingSavedItinerary.value = true
+  loadingInterests.value = false
+
+  try {
+    const response = await itinerariesAPI.getById(id)
+    savedItinerary.value = response.data
+    generatedItinerary.value = mapSavedItineraryToPreview(response.data)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (error) {
+    console.error('Failed to load saved itinerary', error)
+    toastStore.show(extractApiError(error, 'Could not load itinerary.'), 'error')
+    router.push({ name: 'Profile' })
+  } finally {
+    isLoadingSavedItinerary.value = false
+  }
+}
+
+function mapSavedItineraryToPreview(saved) {
+  const groupedDays = {}
+
+  for (const item of saved.items || []) {
+    if (!groupedDays[item.day_date]) {
+      groupedDays[item.day_date] = {
+        date: item.day_date,
+        total_estimated_cost: 0,
+        total_duration_hours: 0,
+        stops: [],
+      }
+    }
+
+    const estimatedCost = Number(item.estimated_cost || 0)
+    const estimatedDuration = Number(item.extra_metadata?.estimated_duration_hours || 0)
+
+    groupedDays[item.day_date].stops.push({
+      listing_id: item.listing_id || item.id,
+      title: item.title,
+      description: item.description || '',
+      business_type_name: item.extra_metadata?.business_type_name || item.item_type,
+      address: item.address_snapshot || {},
+      estimated_cost: estimatedCost,
+      estimated_duration_hours: estimatedDuration,
+      start_time: item.start_at?.slice(11, 16) || '',
+      end_time: item.end_at?.slice(11, 16) || '',
+      score: Number(item.extra_metadata?.score || 0),
+      reason_tags: item.reason_tags || [],
+    })
+
+    groupedDays[item.day_date].total_estimated_cost += estimatedCost
+    groupedDays[item.day_date].total_duration_hours += estimatedDuration
+  }
+
+  const days = Object.values(groupedDays)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((day) => ({
+      ...day,
+      total_estimated_cost: Math.round(day.total_estimated_cost * 100) / 100,
+      total_duration_hours: Math.round(day.total_duration_hours * 100) / 100,
+    }))
+
+  return {
+    trip_days: days.length,
+    budget_level: saved.budget_level,
+    pace: saved.pace,
+    total_estimated_cost: Number(saved.total_estimated_cost || 0),
+    target_total_budget: saved.total_budget,
+    daily_target_budget: days.length ? Number(saved.total_estimated_cost || 0) / days.length : 0,
+    days,
+  }
+}
+
+
 
 async function handleSaveItinerary() {
   if (!authStore.isAuthenticated) {

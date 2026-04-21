@@ -150,13 +150,19 @@
                 {{ itinerary.start_date }} to {{ itinerary.end_date }}
               </p>
               <p class="mt-1 text-sm text-slate-500">
-                {{ itinerary.item_count }} stops · ${{ itinerary.total_estimated_cost }}
+                {{ itinerary.item_count }} stops | ${{ itinerary.total_estimated_cost }}
               </p>
             </div>
 
             <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
               {{ itinerary.status }}
             </span>
+
+            <RouterLink
+              :to="{ name: 'SavedItinerary', params: { id: itinerary.id } }"
+              class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+              View
+            </RouterLink>
           </div>
         </div>
       </div>
