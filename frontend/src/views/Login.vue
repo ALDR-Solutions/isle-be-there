@@ -1,15 +1,22 @@
 <template>
-  <section class="grid overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl backdrop-blur-xl lg:grid-cols-2">
-    <div class="hidden flex-col justify-between bg-gradient-to-br from-cyan-400 via-teal-300 to-emerald-300 p-10 text-slate-950 lg:flex">
+  <section
+    class="grid overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl backdrop-blur-xl lg:grid-cols-2"
+  >
+    <div
+      class="hidden flex-col justify-between bg-gradient-to-br from-cyan-400 via-teal-300 to-emerald-300 p-10 text-slate-950 lg:flex"
+    >
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-800/70">
+        <p
+          class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-800/70"
+        >
           Isle Be There
         </p>
         <h1 class="mt-6 max-w-md text-4xl font-bold leading-tight">
           Plan easier, travel smarter, and keep every booking in one place.
         </h1>
         <p class="mt-4 max-w-md text-base text-slate-800/80">
-          Sign in to explore listings, manage favourites, and pick up right where you left off.
+          Sign in to explore listings, manage favourites, and pick up right
+          where you left off.
         </p>
       </div>
 
@@ -23,7 +30,9 @@
     <div class="bg-white px-6 py-8 sm:px-10 sm:py-12">
       <div class="mx-auto w-full max-w-md">
         <div class="mb-8">
-          <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">
+          <p
+            class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500"
+          >
             Welcome back
           </p>
           <h2 class="mt-3 text-3xl font-bold text-slate-900">
@@ -36,7 +45,10 @@
 
         <form class="space-y-5" @submit.prevent="handleLogin">
           <div>
-            <label for="email" class="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              for="email"
+              class="mb-2 block text-sm font-medium text-slate-700"
+            >
               Email
             </label>
             <input
@@ -52,10 +64,18 @@
 
           <div>
             <div class="mb-2 flex items-center justify-between">
-              <label for="password" class="block text-sm font-medium text-slate-700">
+              <label
+                for="password"
+                class="block text-sm font-medium text-slate-700"
+              >
                 Password
               </label>
-              <span class="text-xs text-slate-400">Minimum 8 characters</span>
+              <router-link
+                to="/forgot-password"
+                class="text-xs font-medium text-cyan-600 hover:text-cyan-500"
+              >
+                Forgot password?
+              </router-link>
             </div>
             <div class="relative">
               <input
@@ -73,12 +93,41 @@
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 tabindex="-1"
               >
-                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <svg
+                  v-if="!showPassword"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
                 </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                  />
                 </svg>
               </button>
             </div>
@@ -89,6 +138,20 @@
             class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
             {{ error }}
+          </div>
+
+          <div
+            v-if="showVerificationHelp"
+            class="block rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
+          >
+            Email not verified yet?
+            <button
+              type="button"
+              @click="resendVerificationEmail"
+              class="ml-2 text-cyan-600 hover:text-cyan-500"
+            >
+              Click here to resend
+            </button>
           </div>
 
           <button
@@ -103,7 +166,10 @@
 
         <p class="mt-6 text-center text-sm text-slate-500">
           Don't have an account?
-          <router-link to="/register" class="font-semibold text-cyan-600 hover:text-cyan-500">
+          <router-link
+            to="/register"
+            class="font-semibold text-cyan-600 hover:text-cyan-500"
+          >
             Create one
           </router-link>
         </p>
@@ -113,45 +179,69 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useToastStore } from '../stores/toast'
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { useToastStore } from "../stores/toast";
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const toastStore = useToastStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const toastStore = useToastStore();
 
-const email = ref('')
-const password = ref('')
-const showPassword = ref(false)
-const error = ref('')
-const loading = ref(false)
+const email = ref("");
+const password = ref("");
+const showPassword = ref(false);
+const error = ref("");
+const loading = ref(false);
+const showVerificationHelp = computed(() => {
+  return ["Email not verified"].some((term) => error.value.includes(term));
+});
 
 async function handleLogin() {
-  error.value = ''
-  loading.value = true
+  error.value = "";
+  loading.value = true;
 
-  const success = await authStore.login(email.value, password.value)
+  const success = await authStore.login(email.value, password.value);
 
   if (success) {
-    toastStore.show('Login successful.', 'success')
+    toastStore.show("Login successful.", "success");
 
     if (authStore.isBusiness) {
-      router.push('/business')
+      router.push("/business");
     } else if (authStore.isAdmin) {
-      router.push('/admin')
+      router.push("/admin");
     } else if (authStore.isEmployee) {
-      router.push('/employee')
+      router.push("/employee");
     } else {
-      router.push(route.query.redirect || '/')
+      router.push(route.query.redirect || "/");
     }
   } else {
-    error.value = authStore.error || 'Login failed'
-    toastStore.show('Incorrect email or password.', 'error')
+    error.value = authStore.error || "Login failed";
+    toastStore.show(error.value, "error");
   }
 
-  loading.value = false
+  loading.value = false;
 }
+async function resendVerificationEmail() {
+  try {
+    await authStore.resendVerificationEmail(email.value);
+    toastStore.show(
+      "Verification email resent. Please check your inbox.",
+      "success",
+    );
+  } catch (err) {
+    toastStore.show(
+      "Failed to resend verification email. Please try again later.",
+      "error",
+    );
+  }
+}
+
+onMounted(() => {
+  const queryEmail = route.query.email;
+  if (typeof queryEmail === "string" && queryEmail.trim()) {
+    email.value = queryEmail.trim();
+  }
+});
 </script>
