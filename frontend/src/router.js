@@ -68,6 +68,24 @@ const routes = [
     meta: { guest: true, layout:'auth'}
   },
   {
+    path: '/verify-email',
+    name: 'VerifyEmail',
+    component: () => import('./views/VerifyEmail.vue'),
+    meta: { layout: 'auth' }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('./views/ForgotPassword.vue'),
+    meta: { guest: true, layout: 'auth' }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('./views/ResetPassword.vue'),
+    meta: { guest: true, layout: 'auth' }
+  },
+  {
     path: '/listings',
     name: 'Listings',
     component: () => import('./views/Listings.vue')
