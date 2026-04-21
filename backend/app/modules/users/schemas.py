@@ -49,11 +49,20 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class ResetRequest(BaseModel):
     email: EmailStr
 
 
 class ResetPassword(BaseModel):
+    password: str
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
     password: str
 
 
