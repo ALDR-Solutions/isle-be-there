@@ -121,8 +121,7 @@
 
         <RouterLink
           to="/itinerary"
-          class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
+          class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
           Create Itinerary
         </RouterLink>
       </div>
@@ -143,8 +142,7 @@
         <div
           v-for="itinerary in itineraries"
           :key="itinerary.id"
-          class="rounded-2xl border border-slate-200 p-4"
-        >
+          class="rounded-2xl border border-slate-200 p-4">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h3 class="font-semibold text-slate-900">{{ itinerary.title }}</h3>
@@ -373,7 +371,7 @@ async function loadItineraries() {
   }catch (err) {
     itinerariesError.value = err.response?.data?.detail || 'Failed to load itineraries.';
   }finally{
-    itinerariesLoading,value = false;
+    itinerariesLoading.value = false;
   }
 }
 </script>
