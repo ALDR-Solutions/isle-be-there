@@ -91,8 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     
     try {
       await authAPI.register(userData);
-      // Auto-login after registration
-      return await login(userData.email, userData.password);
+      return true;
     } catch (err) {
       error.value = err.response?.data?.detail || 'Registration failed';
       return false;
@@ -114,6 +113,22 @@ export const useAuthStore = defineStore('auth', () => {
       clearSessionState();
       throw err;
     }
+  }
+
+  async function resendVerificationEmail(email) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      await authAPI.resendVerification(email);
+      return true;
+    } catch (err) {
+      error.value = err.response?.data?.detail || 'Failed to resend verification email';
+      return false;
+    } finally {
+      loading.value = false;
+    }
+
   }
 
   function logout() {
@@ -189,5 +204,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     logout,
     initialize,
+    resendVerificationEmail,
   };
 });
