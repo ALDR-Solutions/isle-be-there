@@ -38,8 +38,7 @@
             <div class="relative">
               <button
                 @click="desktopDropdownOpen = !desktopDropdownOpen"
-                class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-              >
+                class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
                 <img
                   v-if="authStore.user?.avatar_url"
                   :src="authStore.user.avatar_url"
@@ -48,8 +47,7 @@
                 />
                 <div
                   v-else
-                  class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200"
-                >
+                  class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200">
                   {{ userInitial }}
                 </div>
                 <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': desktopDropdownOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -58,20 +56,17 @@
               </button>
               <div
                 v-if="desktopDropdownOpen"
-                class="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg"
-              >
+                class="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg">
                 <router-link
                   to="/profile"
                   @click="desktopDropdownOpen = false"
-                  class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                >
+                  class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
                   Profile
                 </router-link>
                 <router-link
                   to="/favourites"
                   @click="desktopDropdownOpen = false"
-                  class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                >
+                  class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
                   Favourites
                 </router-link>
                 <hr class="my-1 border-slate-100" />
@@ -88,14 +83,12 @@
           <template v-else>
             <router-link
               to="/login"
-              class="rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
+              class="rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
               Login
             </router-link>
             <router-link
               to="/register"
-              class="rounded-2xl bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-            >
+              class="rounded-2xl bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
               Sign Up
             </router-link>
           </template>
@@ -103,8 +96,7 @@
 
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
-          class="col-start-3 justify-self-end flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden"
-        >
+          class="col-start-3 justify-self-end flex items-center justify-center rounded-xl p-2 text-slate-700 transition hover:bg-slate-100 md:hidden">
           <svg v-if="!mobileMenuOpen" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -120,15 +112,13 @@
           <router-link
             to="/"
             @click="mobileMenuOpen = false"
-            class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-          >
+            class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
             Home
           </router-link>
           <router-link
             to="/listings"
             @click="mobileMenuOpen = false"
-            class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-          >
+            class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
             Listings
           </router-link>
 
@@ -136,15 +126,13 @@
             <router-link
               to="/bookings"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
               Bookings
             </router-link>
             <router-link
               to="/calendar"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
               Calendar
             </router-link>
             <hr class="border-slate-100" />
@@ -157,8 +145,7 @@
               />
               <div
                 v-else
-                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200"
-              >
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200">
                 {{ userInitial }}
               </div>
               <div class="min-w-0">
@@ -169,21 +156,18 @@
             <router-link
               to="/profile"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
               Profile
             </router-link>
             <router-link
               to="/favourites"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
               Favourites
             </router-link>
             <button
               @click="handleLogout"
-              class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100"
-            >
+              class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100">
               Logout
             </button>
           </template>
@@ -193,15 +177,13 @@
             <router-link
               to="/login"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
+              class="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
               Login
             </router-link>
             <router-link
               to="/register"
               @click="mobileMenuOpen = false"
-              class="block rounded-xl bg-cyan-500 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-            >
+              class="block rounded-xl bg-cyan-500 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
               Sign Up
             </router-link>
           </template>

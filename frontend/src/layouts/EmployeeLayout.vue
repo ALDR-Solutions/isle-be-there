@@ -20,8 +20,7 @@
           <div class="relative">
             <button
               @click="desktopDropdownOpen = !desktopDropdownOpen"
-              class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-            >
+              class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
               <img
                 v-if="authStore.user?.avatar_url"
                 :src="authStore.user.avatar_url"
@@ -30,8 +29,7 @@
               />
               <div
                 v-else
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200"
-              >
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200">
                 {{ userInitial }}
               </div>
               <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': desktopDropdownOpen }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

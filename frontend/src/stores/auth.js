@@ -1,6 +1,3 @@
-/**
- * Authentication store using Pinia.
- */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import {

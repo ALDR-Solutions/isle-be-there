@@ -257,7 +257,6 @@ onMounted(() => {
   loadEmployees()
 })
 
-// ── Add Employee ────────────────────────────────────────────────────────────
 const showAddModal = ref(false)
 const addSubmitting = ref(false)
 const addError = ref('')
@@ -296,7 +295,6 @@ async function submitAdd() {
   }
 }
 
-// ── Assign / Unassign ────────────────────────────────────────────────────────
 const showAssignModal = ref(false)
 const assignTarget = ref(null)
 const assignSubmitting = ref(false)
