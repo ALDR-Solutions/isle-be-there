@@ -27,7 +27,7 @@ def get_reviews(
 @router.post("/submit", response_model=ReviewSubmitResponse, status_code=201)
 def submit_review_route(
     review_request: ReviewSubmitRequest,
-    current_user: User = Depends(require_roles("user", "admin")),
+    current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
     """Submit a review with automatic classification.

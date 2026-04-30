@@ -1,92 +1,64 @@
-"""Business logic for services."""
+from uuid import UUID
+from sqlalchemy import asc, func, select
+from sqlmodel import Session
 
 from fastapi import HTTPException
-from sqlalchemy import func
-from sqlalchemy.orm import selectinload
-from sqlmodel import Session, asc, select
 
-from app.modules.listings.models import EmployeeListings, Listing
-
-from .models import Service
+from app.modules.services.models import Service, StatusTypes
+from app.modules.services.schemas import ServiceCreate, ServiceUpdate
+from app.modules.listings.models import Listing
 
 
-def get_service_by_id(db: Session, service_id: str):
-    service = db.exec(
-        select(Service)
-        .where(Service.service_id == service_id)
-    ).first()
+
+
+def _get_service(db: Session, service_id: UUID) -> Service | None:
+    return db.exec(
+        select(Service).where(Service.service_id == service_id)
+    ).scalars().first()
+
+
+def _get_listing(db: Session, listing_id: UUID) -> Listing | None:
+    return db.exec(
+        select(Listing).where(Listing.id == listing_id)
+    ).scalars().first()
+
+
+def get_service_by_id(db: Session, service_id: UUID) -> Service:
+    service = _get_service(db, service_id)
     if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
+        raise HTTPException(404, "Service not found")
     return service
 
 
-def get_services(db: Session) -> list:
-    services = db.exec(
+def get_services(db: Session) -> list[Service]:
+    return db.exec(
         select(Service)
-        .where(Service.status == "active")
+        .where(Service.status == StatusTypes.active)
         .order_by(asc(Service.created_at))
-    ).all()
-    return services
+    ).scalars().all()
 
 
-def get_services_by_listing_id(db: Session, listing_id: str, user_type: str) -> list:
-    if user_type in ["business", "employee"]:
-        services = db.exec(
-            select(Service)
-            .where((Service.listing_id == listing_id) & (Service.status != "deleted"))
-            .order_by(asc(Service.created_at))
-        ).all()
-    elif user_type in ["admin"]:
-        services = db.exec(
-            select(Service)
-            .where(Service.listing_id == listing_id)
-            .order_by(asc(Service.created_at))
-        ).all()
-    else:
-        services = db.exec(
-            select(Service).where(
-                (Service.listing_id == listing_id) & (Service.status == "active")
-            ).order_by(asc(Service.created_at))
-        ).all()
-    return services
+def get_services_by_listing(db: Session, listing_id: UUID, user_type: str) -> list[Service]:
+    query = select(Service).where(Service.listing_id == listing_id)
+
+    if user_type == "regular":
+        query = query.where(Service.status == StatusTypes.active)
+    elif user_type == "business" or user_type == "employee":
+        query = query.where(Service.status != StatusTypes.deleted)
+   
+
+    return db.exec(query.order_by(asc(Service.created_at))).scalars().all()
 
 
-def _get_listing_or_404(db: Session, listing_id: str) -> Listing:
-    listing = db.exec(
-        select(Listing)
-        .where(Listing.id == listing_id)
-        .options(selectinload(Listing.business_rel))
-    ).first()
+def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
+    if not data.listing_id:
+        raise HTTPException(400, "listing_id is required")
+
+    listing = _get_listing(db, data.listing_id)
     if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    return listing
+        raise HTTPException(404, "Listing not found")
 
-
-def _ensure_listing_service_access(db: Session, listing: Listing, user_id: str, detail: str):
-    business = listing.business_rel
-    if business and business.user_id == user_id:
-        return
-
-    assignment = db.exec(
-        select(EmployeeListings).where(
-            EmployeeListings.listing_id == listing.id,
-            EmployeeListings.employee_id == user_id,
-        )
-    ).first()
-    if assignment:
-        return
-
-    raise HTTPException(status_code=403, detail=detail)
-
-
-def create_service(db: Session, service: Service, user_id: str) -> Service:
-    listing = _get_listing_or_404(db, service.listing_id)
-    _ensure_listing_service_access(
-        db,
-        listing,
-        user_id,
-        "Not authorized to add service to this listing",
-    )
+    service = Service(**data.model_dump(), user_id=user_id)
 
     db.add(service)
     db.commit()
@@ -94,25 +66,13 @@ def create_service(db: Session, service: Service, user_id: str) -> Service:
     return service
 
 
-def update_service(db: Session, service_id: str, update_data: dict, user_id: str) -> Service:
-    service = db.exec(
-        select(Service)
-        .where(Service.service_id == service_id)
-    ).first()
-
+def update_service(db: Session, service_id: UUID, data: ServiceUpdate) -> Service:
+    service = _get_service(db, service_id)
     if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
+        raise HTTPException(404, "Service not found")
 
-    listing = _get_listing_or_404(db, service.listing_id)
-    _ensure_listing_service_access(
-        db,
-        listing,
-        user_id,
-        "Not authorized to update this service",
-    )
-
-    for key, value in update_data.items():
-        setattr(service, key, value)
+    for k, v in data.model_dump(exclude_unset=True).items():
+        setattr(service, k, v)
 
     service.updated_at = func.now()
     db.commit()
@@ -120,43 +80,27 @@ def update_service(db: Session, service_id: str, update_data: dict, user_id: str
     return service
 
 
-def delete_service(db: Session, service_id: str, user_id: str):
-    service = db.exec(select(Service).where(Service.service_id == service_id)).first()
-
+def delete_service(db: Session, service_id: UUID) -> Service:
+    service = _get_service(db, service_id)
     if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
+        raise HTTPException(404, "Service not found")
 
-    listing = _get_listing_or_404(db, service.listing_id)
-    _ensure_listing_service_access(
-        db,
-        listing,
-        user_id,
-        "Not authorized to delete this service",
-    )
-
-    service.status = "deleted"
+    service.status = StatusTypes.deleted
     service.updated_at = func.now()
+
     db.commit()
     db.refresh(service)
     return service
 
 
-def deactivate_service(db: Session, service_id: str, user_id: str):
-    service = db.exec(select(Service).where(Service.service_id == service_id)).first()
-
+def deactivate_service(db: Session, service_id: UUID) -> Service:
+    service = _get_service(db, service_id)
     if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
+        raise HTTPException(404, "Service not found")
 
-    listing = _get_listing_or_404(db, service.listing_id)
-    _ensure_listing_service_access(
-        db,
-        listing,
-        user_id,
-        "Not authorized to deactivate this service",
-    )
-
-    service.status = "inactive"
+    service.status = StatusTypes.inactive
     service.updated_at = func.now()
+
     db.commit()
     db.refresh(service)
     return service

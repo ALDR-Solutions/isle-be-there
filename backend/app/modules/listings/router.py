@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session
 
 from app.infrastructure.database import get_db
@@ -22,9 +22,6 @@ from .service import (
 router = APIRouter(prefix="/api/listings", tags=["Listings"])
 
 
-def _require_user_id(user_id: str | None):
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 @router.get("", response_model=List[ListingResponse])
@@ -43,26 +40,16 @@ def get_listings(
 ):
     return list_listings(
         db=db,
-        skip=skip,
         limit=limit,
-        city=city,
-        country=country,
-        business_type=business_type,
-        min_price=min_price,
-        max_price=max_price,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        status=status,
     )
 
 
 @router.get("/personalized", response_model=List[ListingResponse])
 def get_personalized_listings_endpoint(
-    current_user: User = Depends(require_roles("user", "business", "admin")),
+    current_user: User = Depends(require_roles("regular", "business", "admin")),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(current_user.id)
     return get_personalized_listings(db, current_user.id, limit)
 
 
@@ -96,45 +83,28 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
 @router.post("", response_model=ListingResponse, status_code=201)
 def create_listing_endpoint(
     listing_data: ListingCreate,
-    current_user: User = Depends(require_roles("business", "admin")),
+    current_user: User = Depends(require_roles("business")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(current_user.id)
-    data = listing_data.model_dump(exclude_unset=True)
-    return create_listing(db, data, current_user.id)
+    
+    return create_listing(db, listing_data, current_user.id)
 
 
-@router.put("/{listing_id}", response_model=dict)
+@router.put("/{listing_id}", response_model=ListingResponse)
 def update_listing_endpoint(
     listing_data: ListingUpdate,
     listing: Listing = Depends(require_listing_owner),
-    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    update_data = {
-        key: value
-        for key, value in listing_data.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
-    return update_listing(
-        db,
-        listing.id,
-        update_data,
-        current_user.id,
-        is_admin=current_user.user_type == "admin",
-    )
+    update_data = listing_data.model_dump(exclude_unset=True)
+
+    return update_listing(db, listing, update_data)
 
 
 @router.delete("/{listing_id}", status_code=204)
 def delete_listing_endpoint(
     listing: Listing = Depends(require_listing_owner),
-    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    delete_listing(
-        db,
-        listing.id,
-        current_user.id,
-        is_admin=current_user.user_type == "admin",
-    )
-    return None
+    delete_listing(db,listing)
+    return Response(status_code=204)

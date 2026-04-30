@@ -83,14 +83,14 @@
               Booking
             </p>
             <h2 class="mt-2 text-xl font-bold text-slate-900">
-              #{{ booking.id }}
+              Reference No.: #{{ booking.id }}
             </h2>
           </div>
           <span
             class="rounded-full px-3 py-1 text-xs font-semibold"
             :class="statusClasses(booking.status)"
           >
-            {{ statusLabel(booking.status) }}
+            {{ statusLabel(booking.status.value) }}
           </span>
         </div>
 
@@ -102,7 +102,7 @@
               Listing
             </p>
             <p class="mt-1 text-sm font-medium text-slate-700">
-              Listing Name: {{ getListingName(booking.service_id) }}
+              Listing Name: {{ booking.listing_name }}
             </p>
           </div>
         </div>
@@ -115,7 +115,7 @@
               Service
             </p>
             <p class="mt-1 text-sm font-medium text-slate-700">
-              Service Name: {{ getServiceName(booking.service_id) }}
+              Service Name: {{ booking.service_name }}
             </p>
           </div>
 
@@ -126,8 +126,10 @@
               Booking Time
             </p>
             <p class="mt-1 text-sm font-medium text-slate-700">
-              {{ formatDate(booking.booking_from_time) }}
-              to {{ formatDate(booking.booking_to_time) }}
+              From: {{ formatDate(booking.booking_from_time) }}
+            </p>
+            <p class="mt-1 text-sm font-medium text-slate-700">
+              To: {{ formatDate(booking.booking_to_time) }}
             </p>
           </div>
 
@@ -152,7 +154,6 @@
               {{ booking.amount_of_people }}
             </p>
           </div>
-
         </div>
 
         <div class="mt-6 flex items-center justify-between gap-3">
@@ -160,11 +161,13 @@
             {{
               booking.status === "pending"
                 ? "This booking is still awaiting confirmation."
-                : "Your booking status is up to date."
+                : booking.status === "cancelled"
+                  ? "This booking has been cancelled."
+                  : "Your booking status is up to date."
             }}
           </p>
           <button
-            v-if="booking.status === 'pending'"
+            v-if="booking.status === 'pending' || booking.status === 'approved'"
             @click="bookingToCancel = booking"
             class="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
@@ -238,8 +241,6 @@ import { useToastStore } from "../stores/toast";
 const toastStore = useToastStore();
 
 const bookings = ref([]);
-const serviceDetails = ref({});
-const listingNames = ref({});
 const loading = ref(true);
 const cancelling = ref(false);
 const bookingToCancel = ref(null);
@@ -252,66 +253,11 @@ async function fetchBookings() {
   try {
     const response = await bookingsAPI.getAll();
     bookings.value = response.data;
-    await fetchServiceNames(bookings.value);
   } catch (err) {
     error.value = "Failed to load bookings.";
   } finally {
     loading.value = false;
   }
-}
-
-async function fetchServiceNames(bookingsList) {
-  const uniqueIds = [
-    ...new Set(
-      bookingsList.map((booking) => booking.service_id).filter(Boolean),
-    ),
-  ];
-  await Promise.all(uniqueIds.map((serviceId) => fetchService(serviceId)));
-}
-
-async function fetchService(serviceId) {
-  if (serviceDetails.value[serviceId]) {
-    return;
-  }
-
-  try {
-    const response = await servicesAPI.getById(serviceId);
-    serviceDetails.value[serviceId] = {
-      name: response.data.name,
-      listing_id: response.data.listing_id,
-    };
-
-    if (response.data.listing_id) {
-      await fetchListingName(response.data.listing_id);
-    }
-  } catch (err) {
-    error.value = "Failed to load service.";
-  }
-}
-
-async function fetchListingName(listingId) {
-  if (listingNames.value[listingId]) {
-    return;
-  }
-
-  try {
-    const response = await listingsAPI.getById(listingId);
-    listingNames.value[listingId] = response.data.title;
-  } catch (err) {
-    error.value = "Failed to load listing.";
-  }
-}
-
-function getServiceName(serviceId) {
-  return serviceDetails.value[serviceId]?.name || "Service not found";
-}
-
-function getListingName(serviceId) {
-  const listingId = serviceDetails.value[serviceId]?.listing_id;
-  if (!listingId) {
-    return "Listing not found";
-  }
-  return listingNames.value[listingId] || "Loading listing...";
 }
 
 async function confirmCancelBooking() {
@@ -340,7 +286,7 @@ function formatDate(date) {
 
 function statusLabel(status) {
   if (status === "pending") return "Pending";
-  if (status === "confirmed") return "Confirmed";
+  if (status === "approved") return "Approved";
   if (status === "cancelled") return "Cancelled";
   if (status === "completed") return "Completed";
   return status;
@@ -348,7 +294,7 @@ function statusLabel(status) {
 
 function statusClasses(status) {
   if (status === "pending") return "bg-amber-100 text-amber-800";
-  if (status === "confirmed") return "bg-emerald-100 text-emerald-800";
+  if (status === "approved") return "bg-emerald-100 text-emerald-800";
   if (status === "cancelled") return "bg-red-100 text-red-800";
   if (status === "completed") return "bg-cyan-100 text-cyan-800";
   return "bg-slate-100 text-slate-700";
