@@ -101,6 +101,7 @@ class ListingBase(BaseModel):
     status: Optional[Statuses] = None
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
+    interest_ids: Optional[List[UUID]] = None
     details: Optional[Dict[str, Any]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -125,6 +126,7 @@ class ListingUpdate(BaseModel):
     status: Optional[Statuses] = None
     phone_number: Optional[str] = None
     email_address: Optional[str] = None
+    interest_ids: Optional[List[UUID]] = None
     details: Optional[Dict[str, Any]] = None
     location: Optional[ListingLocation] = None
 

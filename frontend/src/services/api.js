@@ -140,10 +140,10 @@ export const profileAPI = {
 
 // Interests API
 export const interestsAPI = {
-  getAll: () => api.get("/api/interests"),
-  getUserInterests: () => api.get("/api/interests/user"),
-  updateUserInterests: (interestIds) =>
-    api.put("/api/interests/user", { interest_ids: interestIds }),
+  getAll: () => api.get('/api/interests'),
+  getByBusinessType: (businessTypeId) => api.get(`/api/interests/business-type/${businessTypeId}`),
+  getUserInterests: () => api.get('/api/interests/user'),
+  updateUserInterests: (interestIds) => api.put('/api/interests/user', { interest_ids: interestIds }),
   getCategories: async () => {
     const response = await api.get("/api/interests");
     const categories = [

@@ -388,6 +388,53 @@
             </div>
           </div>
 
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+              Listing Interests
+            </label>
+            <p class="mb-2 text-xs text-slate-500">
+              Select interests available for this listing type.
+            </p>
+
+            <div
+              v-if="!form.business_type"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
+            >
+              Choose a business type first.
+            </div>
+
+            <div
+              v-else-if="loadingTypeInterests"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+            >
+              Loading interests...
+            </div>
+
+            <div
+              v-else-if="availableTypeInterests.length === 0"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
+            >
+              No interests configured for this listing type yet.
+            </div>
+
+            <div v-else class="flex flex-wrap gap-2">
+              <button
+                v-for="interest in availableTypeInterests"
+                :key="interest.id"
+                type="button"
+                @click="toggleInterestSelection(interest.id)"
+                class="rounded-2xl border px-3 py-1.5 text-xs font-semibold transition"
+                :class="
+                  form.interest_ids.includes(String(interest.id))
+                    ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                "
+              >
+                {{ interest.name }}
+              </button>
+            </div>
+          </div>
+
           <component
             v-if="detailFormComponent"
             :is="detailFormComponent"
@@ -1054,6 +1101,7 @@ import {
 } from "vue";
 import {
   businessesAPI,
+  interestsAPI,
   listingsAPI,
   uploadsAPI,
   employeesAPI,
@@ -1073,6 +1121,8 @@ import ListingServicesSection from "../components/services/ListingServicesSectio
 const toastStore = useToastStore();
 const businessStore = useBusinessStore();
 const businessTypes = ref([]);
+const typeInterests = ref([]);
+const loadingTypeInterests = ref(false);
 
 onMounted(() => {
   fetchBusinessTypes();
@@ -1121,6 +1171,7 @@ const geocodingLocation = ref(false);
 const blankForm = () => ({
   title: "",
   business_type: "",
+  interest_ids: [],
   description: "",
   base_price: "",
   street: "",
@@ -1163,6 +1214,7 @@ const selectedTypeName = computed(
   () =>
     businessTypes.value.find((t) => t.id === form.value.business_type)?.name,
 );
+const availableTypeInterests = computed(() => typeInterests.value ?? []);
 const displayImages = computed(() => [
   ...form.value.image_urls
     .filter((url) => url)
@@ -1242,10 +1294,59 @@ const detailFormComponent = computed(() => {
 
 watch(
   () => form.value.business_type,
-  () => {
-    if (!isEditing.value) form.value.details = {};
+  (businessTypeId, previousBusinessTypeId) => {
+    if (!isEditing.value && businessTypeId !== previousBusinessTypeId) {
+      form.value.details = {};
+    }
+    fetchTypeInterests(businessTypeId);
   },
 );
+
+function normalizeInterestIds(interestIds) {
+  if (!Array.isArray(interestIds)) return [];
+  return [...new Set(interestIds.map((id) => String(id)).filter(Boolean))];
+}
+
+function sanitizeSelectedInterests() {
+  const allowedIds = new Set(
+    availableTypeInterests.value.map((interest) => String(interest.id)),
+  );
+  form.value.interest_ids = normalizeInterestIds(form.value.interest_ids).filter(
+    (interestId) => allowedIds.has(String(interestId)),
+  );
+}
+
+async function fetchTypeInterests(businessTypeId) {
+  if (!businessTypeId) {
+    typeInterests.value = [];
+    form.value.interest_ids = [];
+    return;
+  }
+
+  loadingTypeInterests.value = true;
+  try {
+    const response = await interestsAPI.getByBusinessType(businessTypeId);
+    typeInterests.value = Array.isArray(response.data) ? response.data : [];
+    sanitizeSelectedInterests();
+  } catch (error) {
+    typeInterests.value = [];
+    form.value.interest_ids = [];
+    toastStore.show("Failed to load interests for this listing type.", "error");
+  } finally {
+    loadingTypeInterests.value = false;
+  }
+}
+
+function toggleInterestSelection(interestId) {
+  const normalizedId = String(interestId);
+  const selected = new Set(normalizeInterestIds(form.value.interest_ids));
+  if (selected.has(normalizedId)) {
+    selected.delete(normalizedId);
+  } else {
+    selected.add(normalizedId);
+  }
+  form.value.interest_ids = [...selected];
+}
 
 function openCreateModal() {
   isEditing.value = false;
@@ -1255,6 +1356,7 @@ function openCreateModal() {
   destroyListingMap();
   originalImageUrls.value = [];
   originalListingPayload.value = null;
+  typeInterests.value = [];
   form.value = blankForm();
   formErrors.value = {};
   showFormModal.value = true;
@@ -1281,6 +1383,9 @@ function openEditModal(item) {
     },
     phone_number: item.phone_number ?? null,
     email_address: item.email_address ?? null,
+    interest_ids: item.interest_ids?.length
+      ? [...normalizeInterestIds(item.interest_ids)]
+      : [],
     location: item.location
       ? {
           lat: item.location.lat,
@@ -1293,6 +1398,9 @@ function openEditModal(item) {
   form.value = {
     title: item.title ?? "",
     business_type: item.business_type ?? "",
+    interest_ids: item.interest_ids?.length
+      ? [...normalizeInterestIds(item.interest_ids)]
+      : [],
     description: item.description ?? "",
     base_price: item.base_price ?? "",
     street: item.address?.street ?? "",
@@ -1307,6 +1415,7 @@ function openEditModal(item) {
     image_urls: item.image_urls?.length ? [...item.image_urls] : [],
     details: item.details ? { ...item.details } : {},
   };
+  fetchTypeInterests(form.value.business_type);
   formErrors.value = {};
   showFormModal.value = true;
 }
@@ -1318,6 +1427,7 @@ function closeFormModal() {
   destroyListingMap();
   originalImageUrls.value = [];
   originalListingPayload.value = null;
+  typeInterests.value = [];
   showFormModal.value = false;
 }
 
@@ -1691,6 +1801,7 @@ async function submitForm() {
     const payload = {
       title: form.value.title.trim(),
       business_type: form.value.business_type,
+      interest_ids: normalizeInterestIds(form.value.interest_ids),
       description: form.value.description.trim(),
       base_price: Number(form.value.base_price),
       address: {

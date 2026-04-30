@@ -1,19 +1,40 @@
 <template>
-  <article class="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-    <div class="relative overflow-hidden">
+  <article
+    class="group overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+    :class="
+      viewMode === 'grid'
+        ? 'flex h-full flex-col'
+        : 'flex flex-col items-stretch sm:flex-row'
+    "
+  >
+    <div
+      class="relative overflow-hidden shrink-0"
+      :class="viewMode === 'grid' ? '' : 'w-full sm:w-52 md:w-64'"
+    >
       <img
         v-if="listing.image_urls?.length"
         :src="listing.image_urls[0]"
         :alt="listing.title"
-        class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+        :class="
+          viewMode === 'grid'
+            ? 'h-56 w-full object-cover transition duration-500 group-hover:scale-105'
+            : 'h-48 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-full'
+        "
         @error="$event.target.src = '/placeholder.jpg'"
       />
 
       <div
         v-else
-        class="flex h-56 w-full items-center justify-center bg-slate-200 text-slate-400"
+        class="flex w-full items-center justify-center bg-slate-200 text-slate-400"
+        :class="viewMode === 'grid' ? 'h-56' : 'h-48 min-h-[10rem] sm:h-full'"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-12 w-12"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -23,28 +44,62 @@
         </svg>
       </div>
 
-      <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/55 to-transparent"></div>
+      <div
+        class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/55 to-transparent"
+      ></div>
 
       <div class="absolute right-4 top-4">
         <button
-          class="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors"
-          :class="isFavourited ? 'bg-white/15 text-amber-400 hover:bg-white/30' : 'bg-white/15 text-white hover:bg-white/30'"
+          class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 backdrop-blur-md transition-colors sm:h-9 sm:w-9"
+          :class="
+            isFavourited
+              ? 'bg-white/15 text-amber-400 hover:bg-white/30'
+              : 'bg-white/15 text-white hover:bg-white/30'
+          "
           @click.prevent="toggleFavourite(listing.id)"
         >
-          <svg v-if="!isFavourited" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+          <svg
+            v-if="!isFavourited"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            class="h-5 w-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+            />
           </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
-            <path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clip-rule="evenodd" />
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="h-5 w-5"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z"
+              clip-rule="evenodd"
+            />
           </svg>
         </button>
       </div>
     </div>
 
-    <div class="flex flex-1 flex-col p-6">
-      <div class="mb-4">
+    <div
+      class="flex flex-1 flex-col"
+      :class="viewMode === 'grid' ? 'p-6' : 'p-4 sm:p-5'"
+    >
+      <div class="mb-3">
         <div class="flex items-start gap-2">
-          <h3 class="text-xl font-bold leading-tight text-slate-900">
+          <h3
+            class="font-bold leading-tight text-slate-900"
+            :class="viewMode === 'grid' ? 'text-xl' : 'text-lg sm:text-base'"
+          >
             {{ listing.title }}
           </h3>
           <span
@@ -55,8 +110,17 @@
           </span>
         </div>
 
-        <div v-if="listing.address" class="mt-3 flex items-start text-sm text-slate-500">
-          <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div
+          v-if="listing.address"
+          class="mt-3 flex items-start text-sm text-slate-500"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -74,42 +138,70 @@
         </div>
       </div>
 
-      <div v-if="listing.avg_rating" class="mb-5 flex items-center justify-between">
+      <div
+        v-if="listing.avg_rating"
+        :class="
+          viewMode === 'grid'
+            ? 'mb-5 flex items-center justify-between'
+            : 'mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-between'
+        "
+      >
         <div class="flex items-center gap-2">
           <div class="flex">
             <svg
               v-for="i in 5"
               :key="i"
               class="h-4 w-4"
-              :class="i <= Math.round(listing.avg_rating) ? 'text-amber-400' : 'text-slate-200'"
+              :class="
+                i <= Math.round(listing.avg_rating)
+                  ? 'text-amber-400'
+                  : 'text-slate-200'
+              "
               fill="currentColor"
               viewBox="0 0 20 20"
             >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              <path
+                d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+              />
             </svg>
           </div>
-          <span class="text-sm font-semibold text-slate-700">{{ listing.avg_rating.toFixed(1) }}</span>
+          <span class="text-sm font-semibold text-slate-700">{{
+            listing.avg_rating.toFixed(1)
+          }}</span>
         </div>
 
-        <span v-if="listing.review_count" class="text-sm font-medium text-cyan-700">
-          {{ listing.review_count }} {{ listing.review_count === 1 ? 'Review' : 'Reviews' }}
+        <span
+          v-if="listing.review_count"
+          class="text-sm font-medium text-cyan-700 sm:ml-auto"
+        >
+          {{ listing.review_count }}
+          {{ listing.review_count === 1 ? "Review" : "Reviews" }}
         </span>
       </div>
 
-      <div v-else class="mb-5 text-sm text-slate-400">
-        New listing
-      </div>
+      <div v-else class="mb-5 text-sm text-slate-400">New listing</div>
 
       <component
+        v-if="viewMode === 'grid' && highlightComponent && listing.details"
         :is="highlightComponent"
-        v-if="highlightComponent && listing.details"
         :details="listing.details"
       />
-
-      <div class="mt-auto flex items-center justify-between gap-4">
+      <div
+        class="mt-auto flex gap-4"
+        :class="
+          viewMode === 'grid'
+            ? 'items-center justify-between'
+            : 'flex-col items-stretch pt-3 sm:flex-row sm:items-center sm:justify-between'
+        "
+      >
         <div>
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Starting from</p>
-          <p class="text-2xl font-bold text-slate-900">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">
+            Starting from
+          </p>
+          <p
+            class="font-bold text-slate-900"
+            :class="viewMode === 'grid' ? 'text-2xl' : 'text-xl'"
+          >
             ${{ parseFloat(listing.base_price || 0).toFixed(2) }}
           </p>
         </div>
@@ -117,6 +209,7 @@
         <router-link
           :to="`/listings/${listing.id}`"
           class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          :class="viewMode === 'list' ? 'w-full sm:w-auto' : ''"
         >
           View Details
         </router-link>
@@ -126,72 +219,85 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useFavouritesStore } from '../stores/favourites'
-import { useToastStore } from '../stores/toast'
-import HotelCardHighlights from './listings/card-highlights/HotelCardHighlights.vue'
-import RestaurantCardHighlights from './listings/card-highlights/RestaurantCardHighlights.vue'
-import TourCardHighlights from './listings/card-highlights/TourCardHighlights.vue'
-import ActivityCardHighlights from './listings/card-highlights/ActivityCardHighlights.vue'
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { useFavouritesStore } from "../stores/favourites";
+import { useToastStore } from "../stores/toast";
+import HotelCardHighlights from "./listings/card-highlights/HotelCardHighlights.vue";
+import RestaurantCardHighlights from "./listings/card-highlights/RestaurantCardHighlights.vue";
+import TourCardHighlights from "./listings/card-highlights/TourCardHighlights.vue";
+import ActivityCardHighlights from "./listings/card-highlights/ActivityCardHighlights.vue";
 
 const props = defineProps({
   listing: {
     type: Object,
     required: true,
-  }
-})
+  },
+  viewMode: {
+    type: String,
+    default: "grid",
+  },
+});
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const favouritesStore = useFavouritesStore()
-const toastStore = useToastStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const favouritesStore = useFavouritesStore();
+const toastStore = useToastStore();
 
-const isFavourited = computed(() =>
-  favouritesStore.has(props.listing.id)
-)
+const isFavourited = computed(() => favouritesStore.has(props.listing.id));
 
 const highlightComponent = computed(() => {
   switch (props.listing.business_type_name) {
-    case 'Hotel':      return HotelCardHighlights
-    case 'Restaurant': return RestaurantCardHighlights
-    case 'Tour Operator':      return TourCardHighlights
-    case 'Activity Provider':  return ActivityCardHighlights
-    default:           return null
+    case "Hotel":
+      return HotelCardHighlights;
+    case "Restaurant":
+      return RestaurantCardHighlights;
+    case "Tour Operator":
+      return TourCardHighlights;
+    case "Activity Provider":
+      return ActivityCardHighlights;
+    default:
+      return null;
   }
-})
+});
 
 const hotelStarLabel = computed(() => {
-  if (props.listing.business_type_name !== 'Hotel') return null
+  if (props.listing.business_type_name !== "Hotel") return null;
 
-  const starLevel = Number(props.listing?.details?.star_level)
-  if (!Number.isFinite(starLevel) || starLevel <= 0) return null
+  const starLevel = Number(props.listing?.details?.star_level);
+  if (!Number.isFinite(starLevel) || starLevel <= 0) return null;
 
-  return `${Math.round(starLevel)}-star`
-})
+  return `${Math.round(starLevel)}-star`;
+});
 
 const locationText = computed(() => {
-  const address = props.listing.address
-  if (!address) return ''
+  const address = props.listing.address;
+  if (!address) return "";
 
-  return [address.street, address.city, address.state, address.postal_code, address.country]
+  return [
+    address.street,
+    address.city,
+    address.state,
+    address.postal_code,
+    address.country,
+  ]
     .filter(Boolean)
-    .join(', ')
-})
+    .join(", ");
+});
 
 async function toggleFavourite(listingId) {
   if (!authStore.isAuthenticated) {
-    toastStore.show('Sign in to save listings to your favourites.', 'info')
-    router.push({ name: 'Login', query: { redirect: route.fullPath } })
-    return
+    toastStore.show("Sign in to save listings to your favourites.", "info");
+    router.push({ name: "Login", query: { redirect: route.fullPath } });
+    return;
   }
 
   try {
-    await favouritesStore.toggle(listingId)
+    await favouritesStore.toggle(listingId);
   } catch (err) {
-    console.error('Favourite error:', err)
+    console.error("Favourite error:", err);
   }
 }
 </script>

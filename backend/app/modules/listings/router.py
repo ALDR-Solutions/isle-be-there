@@ -26,7 +26,16 @@ router = APIRouter(prefix="/api/listings", tags=["Listings"])
 
 @router.get("", response_model=List[ListingResponse])
 def get_listings(
-    limit: int = Query(100, ge=1, le=100),
+    skip: int = Query(0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
+    city: str | None = None,
+    country: str | None = None,
+    business_type: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort_by: str | None = None,
+    sort_order: str = Query("asc", pattern="^(asc|desc)$"),
+    status: str | None = None,
     db: Session = Depends(get_db),
 ):
     return list_listings(
