@@ -8,9 +8,9 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import or_
 
-from backend.app.modules.pricing.models import PlatformPricingConfig
-from backend.app.modules.listings.service import get_listing_by_id  # reference pattern
-from backend.app.modules.services.service import get_service_by_id  # reference pattern
+from app.modules.pricing.models import PlatformPricingConfig
+from app.modules.listings.service import get_listing_by_id  # reference pattern
+from app.modules.services.service import get_service_by_id  # reference pattern
 
 
 def _now() -> datetime:

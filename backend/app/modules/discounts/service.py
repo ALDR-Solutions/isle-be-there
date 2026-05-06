@@ -209,3 +209,28 @@ def increment_discount_usage(db: Session, discount_id: UUID) -> Discount:
     if getattr(result, "rowcount", 0) == 0:
         raise HTTPException(400, "Discount usage limit exceeded")
     return db.get(Discount, discount_id)
+
+
+def get_or_create_package_discount(db: Session) -> Discount:
+    """Return an active PACKAGE discount, creating a default one if none exists.
+
+    - Attempts to fetch an active package discount via get_active_discounts(db, discount_type=DiscountType.PACKAGE).
+    - If found, returns the first active package discount.
+    - If none exists, creates a default package discount with sane defaults and returns it.
+    """
+    # Try to fetch an existing active package discount
+    discounts = get_active_discounts(db, discount_type=DiscountType.PACKAGE)
+    if discounts:
+        return discounts[0]
+
+    # No active package discount found; create a default one
+    data = {
+        "name": "Package Discount",
+        "discount_type": DiscountType.PACKAGE,
+        "discount_percent": 10.0,  # 10%
+        "min_services": 2,
+        "is_active": True,
+        "valid_from": datetime.utcnow(),
+        # valid_to intentionally left as None (no expiry)
+    }
+    return create_discount(db, data)
