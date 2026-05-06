@@ -19,6 +19,9 @@ from app.infrastructure.storage import (
     validate_image_upload,
 )
 from app.modules.auth.router import router as auth_router
+from app.modules.pricing.router import router as pricing_router
+from app.modules.discounts.router import router as discounts_router
+from app.modules.itineraries.router import router as itineraries_router
 from app.modules.bookings.router import router as bookings_router
 from app.modules.businesses.router import router as businesses_router
 from app.modules.users.models import User
@@ -87,6 +90,9 @@ app.include_router(interests_router)
 app.include_router(businesses_router)
 app.include_router(employees_router)
 app.include_router(services_router)
+app.include_router(pricing_router)
+app.include_router(discounts_router)
+app.include_router(itineraries_router)
 
 
 @app.get("/health")
