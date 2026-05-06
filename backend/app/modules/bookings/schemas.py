@@ -16,6 +16,8 @@ class BookingBase(BaseModel):
     special_requests: Optional[str] = None
     booking_from_time: Optional[datetime] = None
     booking_to_time: Optional[datetime] = None
+    itinerary_id: Optional[UUID] = None
+    itinerary_item_id: Optional[UUID] = None
 
 
 
@@ -24,6 +26,7 @@ class BookingCreate(BookingBase):
     status: BookingStatus = BookingStatus.pending
     service_id: Optional[UUID] = None
     listing_id: Optional[UUID] = None
+    base_price: Optional[float] = None
 
 
 class BookingUpdate(BaseModel):
@@ -48,6 +51,25 @@ class BookingResponse(BaseModel):
     status: Optional[BookingStatus] = None
     created_at: datetime
     updated_at: datetime
+    # Price fields (calculated server-side)
+    base_price: float
+    service_fee_percent: float
+    service_fee_amount: float
+    discount_percent: float
+    discount_amount: float
+    display_price: float
+    final_price: float
+    model_config = {"from_attributes": True}
+
+
+class BookingPriceResponse(BaseModel):
+    base_price: float
+    service_fee_percent: float
+    service_fee_amount: float
+    discount_percent: float
+    discount_amount: float
+    display_price: float
+    final_price: float
 
 class BookingCreateResponse(BaseModel):
     id: UUID
