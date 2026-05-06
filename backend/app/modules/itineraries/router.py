@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
-from typing import List
+from typing import List, Optional
 from .schemas import (
     ItineraryPlanRequest,
     ItineraryPlanResponse,
     ItineraryItemCreate,
+    ItineraryItemResponse,
     ItineraryPriceItem,
     ItineraryPriceResponse,
     ItineraryResponse,
@@ -36,6 +38,10 @@ def plan_itinerary_endpoint(
 
 
 class ItineraryCreateRequest(BaseModel):
+    title: Optional[str] = None
+    budget_level: Optional[str] = None
+    pace: Optional[str] = None
+    strict_budget: Optional[bool] = None
     start_date: date
     end_date: date
     items: List[ItineraryItemCreate]
@@ -48,6 +54,10 @@ def create_itinerary_endpoint(
     db: Session = Depends(get_db),
 ):
     data = {
+        "title": payload.title,
+        "budget_level": payload.budget_level,
+        "pace": payload.pace,
+        "strict_budget": payload.strict_budget,
         "start_date": payload.start_date,
         "end_date": payload.end_date,
         "items": [item.dict() for item in payload.items],
@@ -61,7 +71,16 @@ def get_itinerary_endpoint(
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    return get_itinerary_by_id(db, itinerary_id, current_user.id)
+    itinerary = get_itinerary_by_id(db, itinerary_id, current_user.id)
+    response_items = [
+        ItineraryItemResponse(
+            id=item.id,
+            listing_id=item.listing_id,
+            booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
+        )
+        for item in itinerary.items
+    ]
+    return ItineraryResponse(id=itinerary.id, applied_discount=None, items=response_items)
 
 
 @router.get("/{itinerary_id}/price", response_model=ItineraryPriceResponse)
@@ -113,11 +132,20 @@ def itinerary_confirm_endpoint(
 ):
     result = confirm_itinerary(db, itinerary_id, current_user.id)
     itinerary = result["itinerary"]
+    # Convert ORM items to response objects
+    response_items = [
+        ItineraryItemResponse(
+            id=item.id,
+            listing_id=item.listing_id,
+            booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
+        )
+        for item in itinerary.items
+    ]
     # Build ItineraryResponse from ORM object
     response_itinerary = ItineraryResponse(
         id=itinerary.id,
         applied_discount=None,  # May be populated via discount_id if available
-        items=itinerary.items,
+        items=response_items,
     )
     return ItineraryConfirmResponse(
         itinerary=response_itinerary,
@@ -136,7 +164,15 @@ def itinerary_book_endpoint(
     updated_itinerary = convert_itinerary_to_bookings(
         db, itinerary_id, current_user.id, payload.item_ids
     )
-    return ItineraryResponse(id=updated_itinerary.id, applied_discount=None, items=updated_itinerary.items)
+    response_items = [
+        ItineraryItemResponse(
+            id=item.id,
+            listing_id=item.listing_id,
+            booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
+        )
+        for item in updated_itinerary.items
+    ]
+    return ItineraryResponse(id=updated_itinerary.id, applied_discount=None, items=response_items)
 
 
 @router.get("", response_model=List[ItineraryResponse])
@@ -147,5 +183,16 @@ def list_itineraries_endpoint(
     itineraries = db.exec(
         select(Itinerary).where(Itinerary.user_id == current_user.id).options(selectinload(Itinerary.items))
     ).all()
-    return [ItineraryResponse(id=i.id, applied_discount=None, items=i.items) for i in itineraries]
+    result = []
+    for i in itineraries:
+        response_items = [
+            ItineraryItemResponse(
+                id=item.id,
+                listing_id=item.listing_id,
+                booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
+            )
+            for item in i.items
+        ]
+        result.append(ItineraryResponse(id=i.id, applied_discount=None, items=response_items))
+    return result
 

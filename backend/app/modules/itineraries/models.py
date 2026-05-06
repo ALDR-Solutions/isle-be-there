@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from enum import Enum
 from typing import List, Optional
 from datetime import datetime, date
@@ -8,9 +6,12 @@ from pydantic import Json
 from sqlmodel import Date, SQLModel, Field, Relationship, text
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, Text, text, Numeric
 from sqlalchemy import Enum as SAEnum
-
+from sqlalchemy.orm import Mapped
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 
+from app.modules.users.models import User
+from app.modules.listings.models import Listing
+from app.modules.bookings.models import Booking
 
 
 # Enums representing status values for itineraries and their items
@@ -79,17 +80,24 @@ class Itinerary(SQLModel, table=True):
     applied_discount_id: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
     discount_amount: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
 
-    # Relationships
-    applied_discount_rel: Optional["Discount"] = Relationship(back_populates="itineraries")
-    items: List["ItineraryItem"] = Relationship(back_populates="itinerary")
-    user_rel: Optional["User"] = Relationship(back_populates="itineraries")
+    # Relationships - use Mapped types directly (class already imported)
+    items: Mapped[List["ItineraryItem"]] = Relationship(back_populates="itinerary")
+    user_rel: Mapped["User"] = Relationship(back_populates="itineraries")
 
 
 class ItineraryItem(SQLModel, table=True):
     # Map to existing table
     __tablename__ = "itinerary_items"
 
-    id: UUID = Field(default=None, primary_key=True)
+    id: UUID = Field(
+        default=None,
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
+        ),
+    )
     itinerary_id: UUID = Field(foreign_key="itineraries.id")
     listing_id: UUID = Field(foreign_key="listings.id")
     linked_booking_id: Optional[UUID] = Field(default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True))
@@ -119,7 +127,7 @@ class ItineraryItem(SQLModel, table=True):
         )
     )
 
-    # Relationships
-    itinerary: Itinerary = Relationship(back_populates="items")
-    listing_rel: "Listing" = Relationship(back_populates="itinerary_items")
-    booking_rel: Optional["Booking"] = Relationship(back_populates="itinerary_item")
+    # Relationships - use Mapped types directly (class already imported)
+    itinerary: Mapped["Itinerary"] = Relationship(back_populates="items")
+    listing_rel: Mapped["Listing"] = Relationship(back_populates="itinerary_items")
+    booking_rel: Mapped[Optional["Booking"]] = Relationship(back_populates="itinerary_item")
