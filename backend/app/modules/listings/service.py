@@ -179,6 +179,8 @@ def _serialize_listing(
         data["avg_rating"] = review_stats.get("avg_rating")
         data["review_count"] = review_stats.get("review_count")
 
+    data["interest_ids"] = interest_ids or []
+
     return data
 
 
@@ -212,7 +214,19 @@ def get_listing_review_stats(db: Session, listing_id) -> dict:
     return _batch_review_stats(db, [listing_id])[listing_id]
 
 
-def list_listings(db: Session,limit: int = 20) -> list[dict]:
+def list_listings(
+    db: Session,
+    skip: int = 0,
+    limit: int | None = None,
+    city: str | None = None,
+    country: str | None = None,
+    business_type: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+    status: str | None = None,
+):
     query = select(Listing)
 
     listings = db.exec(query.limit(limit)).all()
@@ -251,6 +265,9 @@ def create_listing(db: Session, data: ListingCreate, user_id: str):
 
 
 def update_listing(db: Session, listing: Listing, update_data: dict):
+
+    should_update_interests = "interest_ids" in update_data
+    requested_interest_ids = update_data.pop("interest_ids", None)
 
     if "location" in update_data:
         listing.location = _build_location(update_data.pop("location"))
