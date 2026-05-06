@@ -52,13 +52,13 @@ class BookingResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     # Price fields (calculated server-side)
-    base_price: float
-    service_fee_percent: float
-    service_fee_amount: float
-    discount_percent: float
-    discount_amount: float
-    display_price: float
-    final_price: float
+    base_price: Optional[float] = None
+    service_fee_percent: Optional[float] = None
+    service_fee_amount: Optional[float] = None
+    discount_percent: Optional[float] = None
+    discount_amount: Optional[float] = None
+    display_price: Optional[float] = None
+    final_price: Optional[float] = None
     model_config = {"from_attributes": True}
 
 
