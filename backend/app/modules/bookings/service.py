@@ -12,7 +12,7 @@ from app.modules.services.models import Service
 from .models import Booking, BookingStatus
 from app.modules.itineraries.models import ItineraryItem, Itinerary
 from app.modules.discounts.models import Discount
-from app.modules.pricing.service import PricingService
+from app.modules.pricing.service import calculate_display_price
 
 
 def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
@@ -84,7 +84,7 @@ def price_booking_from_itinerary_item(db: Session, itinerary_item_id: UUID, user
         raise HTTPException(status_code=403, detail="Not authorized for this itinerary")
 
     # 3. Get pricing via PricingService (base_price from listing)
-    price_info = PricingService.calculate_display_price(db, itinerary_item.listing_id)
+    price_info = calculate_display_price(db, itinerary_item.listing_id)
     base_price = price_info.get("base_price", 0.0)
     service_fee_percent = price_info.get("service_fee_percent", 0.0)
     service_fee_amount = base_price * service_fee_percent
@@ -122,6 +122,37 @@ def price_booking_from_itinerary_item(db: Session, itinerary_item_id: UUID, user
     }
 
 
+def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
+    # Retrieve booking to determine pricing path
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # If tied to an itinerary item, use itinerary-based pricing
+    if booking.itinerary_item_id is not None:
+        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id)
+    # Standalone booking pricing via listing
+    price_info = calculate_display_price(db, booking.listing_id)
+    base_price = price_info.get("base_price", 0.0)
+    service_fee_percent = price_info.get("service_fee_percent", 0.0)
+    service_fee_amount = base_price * service_fee_percent
+    display_price = base_price + service_fee_amount
+
+    discount_percent = 0.0
+    discount_amount = 0.0
+    final_price = display_price - discount_amount
+
+    return {
+        "base_price": base_price,
+        "service_fee_percent": service_fee_percent,
+        "service_fee_amount": service_fee_amount,
+        "discount_percent": discount_percent,
+        "discount_amount": discount_amount,
+        "display_price": display_price,
+        "final_price": final_price,
+    }
+
+
 def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
     booking = Booking(**booking.model_dump())
     booking.user_id = user_id
@@ -144,7 +175,7 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
             booking.itinerary_id = it_item.itinerary_id
     else:
         # Standalone booking: price via PricingService with no discount
-        price_breakdown = PricingService.calculate_display_price(db, booking.listing_id)
+        price_breakdown = calculate_display_price(db, booking.listing_id)
         booking.base_price = price_breakdown.get("base_price")
         booking.service_fee_percent = price_breakdown.get("service_fee_percent")
         booking.service_fee_amount = price_breakdown.get("service_fee_amount")

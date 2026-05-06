@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional, List
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, text
@@ -22,12 +22,7 @@ class DiscountType(str, Enum):
 class Discount(SQLModel, table=True):
     __tablename__ = "discounts"
 
-    id: UUID = Field(
-        default=None,
-        nullable=False,
-        primary_key=True,
-        sa_column=Column(PGUUID(as_uuid=True), server_default=text("gen_random_uuid()")),
-    )
+    id: UUID = Field(default_factory=uuid4, nullable=False, primary_key=True)
 
     name: str = Field(sa_column=Column(String, nullable=False))
 
