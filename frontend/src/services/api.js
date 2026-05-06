@@ -155,6 +155,7 @@ export const interestsAPI = {
     const categories = [...new Set((response.data || []).map((interest) => interest.category).filter(Boolean))];
     return { ...response, data: categories };
   },
+  getByListingCountry: (country, params) => api.get(`/api/interests/listing-country/${country}`, { params }),
 };
 
 // Businesses API

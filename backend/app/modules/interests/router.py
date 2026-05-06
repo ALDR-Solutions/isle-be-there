@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.infrastructure.database import get_db
@@ -13,6 +13,7 @@ from .service import (
     get_interests_by_business_type,
     get_user_interests,
     update_user_interests,
+    get_interests_by_listing_country
 )
 
 router = APIRouter(prefix="/api/interests", tags=["Interests"])
@@ -29,6 +30,15 @@ def get_business_type_interests_route(
     db: Session = Depends(get_db),
 ):
     return get_interests_by_business_type(db, business_type_id)
+
+@router.get("/listing-country/{country}", response_model=list[InterestResponse])
+def get_listing_country_interests_route(
+    country: str,
+    bookable_only: bool = Query(default=False),
+    db: Session = Depends(get_db),
+):
+    return get_interests_by_listing_country(db, country, bookable_only)
+
 
 
 @router.get("/user", response_model=list[InterestResponse])

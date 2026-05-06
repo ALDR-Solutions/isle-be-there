@@ -1,12 +1,12 @@
 """Business logic for booking operations."""
 
-from fastapi import HTTPException
-from sqlmodel import Session, select
+from datetime import datetime
+from uuid import UUID
 
-from app.modules.listings.models import Listing
-from app.modules.services.models import Service
-from app.modules.services.service import get_service_by_id
-from .models import Booking
+from fastapi import HTTPException
+from sqlmodel import Session, col, func, select
+
+from .models import Booking, BookingStatus
 
 
 def list_bookings(db: Session, user_id: str, skip: int = 0, limit: int = 20):
@@ -59,3 +59,46 @@ def cancel_booking(db: Session, booking_id: int, user_id: str):
     booking.status = "cancelled"
     db.commit()
     db.refresh(booking)
+    
+def get_booked_count(
+    db: Session,
+    service_id: UUID,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    """Count confirmed bookings that overlap the requested window."""
+    result = db.exec(
+        select(func.coalesce(func.sum(Booking.amount_of_people), 0))
+        .where(Booking.service_id == service_id)
+        .where(col(Booking.status).notin_([
+            BookingStatus.cancelled,
+            BookingStatus.pending,
+        ]))
+        # Overlap condition: existing booking starts before our end
+        # AND ends after our start
+        .where(Booking.booking_from_time < end_dt)
+        .where(Booking.booking_to_time > start_dt)
+    ).one()
+    return int(result or 0)
+
+
+def get_available_slots(
+    db: Session,
+    service_id: UUID,
+    capacity: int,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    booked = get_booked_count(db, service_id, start_dt, end_dt)
+    return max(0, capacity - booked)
+
+
+def is_available(
+    db: Session,
+    service_id: UUID,
+    capacity: int,
+    start_dt: datetime,
+    end_dt: datetime,
+    requested_quantity: int = 1,
+) -> bool:
+    return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity

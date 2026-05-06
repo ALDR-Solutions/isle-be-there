@@ -2,7 +2,9 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from .models import BusinessTypeInterest, Interests, UserInterest
+from .models import BusinessTypeInterest, Interests, ListingInterest, UserInterest
+from ..listings.models import Listing
+from ..services.models import Service, StatusTypes as ServiceStatusTypes
 
 
 def get_all_interests(db: Session):
@@ -16,6 +18,26 @@ def get_interests_by_business_type(db: Session, business_type_id: UUID):
         .where(BusinessTypeInterest.business_type_id == business_type_id)
         .order_by(Interests.name)
     ).all()
+    
+def get_interests_by_listing_country(db: Session, country: str, bookable_only: bool = False):
+    query = (
+        select(Interests)
+        .join(ListingInterest, ListingInterest.interest_id == Interests.id)
+        .join(Listing, Listing.id == ListingInterest.listing_id)
+        .join(Service, Service.listing_id == Listing.id)
+        .where(Listing.address["country"].astext.ilike(f"%{country}%"))
+        .where(Service.status == ServiceStatusTypes.active)
+        .distinct()
+        .order_by(Interests.name)
+    )
+
+    if bookable_only:
+        query = (
+            query.join(Service, Service.listing_id == Listing.id)
+            .where(Service.status == ServiceStatusTypes.active)
+        )
+
+    return db.exec(query).all()
 
 
 def get_user_interests(db: Session, user_id: str):

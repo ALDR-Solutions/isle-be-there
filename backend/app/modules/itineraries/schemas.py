@@ -31,9 +31,11 @@ class ItineraryPlanRequest(BaseModel):
 
     country: Optional[str] = None
     interests: list[str] = Field(default_factory=list)
+    bookable_only: bool = False
 
     budget_level: BudgetLevel = BudgetLevel.medium
     pace: PaceLevel = PaceLevel.balanced
+    number_of_people: int = Field(default=1, ge=1, le=20)
 
     @model_validator(mode="after")
     def _validate_dates_and_hours(self):

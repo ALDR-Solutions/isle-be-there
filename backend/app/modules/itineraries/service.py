@@ -15,6 +15,8 @@ from sqlmodel import Session, select
 
 from .model import Itinerary, ItineraryItem
 from app.modules.listings.models import Listing, Statuses
+from app.modules.listings.service import filter_by_availability
+from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 
 from .schemas import (
     BudgetLevel,
@@ -380,11 +382,25 @@ def _load_candidates(db: Session, request: ItineraryPlanRequest) -> list[Candida
     )
 
     if request.country:
-        query = query.where(Listing.address["country"].astext.ilike(f"%{request.country}%"))
+        query = query.where(
+            Listing.address["country"].astext.ilike(f"%{request.country}%")
+        )
+
+    if request.bookable_only:
+        query = (
+            query.join(Service, Service.listing_id == Listing.id)
+            .where(Service.status == ServiceStatusTypes.active)
+            .distinct()
+        )
 
     rows = db.exec(query.limit(DEFAULT_LIMIT_CANDIDATES)).all()
     if not rows:
         return []
+
+    if request.bookable_only:
+        start_dt = datetime.combine(request.start_date, time.min)
+        end_dt = datetime.combine(_resolved_end_date(request) + timedelta(days=1), time.min)
+        rows = filter_by_availability(db, rows, start_dt, end_dt)
 
     return [_to_candidate(listing, request.budget_level) for listing in rows]
 
