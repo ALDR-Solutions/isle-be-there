@@ -3,8 +3,14 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Optional
 from datetime import datetime, date
+from uuid import UUID
+from pydantic import Json
+from sqlmodel import Date, SQLModel, Field, Relationship, text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, Text, text, Numeric
+from sqlalchemy import Enum as SAEnum
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+
 
 
 # Enums representing status values for itineraries and their items
@@ -22,31 +28,56 @@ class ItineraryItemStatus(str, Enum):
     COMPLETED = "completed"
 
 
-class Itinerary(SQLModel):
+class Itinerary(SQLModel, table=True):
     # Map to existing table
-    __table__ = "itineraries"
+    __tablename__ = "itineraries"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: Optional[int] = Field(default=None, foreign_key="users.id")
-    title: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    status: Optional[ItineraryStatus] = None
-    budget_level: Optional[str] = None
-    pace: Optional[str] = None
-    total_budget: Optional[float] = None
-    strict_budget: Optional[bool] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    interests: Optional[str] = None
-    preferred_business_types: Optional[str] = None
-    total_estimated_cost: Optional[float] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
+        )
+    )
+    user_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("users.id", onupdate="CASCADE", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    title: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    start_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    end_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    status: Optional[ItineraryStatus] = Field(default=None, sa_column=Column(SAEnum(ItineraryStatus), nullable=True))
+    budget_level: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    pace: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    total_budget: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
+    strict_budget: Optional[bool] = Field(default=None, sa_column=Column(Boolean, nullable=True))
+    city: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    country: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    interests: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    preferred_business_types: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    total_estimated_cost: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )
 
     # New columns
-    applied_discount_id: Optional[int] = None
-    discount_amount: Optional[float] = None
+    applied_discount_id: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    discount_amount: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
 
     # Relationships
     applied_discount_rel: Optional["Discount"] = Relationship(back_populates="itineraries")
@@ -54,27 +85,39 @@ class Itinerary(SQLModel):
     user_rel: Optional["User"] = Relationship(back_populates="itineraries")
 
 
-class ItineraryItem(SQLModel):
+class ItineraryItem(SQLModel, table=True):
     # Map to existing table
-    __table__ = "itinerary_items"
+    __tablename__ = "itinerary_items"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    itinerary_id: int = Field(foreign_key="itineraries.id")
-    listing_id: int = Field(foreign_key="listings.id")
-    linked_booking_id: Optional[int] = None
-    item_type: Optional[str] = None
-    title: Optional[str] = None
-    description: Optional[str] = None
-    day_date: Optional[date] = None
-    start_at: Optional[datetime] = None
-    end_at: Optional[datetime] = None
-    sort_order: Optional[int] = None
-    estimated_cost: Optional[float] = None
-    address_snapshot: Optional[str] = None
-    reason_tags: Optional[str] = None
-    extra_metadata: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    id: UUID = Field(default=None, primary_key=True)
+    itinerary_id: UUID = Field(foreign_key="itineraries.id")
+    listing_id: UUID = Field(foreign_key="listings.id")
+    linked_booking_id: Optional[UUID] = Field(default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True))
+    item_type: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    title: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    day_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
+    start_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    end_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    sort_order: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    estimated_cost: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
+    address_snapshot: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    reason_tags: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    extra_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )
 
     # Relationships
     itinerary: Itinerary = Relationship(back_populates="items")
