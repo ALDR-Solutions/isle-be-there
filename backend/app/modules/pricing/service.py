@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from sqlalchemy import or_
 
 from app.modules.pricing.models import PlatformPricingConfig
-from app.modules.listings.service import get_listing_by_id  # reference pattern
+from app.modules.listings.models import Listing
 from app.modules.services.service import get_service_by_id  # reference pattern
 
 
@@ -56,7 +56,9 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
     Returns dict with: base_price, service_fee_percent, service_fee_amount, display_price
     """
     # Resolve base price: prefer service.price if provided, otherwise listing.base_price
-    listing = get_listing_by_id(db, listing_id)
+    listing = db.get(Listing, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
     base_price: Optional[float] = None
     if service_id is not None:
         service = get_service_by_id(db, service_id)
@@ -85,8 +87,8 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
     if service_fee_percent is None:
         service_fee_percent = 0.10  # default 10%
 
-    service_fee_amount = base_price * float(service_fee_percent)
-    display_price = base_price + service_fee_amount
+    service_fee_amount = float(base_price) * float(service_fee_percent)
+    display_price = float(base_price) + service_fee_amount
 
     return {
         "base_price": base_price,
@@ -98,7 +100,9 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
 
 def get_listing_display_price(db: Session, listing_id: UUID) -> dict:
     """Wrapper to get display price for a listing using only listing_id."""
-    return calculate_display_price(db, listing_id)
+    result = calculate_display_price(db, listing_id)
+    result["listing_id"] = listing_id
+    return result
 
 
 def create_pricing_config(db: Session, data: dict) -> PlatformPricingConfig:

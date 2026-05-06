@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -31,9 +29,6 @@ class PlatformPricingConfig(SQLModel, table=True):
             PG_UUID(as_uuid=True), ForeignKey("business_types.id"), nullable=True
         ),
     )
-
-    # Relationship back to BusinessType; name mirrors pattern in other modules
-    business_type_rel: Optional["BusinessType"] = Relationship(back_populates="pricing_configs")
 
     # Pricing fields
     service_fee_percent: float = Field()

@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 from enum import Enum
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, text
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, ARRAY
+from sqlalchemy.orm import Mapped
 
 
 class DiscountType(str, Enum):
@@ -47,5 +46,3 @@ class Discount(SQLModel, table=True):
     max_uses: Optional[int] = Field(default=None, nullable=True)
     current_uses: int = Field(default=0, nullable=False)
     description: Optional[str] = Field(default=None, nullable=True)
-
-    itineraries: List["Itinerary"] = Relationship(back_populates="applied_discount_rel")
