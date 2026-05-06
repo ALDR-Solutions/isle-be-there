@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Dict
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -111,4 +111,60 @@ def _normalize_strings(items: list[str]) -> list[str]:
         normalized.append(value)
         seen.add(value)
     return normalized
+
+
+# Extension: new itineraries schemas (append to end of file)
+class ItineraryCreate(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class ItineraryItemCreate(BaseModel):
+    listing_id: UUID
+    service_id: Optional[UUID] = None
+    day_date: date
+    start_at: datetime
+    end_at: datetime
+    estimated_cost: float
+
+
+class ItineraryItemResponse(BaseModel):
+    id: UUID
+    listing_id: UUID
+    booking: Optional[dict] = None
+
+
+class ItineraryResponse(BaseModel):
+    id: UUID
+    applied_discount: Optional[dict] = None
+    items: List[ItineraryItemResponse] = []
+
+
+class ItineraryConfirmRequest(BaseModel):
+    pass
+
+
+class ItineraryConfirmResponse(BaseModel):
+    itinerary: ItineraryResponse
+    discount_applied: bool
+    discount_amount: float
+
+
+class ItineraryBookRequest(BaseModel):
+    item_ids: Optional[List[UUID]] = None
+
+
+class ItineraryPriceItem(BaseModel):
+    listing_id: UUID
+    title: str
+    business_type_name: str
+    estimated_cost: float
+
+
+class ItineraryPriceResponse(BaseModel):
+    items: List[ItineraryPriceItem]
+    subtotal: float
+    service_fee: float
+    discount: float
+    total: float
 
