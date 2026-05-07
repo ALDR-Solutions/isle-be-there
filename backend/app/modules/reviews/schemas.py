@@ -13,6 +13,7 @@ class ReviewCreate(BaseModel):
 class ReviewUpdate(BaseModel):
     rating: int | None = Field(default=None, ge=1, le=5)
     comment: str | None = None
+    user_id: UUID | None = None
 
 
 class ReviewResponse(BaseModel):

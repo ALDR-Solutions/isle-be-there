@@ -34,7 +34,7 @@ class Review(SQLModel, table=True):
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: Optional[datetime] = Field( 
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )

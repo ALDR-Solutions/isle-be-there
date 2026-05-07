@@ -7,8 +7,9 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_review_owner, require_roles
 
-from .keyword_classifier import BUSINESS_TYPE_UUIDS, check_flags, classify_with_keywords
-from .review_classifier import classify_review as ml_classify_review
+from .classifiers.keyword_classifier import BUSINESS_TYPE_UUIDS, classify_with_keywords
+from .classifiers.content_moderation import check_flags
+from .classifiers.ml_classifier import classify_review as ml_classify_review
 from .models import Review
 from .schemas import ReviewClassifyRequest, ReviewClassifyResponse, ReviewCreate, ReviewUpdate, ReviewSubmitRequest, ReviewSubmitResponse, ReviewVisibilityUpdate
 from .service import delete_review, get_review, list_reviews, submit_review, toggle_review_visibility, update_review
@@ -82,7 +83,7 @@ def toggle_review_visibility_route(
 ):
     """Toggle review visibility (admin only).
     
-    Allows admins to hide/show flagged reviews.
+    Allows admins to hide/show reviews flagged for inappropriate content.
     """
     # Get review (must exist)
     review = db.exec(select(Review).where(Review.id == review_id)).first()

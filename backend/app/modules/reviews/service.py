@@ -9,8 +9,9 @@ from .models import Review
 from .schemas import ReviewCreate, ReviewUpdate
 
 import json
-from .keyword_classifier import BUSINESS_TYPE_UUIDS, check_flags, classify_with_keywords
-from .review_classifier import classify_review as ml_classify_review
+from .classifiers.keyword_classifier import BUSINESS_TYPE_UUIDS, classify_with_keywords
+from .classifiers.content_moderation import check_flags
+from .classifiers.ml_classifier import classify_review as ml_classify_review
 
 
 def serialize_review(review: Review, include_classification: bool = False) -> dict:
