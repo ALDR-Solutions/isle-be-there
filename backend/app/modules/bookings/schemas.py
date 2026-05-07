@@ -25,7 +25,6 @@ class BookingBase(BaseModel):
 class BookingCreate(BookingBase):
     status: BookingStatus = BookingStatus.pending
     service_id: Optional[UUID] = None
-    listing_id: Optional[UUID] = None
     base_price: Optional[float] = None
 
 
@@ -45,7 +44,6 @@ class BookingResponse(BaseModel):
     booking_from_time: datetime
     booking_to_time: datetime
     service_id: Optional[UUID] = None
-    listing_id: Optional[UUID] = None
     service_name: Optional[str] = None
     listing_name: Optional[str] = None
     status: Optional[BookingStatus] = None
@@ -79,6 +77,5 @@ class BookingCreateResponse(BaseModel):
     booking_from_time: datetime
     booking_to_time: datetime
     service_id: Optional[UUID] = None
-    listing_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime

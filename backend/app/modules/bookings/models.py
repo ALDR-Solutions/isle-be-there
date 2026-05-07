@@ -34,14 +34,6 @@ class Booking(SQLModel, table=True):
             nullable=True,
         )
     )
-    listing_id: Optional[UUID] = Field(
-        default=None,
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("listings.id", onupdate="CASCADE", ondelete="RESTRICT"),
-            nullable=True,
-        )
-    )
     booking_from_time: Optional[datetime] = Field(
         default=None,
         sa_column=Column(DateTime(timezone=False), nullable=False),

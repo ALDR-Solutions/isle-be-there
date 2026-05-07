@@ -18,18 +18,18 @@ from app.modules.pricing.service import calculate_display_price
 def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
     query = (
         select(
-            Booking, 
+            Booking,
             Service.name.label("service_name"),
             Listing.title.label("listing_name"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
-        .outerjoin(Listing, Booking.listing_id == Listing.id)
+        .outerjoin(Listing, Service.listing_id == Listing.id)
         .where(Booking.user_id == user_id)
     )
     results = db.exec(query).all()
 
     if not results:
         raise HTTPException(status_code=404, detail="Bookings not found")
-    
+
 
     return [
         BookingResponse(
@@ -49,7 +49,7 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
             Listing.title.label("listing_name")
         )
         .outerjoin(Service, Booking.service_id == Service.service_id)
-        .outerjoin(Listing, Booking.listing_id == Listing.id)
+        .outerjoin(Listing, Service.listing_id == Listing.id)
         .where(
             Booking.id == booking_id,
             Booking.user_id == user_id
@@ -128,6 +128,13 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    # Get listing_id via service relationship
+    listing_id = None
+    if booking.service_id:
+        service = db.get(Service, booking.service_id)
+        if service:
+            listing_id = service.listing_id
+
     # If tied to an itinerary item, use itinerary-based pricing
     if booking.itinerary_item_id is not None:
         return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id)
@@ -136,12 +143,12 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if booking.base_price is not None:
         base_price = float(booking.base_price)
         # Recalculate fee amounts since they may not be stored
-        price_info = calculate_display_price(db, booking.listing_id, booking.service_id)
+        price_info = calculate_display_price(db, listing_id, booking.service_id)
         service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
         service_fee_amount = base_price * service_fee_percent
         display_price = base_price + service_fee_amount
     else:
-        price_info = calculate_display_price(db, booking.listing_id, booking.service_id)
+        price_info = calculate_display_price(db, listing_id, booking.service_id)
         base_price = float(price_info.get("base_price", 0.0))
         service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
         service_fee_amount = base_price * service_fee_percent
@@ -166,6 +173,13 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
     booking = Booking(**booking.model_dump())
     booking.user_id = user_id
 
+    # Get listing_id via service relationship if service_id provided
+    listing_id = None
+    if booking.service_id:
+        service = db.get(Service, booking.service_id)
+        if service:
+            listing_id = service.listing_id
+
     # If booking is tied to an itinerary item, calculate price accordingly
     price_breakdown: Optional[dict] = None
     if booking.itinerary_item_id is not None:
@@ -184,7 +198,7 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
             booking.itinerary_id = it_item.itinerary_id
     else:
         # Standalone booking: price via PricingService with no discount
-        price_breakdown = calculate_display_price(db, booking.listing_id, booking.service_id)
+        price_breakdown = calculate_display_price(db, listing_id, booking.service_id)
         booking.base_price = price_breakdown.get("base_price")
         booking.service_fee_percent = price_breakdown.get("service_fee_percent")
         booking.service_fee_amount = price_breakdown.get("service_fee_amount")
