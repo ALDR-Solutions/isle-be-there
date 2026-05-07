@@ -154,7 +154,7 @@ def plan_itinerary(db: Session, request: ItineraryPlanRequest) -> ItineraryPlanR
 def _load_candidates(db: Session, request: ItineraryPlanRequest) -> list[Candidate]:
     query = (
         select(Listing)
-        .where(Listing.status == Statuses.active)
+        .where(Listing.status.in_((Statuses.active, Statuses.approved)))
         .options(selectinload(Listing.business_type_rel))
     )
 

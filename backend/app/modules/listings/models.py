@@ -15,6 +15,7 @@ from sqlmodel import Field, Relationship, SQLModel
 class Statuses(str, Enum):
     active = "active"
     inactive = "inactive"
+    suspended = "suspended"
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
