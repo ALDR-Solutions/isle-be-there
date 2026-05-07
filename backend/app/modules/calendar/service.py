@@ -51,8 +51,7 @@ def _load_booking_events(
     listing_ids = {
         listing_id
         for listing_id in (
-            [booking.listing_id for booking in bookings]
-            + [service.listing_id for service in services]
+            [service.listing_id for service in services]
         )
         if listing_id is not None
     }
@@ -62,7 +61,7 @@ def _load_booking_events(
     events: list[CalendarEventResponse] = []
     for booking in bookings:
         service = services_by_id.get(booking.service_id) if booking.service_id else None
-        listing_id = booking.listing_id or (service.listing_id if service else None)
+        listing_id = service.listing_id if service else None
         listing = listings_by_id.get(listing_id) if listing_id else None
         status = _booking_status_value(booking.status)
 
