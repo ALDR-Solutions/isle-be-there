@@ -16,7 +16,6 @@ class BookingBase(BaseModel):
     special_requests: Optional[str] = None
     booking_from_time: Optional[datetime] = None
     booking_to_time: Optional[datetime] = None
-    itinerary_id: Optional[UUID] = None
     itinerary_item_id: Optional[UUID] = None
 
 

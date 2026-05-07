@@ -124,14 +124,6 @@ class Booking(SQLModel, table=True):
         default=None,
         sa_column=Column(Numeric, nullable=True),
     )
-    itinerary_id: Optional[UUID] = Field(
-        default=None,
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("itineraries.id", onupdate="CASCADE", ondelete="RESTRICT"),
-            nullable=True,
-        )
-    )
     itinerary_item_id: Optional[UUID] = Field(
         default=None,
         sa_column=Column(

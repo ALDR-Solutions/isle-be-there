@@ -192,10 +192,6 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         booking.discount_amount = price_breakdown.get("discount_amount")
         booking.display_price = price_breakdown.get("display_price")
         booking.final_price = price_breakdown.get("final_price")
-        # Also set itinerary linkage
-        it_item = db.get(ItineraryItem, booking.itinerary_item_id)
-        if it_item:
-            booking.itinerary_id = it_item.itinerary_id
     else:
         # Standalone booking: price via PricingService with no discount
         price_breakdown = calculate_display_price(db, listing_id, booking.service_id)
