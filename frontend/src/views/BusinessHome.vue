@@ -98,21 +98,21 @@
             </div>
             <div class="flex shrink-0 gap-2">
               <button
-                v-if="businessStore.activeListing?.status !== 'inactive'"
+                v-if="canEditListing(businessStore.activeListing)"
                 @click="openEditModal(businessStore.activeListing)"
                 class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Edit Listing
               </button>
               <button
-                v-if="businessStore.activeListing?.status !== 'inactive'"
+                v-if="canArchiveListing(businessStore.activeListing)"
                 @click="openArchiveModal(businessStore.activeListing)"
                 class="inline-flex items-center gap-2 rounded-2xl border border-red-100 px-5 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-50"
               >
                 Archive
               </button>
               <button
-                v-if="businessStore.activeListing?.status === 'inactive'"
+                v-if="canRestoreListing(businessStore.activeListing)"
                 @click="unarchiveListing(businessStore.activeListing)"
                 class="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-50"
               >
@@ -153,6 +153,12 @@
                 .join(", ")
             }}
           </p>
+          <div
+            v-if="isListingSuspended(businessStore.activeListing)"
+            class="mt-4 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800"
+          >
+            This listing was suspended by admin review. You can still view it here, but listing and service edits are disabled until an admin reactivates it.
+          </div>
         </div>
       </div>
 
@@ -198,6 +204,7 @@
 
         <ListingServicesSection
           :listing="businessStore.activeListing"
+          :read-only="isListingSuspended(businessStore.activeListing)"
           @services-changed="handleServicesChanged"
         />
 
@@ -1151,6 +1158,7 @@ function statusLabel(status) {
   if (status === "active") return "Active";
   if (status === "pending") return "Pending Approval";
   if (status === "inactive") return "Archived";
+  if (status === "suspended") return "Suspended";
   return status ?? "";
 }
 
@@ -1158,7 +1166,24 @@ function statusBadgeClass(status) {
   if (status === "active") return "bg-emerald-500 text-white";
   if (status === "pending") return "bg-amber-400 text-slate-900";
   if (status === "inactive") return "bg-slate-500 text-white";
+  if (status === "suspended") return "bg-orange-500 text-white";
   return "bg-slate-300 text-slate-900";
+}
+
+function isListingSuspended(listing) {
+  return listing?.status === "suspended";
+}
+
+function canEditListing(listing) {
+  return Boolean(listing && listing.status !== "inactive" && listing.status !== "suspended");
+}
+
+function canArchiveListing(listing) {
+  return Boolean(listing && listing.status !== "inactive" && listing.status !== "suspended");
+}
+
+function canRestoreListing(listing) {
+  return listing?.status === "inactive";
 }
 
 const showFormModal = ref(false);

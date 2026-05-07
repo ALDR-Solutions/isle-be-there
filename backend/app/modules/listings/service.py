@@ -23,6 +23,8 @@ from app.modules.users.models import User
 
 from .models import Listing, Statuses
 
+ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
+
 
 def _build_location(location_data: dict | None):
     if not location_data:
@@ -156,6 +158,8 @@ def _serialize_listing(
     interest_ids: list[UUID] | None = None,
 ) -> dict:
     data = listing.model_dump(exclude={"embedding", "location"})
+    if data.get("status") == Statuses.approved:
+        data["status"] = Statuses.active
 
     location = listing.location
     if isinstance(location, WKBElement):
@@ -166,6 +170,9 @@ def _serialize_listing(
 
     data["business_type_name"] = (
         listing.business_type_rel.name if listing.business_type_rel else None
+    )
+    data["business_name"] = (
+        listing.business_rel.business_name if listing.business_rel else None
     )
 
     if review_stats is not None:
@@ -193,7 +200,15 @@ def _serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
 
 
 def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
-    listings = db.exec(select(Listing).where(Listing.status == Statuses.active).limit(limit)).all()
+    listings = db.exec(
+        select(Listing)
+        .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+        .limit(limit)
+    ).all()
     random.shuffle(listings)
     return listings
 
@@ -235,14 +250,19 @@ def list_listings(
         query = query.where(Listing.base_price >= min_price)
     if max_price is not None:
         query = query.where(Listing.base_price <= max_price)
-    if status:
+    if status == Statuses.active.value or status == Statuses.approved.value:
+        query = query.where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+    elif status:
         query = query.where(Listing.status == status)
     if sort_by:
         sort_column = getattr(Listing, sort_by, None)
         if sort_column is not None:
             query = query.order_by(asc(sort_column) if sort_order == "asc" else desc(sort_column))
 
-    query = query.options(selectinload(Listing.business_type_rel)).offset(skip)
+    query = query.options(
+        selectinload(Listing.business_type_rel),
+        selectinload(Listing.business_rel),
+    ).offset(skip)
     if limit is not None:
         query = query.limit(limit)
     listings = db.exec(query).all()
@@ -253,7 +273,10 @@ def get_listing_by_id(db: Session, listing_id: str):
     listing = db.exec(
         select(Listing)
         .where(Listing.id == listing_id)
-        .options(selectinload(Listing.business_type_rel))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
     ).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -302,6 +325,22 @@ def update_listing(
         business = db.exec(select(Business).where(Business.user_id == user_id)).first()
         if not business or str(listing.business_id) != str(business.id):
             raise HTTPException(status_code=403, detail="Not authorized")
+        if listing.status == Statuses.suspended:
+            raise HTTPException(
+                status_code=403,
+                detail="Suspended listings can only be updated by an admin",
+            )
+        requested_status = update_data.get("status")
+        if requested_status is not None and requested_status != listing.status:
+            allowed_owner_transitions = {
+                (Statuses.active, Statuses.inactive),
+                (Statuses.inactive, Statuses.active),
+            }
+            if (listing.status, requested_status) not in allowed_owner_transitions:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Business owners can only archive or restore their listings",
+                )
 
     should_update_interests = "interest_ids" in update_data
     requested_interest_ids = update_data.pop("interest_ids", None)
@@ -357,7 +396,13 @@ def get_business_listings(db: Session, user_id: str):
     if not business:
         return []
     listings = db.exec(
-        select(Listing).where(Listing.business_id == business.id).order_by(desc(Listing.created_at))
+        select(Listing)
+        .where(Listing.business_id == business.id)
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+        .order_by(desc(Listing.created_at))
     ).all()
     return _serialize_listings(db, listings)
 
@@ -375,7 +420,11 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
             select(Listing)
             .join(ListingInterest, ListingInterest.listing_id == Listing.id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
-            .where(Listing.status == Statuses.active)
+            .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+            .options(
+                selectinload(Listing.business_type_rel),
+                selectinload(Listing.business_rel),
+            )
             .distinct()
             .limit(limit)
         ).all()
@@ -398,7 +447,14 @@ def search_listings_combined(
     radius_km: float = 25,
     limit: int = 20,
 ):
-    query = select(Listing).where(Listing.status == Statuses.active)
+    query = (
+        select(Listing)
+        .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+    )
 
     ts_vector = func.to_tsvector(
         "english",
@@ -417,8 +473,6 @@ def search_listings_combined(
         query = query.add_columns(distance_expr).where(
             func.ST_DWithin(Listing.location, point, radius_km * 1000)
         )
-
-    query = query.options(selectinload(Listing.business_type_rel))
 
     if rank_expr is not None:
         query = query.order_by(desc(rank_expr))

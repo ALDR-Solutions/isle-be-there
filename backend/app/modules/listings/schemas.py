@@ -139,5 +139,6 @@ class ListingResponse(ListingBase):
     avg_rating: Optional[float] = None
     review_count: int = 0
     business_type_name: Optional[str] = None
+    business_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

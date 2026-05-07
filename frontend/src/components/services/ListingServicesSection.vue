@@ -5,7 +5,14 @@
         <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">Listing</p>
         <h2 class="mt-1 text-xl font-bold text-slate-900">Services</h2>
       </div>
+      <p
+        v-if="readOnly"
+        class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700"
+      >
+        Read only while suspended
+      </p>
       <button
+        v-else
         @click="openServiceModal()"
         :disabled="!listing?.id"
         class="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
@@ -32,7 +39,9 @@
         </svg>
       </div>
       <p class="mt-4 text-base font-semibold text-slate-700">No services yet</p>
-      <p class="mt-1.5 text-sm text-slate-400">Add the first service for this listing.</p>
+      <p class="mt-1.5 text-sm text-slate-400">
+        {{ readOnly ? 'No services are available for this suspended listing.' : 'Add the first service for this listing.' }}
+      </p>
     </div>
 
     <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -77,7 +86,7 @@
           </p>
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2">
+        <div v-if="!readOnly" class="mt-4 flex flex-wrap gap-2">
           <button
             @click="openServiceModal(service)"
             :disabled="isActionPending(service.service_id)"
@@ -366,6 +375,10 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  readOnly: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['services-changed'])
@@ -387,6 +400,7 @@ const serviceImageUploading = ref(false)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
+const readOnly = computed(() => props.readOnly)
 
 const blankServiceForm = () => ({
   name: '',
@@ -530,8 +544,17 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => readOnly.value,
+  (nextReadOnly) => {
+    if (nextReadOnly) {
+      closeServiceModal()
+    }
+  }
+)
+
 function openServiceModal(service = null) {
-  if (!props.listing?.id) return
+  if (!props.listing?.id || readOnly.value) return
   editingService.value = service
   serviceForm.value = service ? mapServiceToForm(service) : blankServiceForm()
   serviceErrors.value = {}
@@ -569,7 +592,7 @@ function closeServiceModal() {
 }
 
 async function submitService() {
-  if (!props.listing?.id || !validateServiceForm()) return
+  if (!props.listing?.id || readOnly.value || !validateServiceForm()) return
 
   modalSubmitting.value = true
   serviceErrors.value = {}
@@ -606,7 +629,7 @@ function isActionPending(serviceId) {
 }
 
 async function toggleServiceStatus(service) {
-  if (isActionPending(service.service_id)) return
+  if (readOnly.value || isActionPending(service.service_id)) return
 
   const nextStatus = service.status === 'inactive' ? 'active' : 'inactive'
   actionServiceId.value = service.service_id
@@ -635,7 +658,7 @@ async function toggleServiceStatus(service) {
 }
 
 async function deleteService(service) {
-  if (isActionPending(service.service_id)) return
+  if (readOnly.value || isActionPending(service.service_id)) return
 
   actionServiceId.value = service.service_id
   try {
