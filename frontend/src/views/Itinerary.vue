@@ -436,13 +436,13 @@
                     <div>
                       <p class="font-semibold text-slate-900">Categories</p>
                       <p class="mt-1 capitalize text-slate-500">
-                        {{ selectedCategories.join(", ") }}
+                        {{ selectedCategoriesLabel }}
                       </p>
                     </div>
                     <div>
                       <p class="font-semibold text-slate-900">Interests</p>
                       <p class="mt-1 text-slate-500">
-                        {{ selectedInterestNames.join(", ") }}
+                        {{ selectedInterestNamesLabel }}
                       </p>
                     </div>
                     <div>
@@ -759,7 +759,7 @@ const interestPages = computed(() => {
   for (let index = 0; index < items.length; index += 5) {
     pages.push(items.slice(index, index + 5));
   }
-  return pages.length ? pages : [[]];
+  return pages;
 });
 
 const steps = computed(() => [
@@ -849,6 +849,16 @@ const selectedInterestNames = computed(() => {
     .filter((interest) => selectedIds.has(String(interest.id)))
     .map((interest) => interest.name);
 });
+
+const selectedCategoriesLabel = computed(() =>
+  selectedCategories.value.length ? selectedCategories.value.join(", ") : "None",
+);
+
+const selectedInterestNamesLabel = computed(() =>
+  selectedInterestNames.value.length
+    ? selectedInterestNames.value.join(", ")
+    : "None",
+);
 
 const tripLength = computed(() => {
   if (!startDate.value || !endDate.value || endDate.value < startDate.value)
@@ -987,13 +997,10 @@ function buildPayload() {
 function getValidationMessage() {
   if (activeStep.value.type === "categories") {
     if (loadingInterests.value) return "Categories are still loading.";
-    if (categoryNames.value.length === 0)
-      return "No categories are available right now.";
-    if (selectedCategories.value.length === 0)
-      return "Choose at least one category.";
   }
 
   if (activeStep.value.type === "interests") {
+    if (activeInterestPage.value.length === 0) return "";
     if (selectedInterestIds.value.length === 0)
       return "Choose at least one interest.";
   }
