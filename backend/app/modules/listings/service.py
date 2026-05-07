@@ -316,19 +316,41 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
         return _serialize_listings(db, _fetch_active_listings(db, limit))
 
     try:
-        listings = db.exec(
-            select(Listing)
-            .join(ListingInterest, ListingInterest.listing_id == Listing.id)
+        # PostgreSQL doesn't allow ORDER BY random() with DISTINCT unless random() is in SELECT
+        # So we fetch listing IDs first, then fetch the listings
+        listing_ids_subq = (
+            select(ListingInterest.listing_id)
+            .join(Listing, Listing.id == ListingInterest.listing_id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
             .where(Listing.status == Statuses.active)
             .distinct()
-            .limit(limit)
-            .order_by(func.random())
+        )
+
+        # Get IDs with random ordering using a subquery approach
+        ids_with_random = db.exec(
+            select(Listing.id, func.random().label('rand'))
+            .join(ListingInterest, ListingInterest.listing_id == Listing.id)
+            .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
+            .where(Listing.status == Statuses.active)
+            .distinct(Listing.id)
+            .order_by(Listing.id)
+            .limit(limit * 3)
         ).all()
+
+        if ids_with_random:
+            # Sort by random value and pick limit
+            shuffled = sorted(ids_with_random, key=lambda x: x.rand)[:limit]
+            listing_ids = [row.id for row in shuffled]
+            listings = db.exec(
+                select(Listing)
+                .where(Listing.id.in_(listing_ids))
+                .where(Listing.status == Statuses.active)
+            ).all()
+        else:
+            listings = _fetch_active_listings(db, limit)
 
         if not listings:
             listings = _fetch_active_listings(db, limit)
-
 
         return _serialize_listings(db, listings)
     except Exception:

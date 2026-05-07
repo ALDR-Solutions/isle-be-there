@@ -91,7 +91,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { listingsAPI } from "../services/api";
 import DestinationCard from "../components/DestinationCard.vue";
 
