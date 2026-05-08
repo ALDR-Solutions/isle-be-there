@@ -13,14 +13,19 @@ from sqlalchemy import desc
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from .model import Itinerary, ItineraryItem
+from app.modules.bookings.schemas import BookingCreate
+from app.modules.bookings.service import create_booking as booking_service_create
+from app.modules.discounts.models import Discount, DiscountType
+from app.modules.discounts.service import check_package_discount_eligibility, get_or_create_package_discount as discount_get_or_create
 from app.modules.listings.models import Listing, Statuses
 from app.modules.listings.service import filter_by_availability
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 
+from .models import Itinerary, ItineraryItem, ItineraryStatus, ItineraryItemStatus
 from .schemas import (
     BudgetLevel,
     ItineraryDay,
+    ItineraryItemCreate,
     ItineraryPlanRequest,
     ItineraryPlanResponse,
     ItinerarySaveRequest,
@@ -376,7 +381,7 @@ def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> No
 def _load_candidates(db: Session, request: ItineraryPlanRequest) -> list[Candidate]:
     query = (
         select(Listing)
-        .where(Listing.status == Statuses.active)
+        .where(Listing.status.in_((Statuses.active, Statuses.approved)))
         .options(selectinload(Listing.business_type_rel))
         .order_by(Listing.created_at.desc(), Listing.id)
     )
@@ -681,3 +686,195 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     )
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return earth_radius_km * c
+
+
+def create_itinerary(db: Session, user_id: UUID, data: dict) -> Itinerary:
+    """Create a new Itinerary with DRAFT status, create ItineraryItems, and calculate total_estimated_cost."""
+    items_data = data.pop("items", [])
+    total_cost = sum(item.get("estimated_cost", 0) for item in items_data)
+
+    itinerary = Itinerary(
+        user_id=user_id,
+        status=ItineraryStatus.DRAFT,
+        total_estimated_cost=total_cost,
+        **data,
+    )
+    db.add(itinerary)
+    db.flush()
+
+    for item_data in items_data:
+        item = ItineraryItem(
+            itinerary_id=itinerary.id,
+            status=ItineraryItemStatus.PLANNED,
+            **item_data,
+        )
+        db.add(item)
+
+    db.commit()
+    db.refresh(itinerary)
+    return itinerary
+
+
+def get_itinerary_by_id(db: Session, itinerary_id: UUID, user_id: UUID) -> Itinerary:
+    """Get an itinerary by ID with its items."""
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id, Itinerary.user_id == user_id)
+        .options(selectinload(Itinerary.items))
+    ).first()
+
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    return itinerary
+
+
+def confirm_itinerary(db: Session, itinerary_id: UUID, user_id: UUID) -> dict:
+    """Confirm a DRAFT itinerary, apply discount if eligible, update status to CONFIRMED."""
+    itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
+
+    if itinerary.status != ItineraryStatus.DRAFT:
+        raise HTTPException(status_code=400, detail="Only DRAFT itineraries can be confirmed")
+
+    discount_info = check_package_discount_eligibility(db, itinerary)
+    discount_applied = False
+    discount_amount = 0.0
+
+    if discount_info.get("eligible"):
+        discount = discount_info["discount"]
+        discount_amount = discount_info.get("estimated_discount", 0)
+        itinerary.applied_discount_id = discount.id
+        itinerary.discount_amount = discount_amount
+        discount_applied = True
+
+    itinerary.status = ItineraryStatus.CONFIRMED
+    db.commit()
+    db.refresh(itinerary)
+
+    return {
+        "itinerary": itinerary,
+        "discount_applied": discount_applied,
+        "discount_amount": discount_amount,
+    }
+
+
+def convert_itinerary_to_bookings(
+    db: Session,
+    itinerary_id: UUID,
+    user_id: UUID,
+    item_ids: list[UUID] | None = None,
+) -> Itinerary:
+    """Convert a confirmed itinerary's items to bookings."""
+    itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
+
+    if itinerary.status != ItineraryStatus.CONFIRMED:
+        raise HTTPException(status_code=400, detail="Only CONFIRMED itineraries can be converted to bookings")
+
+    items = itinerary.items
+    if item_ids is not None:
+        items = [item for item in items if item.id in item_ids]
+
+    all_booked = True
+    for item in items:
+        if item.linked_booking_id is not None:
+            continue
+
+        booking_data = BookingCreate(
+            listing_id=item.listing_id,
+            itinerary_id=itinerary_id,
+            itinerary_item_id=item.id,
+            booking_from_time=item.start_at,
+            booking_to_time=item.end_at,
+        )
+        booking = booking_service_create(db, booking_data, user_id)
+
+        item.linked_booking_id = booking.id
+        item.status = ItineraryItemStatus.BOOKED
+        db.add(item)
+
+        if booking.status.value == "cancelled":
+            all_booked = False
+
+    if all_booked and items:
+        itinerary.status = ItineraryStatus.COMPLETED
+
+    db.commit()
+    db.refresh(itinerary)
+    return itinerary
+
+
+# ---------------------------------------------------------------------------
+# Discount helpers (fallback implementations until DiscountService exists)
+# ---------------------------------------------------------------------------
+
+
+def get_or_create_package_discount(db: Session) -> Discount:
+    """Get active package discount, create default if none exists."""
+    now = datetime.utcnow()
+    discount = db.exec(
+        select(Discount)
+        .where(
+            Discount.discount_type == DiscountType.PACKAGE,
+            Discount.is_active == True,
+            Discount.valid_from <= now,
+            (Discount.valid_to == None) | (Discount.valid_to >= now),
+        )
+        .order_by(Discount.created_at.desc())
+        .limit(1)
+    ).first()
+
+    if discount:
+        return discount
+
+    # Create default package discount
+    default_discount = Discount(
+        name="Package Discount",
+        discount_type=DiscountType.PACKAGE,
+        discount_percent=0.10,
+        min_services=3,
+        min_total_cost=100.0,
+        is_active=True,
+        valid_from=now,
+        max_uses=1000,
+        description="Default package discount for booking 3+ services",
+    )
+    db.add(default_discount)
+    db.commit()
+    db.refresh(default_discount)
+    return default_discount
+
+
+def check_package_discount_eligibility(db: Session, itinerary: Itinerary) -> dict:
+    """Check if an itinerary is eligible for a package discount."""
+    discount = get_or_create_package_discount(db)
+
+    item_count = len(itinerary.items) if itinerary.items else 0
+    total_cost = itinerary.total_estimated_cost or 0
+
+    eligible = True
+    reason = None
+    estimated_discount = 0.0
+
+    if discount.min_services and item_count < discount.min_services:
+        eligible = False
+        reason = f"Requires at least {discount.min_services} services, have {item_count}"
+    elif discount.min_total_cost and total_cost < discount.min_total_cost:
+        eligible = False
+        reason = f"Minimum total cost {discount.min_total_cost} required"
+    elif not discount.is_active:
+        eligible = False
+        reason = "Discount is not active"
+
+    if eligible and discount.discount_percent:
+        estimated_discount = min(
+            total_cost * discount.discount_percent,
+            discount.max_discount_amount or float("inf"),
+        )
+
+    return {
+        "discount": discount,
+        "eligible": eligible,
+        "reason": reason,
+        "estimated_discount": estimated_discount,
+    }
+

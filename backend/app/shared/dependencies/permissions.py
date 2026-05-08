@@ -11,8 +11,9 @@ from app.core.security import decode_token
 from app.infrastructure.database.session import get_db
 from app.modules.bookings.models import Booking
 from app.modules.businesses.models import Business
-from app.modules.listings.models import Listing
+from app.modules.listings.models import EmployeeListings, Listing
 from app.modules.reviews.models import Review
+from app.modules.services.models import Service
 from app.modules.users.models import User
 
 security = HTTPBearer()
@@ -64,6 +65,8 @@ def get_user_role(user: User) -> str:
         return "business"
     if user.user_type == "employee":
         return "employee"
+    if user.user_type == "regular":
+        return "regular"
     return "user"
 
 
@@ -84,7 +87,7 @@ def require_roles(*roles: str) -> Callable[[User], User]:
 
 def require_booking_owner(
     booking_id: UUID,
-    user: User = Depends(require_roles("user", "admin")),
+    user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Booking:
     booking = db.exec(select(Booking).where(Booking.id == booking_id)).first()
@@ -97,7 +100,7 @@ def require_booking_owner(
 
 def require_review_owner(
     review_id: int,
-    user: User = Depends(require_roles("user", "admin")),
+    user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
     review = db.exec(select(Review).where(Review.id == review_id)).first()
@@ -142,6 +145,51 @@ def require_listing_owner(
     return listing
 
 
+def require_service_access(
+    service_id: UUID,
+    user: User = Depends(require_roles("business", "employee", "admin")),
+    db: Session = Depends(get_db),
+) -> Service:
+
+    service = db.exec(
+        select(Service).where(Service.service_id == service_id)
+    ).first()
+
+    if not service:
+        raise HTTPException(404, "Service not found")
+
+    if user.user_type == "admin":
+        return service
+
+    listing = db.exec(
+        select(Listing).where(Listing.id == service.listing_id)
+    ).first()
+
+    if not listing:
+        raise HTTPException(404, "Listing not found")
+
+    # business owner
+    if listing.business_id:
+        business = db.exec(
+            select(Business).where(Business.id == listing.business_id)
+        ).first()
+
+        if business and str(business.user_id) == str(user.id):
+            return service
+
+    # employee access
+    assignment = db.exec(
+        select(EmployeeListings).where(
+            EmployeeListings.listing_id == listing.id,
+            EmployeeListings.employee_id == user.id,
+        )
+    ).first()
+
+    if assignment:
+        return service
+
+    raise HTTPException(403, "Not authorized")
+
 __all__ = [
     "get_current_user",
     "get_user_role",
@@ -150,4 +198,5 @@ __all__ = [
     "require_review_owner",
     "require_business_owner",
     "require_listing_owner",
+    "require_service_access",
 ]

@@ -3,10 +3,10 @@ from typing import Optional
 from uuid import UUID
 from enum import Enum
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, Text, text
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, Text, text, Numeric
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy import Enum as SAEnum
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 
 
 class BookingStatus(str, Enum):
@@ -94,5 +94,44 @@ class Booking(SQLModel, table=True):
             nullable=True
         )
     )
+
+    # Price-related fields (nullable defaults; populated at booking time)
+    base_price: Optional[float] = Field(
+        default=None,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    service_fee_percent: Optional[float] = Field(
+        default=None,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    service_fee_amount: Optional[float] = Field(
+        default=None,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    discount_percent: Optional[float] = Field(
+        default=0,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    discount_amount: Optional[float] = Field(
+        default=0,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    display_price: Optional[float] = Field(
+        default=None,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    final_price: Optional[float] = Field(
+        default=None,
+        sa_column=Column(Numeric, nullable=True),
+    )
+    itinerary_item_id: Optional[UUID] = Field(
+        default=None,
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("itinerary_items.id", onupdate="CASCADE", ondelete="RESTRICT"),
+            nullable=True,
+        ),
+    )
+    itinerary_item: Optional["ItineraryItem"] = Relationship(back_populates="booking_rel")
 
 
