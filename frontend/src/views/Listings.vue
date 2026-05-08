@@ -99,6 +99,49 @@
                   </div>
 
                   <!-- Additional filter sections (no category — already shown above) -->
+                  <div class="border-t border-gray-200 px-4 py-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-sm font-semibold text-gray-900">
+                        Price range
+                      </h3>
+                      <button
+                        v-if="hasPriceRangeFilter"
+                        type="button"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        @click="clearPriceRange"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3">
+                      <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
+                        <input
+                          v-model="minPriceInput"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputmode="decimal"
+                          placeholder="0"
+                          class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                        />
+                      </label>
+                      <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
+                        <input
+                          v-model="maxPriceInput"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputmode="decimal"
+                          placeholder="Any"
+                          class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
                   <Disclosure
                     v-for="section in filters"
                     :key="section.id"
@@ -367,6 +410,47 @@
               </ul>
 
               <!-- Additional filter sections (no category — already shown above) -->
+              <div class="border-b border-gray-200 py-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-medium text-gray-900">Price range</h3>
+                  <button
+                    v-if="hasPriceRangeFilter"
+                    type="button"
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearPriceRange"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
+                    <input
+                      v-model="minPriceInput"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputmode="decimal"
+                      placeholder="0"
+                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                    />
+                  </label>
+                  <label class="block">
+                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
+                    <input
+                      v-model="maxPriceInput"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputmode="decimal"
+                      placeholder="Any"
+                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                    />
+                  </label>
+                </div>
+              </div>
+
               <Disclosure
                 v-for="section in filters"
                 :key="section.id"
@@ -546,6 +630,8 @@ const loading = ref(true);
 const mobileFiltersOpen = ref(false);
 const selectedCategoryIds = ref([]);
 const activeSort = ref("popular");
+const minPriceInput = ref("");
+const maxPriceInput = ref("");
 const route = useRoute();
 const router = useRouter();
 const viewMode = ref("grid");
@@ -612,7 +698,15 @@ const filters = computed(() => [
   },
 ]);
 
+const minPrice = computed(() => parsePriceInput(minPriceInput.value));
+const maxPrice = computed(() => parsePriceInput(maxPriceInput.value));
+
+const hasPriceRangeFilter = computed(
+  () => minPrice.value !== null || maxPrice.value !== null,
+);
+
 const hasActiveExtraFilters = computed(() =>
+  hasPriceRangeFilter.value ||
   Object.values(selectedFilters.value).some((values) => values.size > 0),
 );
 
@@ -631,6 +725,16 @@ const filteredListings = computed(() => {
     result = result.filter((listing) =>
       values.has(getFilterValue(listing, sectionId)),
     );
+  }
+
+  if (hasPriceRangeFilter.value) {
+    result = result.filter((listing) => {
+      const price = listingPriceValue(listing?.base_price);
+      if (price === null) return false;
+      if (minPrice.value !== null && price < minPrice.value) return false;
+      if (maxPrice.value !== null && price > maxPrice.value) return false;
+      return true;
+    });
   }
 
   // Sorting
@@ -663,10 +767,11 @@ const filteredListings = computed(() => {
 
 const activeFilterCount = computed(() => {
   const categoryCount = selectedCategoryIds.value.length > 0 ? 1 : 0;
+  const priceCount = hasPriceRangeFilter.value ? 1 : 0;
   const extraCount = Object.values(selectedFilters.value).filter(
     (s) => s.size > 0,
   ).length;
-  return categoryCount + extraCount;
+  return categoryCount + priceCount + extraCount;
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -682,6 +787,18 @@ function dateValue(value) {
 
 function normalizeFilterValue(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function parsePriceInput(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function listingPriceValue(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function getFilterValue(listing, sectionId) {
@@ -722,7 +839,13 @@ function clearQuickCategory() {
 
 function clearAllFilters() {
   clearQuickCategory();
+  clearPriceRange();
   selectedFilters.value = {};
+}
+
+function clearPriceRange() {
+  minPriceInput.value = "";
+  maxPriceInput.value = "";
 }
 
 // ── Extra accordion filter helpers ────────────────────────────────────────────

@@ -1,5 +1,6 @@
 """Business logic for listings."""
 
+from datetime import datetime
 import random
 from uuid import UUID
 
@@ -9,12 +10,15 @@ from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from shapely.geometry import Point
-from sqlmodel import Session, asc, desc, select
+from sqlmodel import Session, asc, col, desc, select
 
+from app.modules.bookings.models import Booking, BookingStatus
 from app.modules.businesses.models import Business
 from app.modules.interests.models import ListingInterest, UserInterest
 from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
+from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
+from app.modules.users.models import User
 
 from .models import Listing, Statuses
 
@@ -511,3 +515,54 @@ def search_listings_combined(
             payload["distance_m"] = float(dist_val) if dist_val is not None else None
 
     return serialized
+
+def filter_by_availability(
+    db: Session,
+    listings: list[Listing],
+    start_dt: datetime,
+    end_dt: datetime,
+    requested_quantity: int = 1,
+) -> list[Listing]:
+    """
+    Returns only listings that have at least one service with available slots
+    in the requested window. Uses a single batched query.
+    """
+    listing_ids = [l.id for l in listings]
+    if not listing_ids:
+        return []
+
+    # Fetch all active services for these listings
+    services = db.exec(
+        select(Service)
+        .where(col(Service.listing_id).in_(listing_ids))
+        .where(Service.status == ServiceStatusTypes.active)
+        .where(Service.capacity > 0)
+    ).all()
+
+    if not services:
+        return []
+
+    service_ids = [s.service_id for s in services]
+
+    booked_rows = db.exec(
+        select(Booking.service_id, func.coalesce(func.sum(Booking.amount_of_people), 0))
+        .where(col(Booking.service_id).in_(service_ids))
+        .where(col(Booking.status).notin_([
+            BookingStatus.cancelled,
+            BookingStatus.pending,
+        ]))
+        .where(Booking.booking_from_time < end_dt)
+        .where(Booking.booking_to_time > start_dt)
+        .group_by(Booking.service_id)
+    ).all()
+
+    booked_map = {service_id: int(booked or 0) for service_id, booked in booked_rows}
+
+    # Determine which listing_ids have at least one available service
+    available_listing_ids = set()
+    for service in services:
+        booked = booked_map.get(service.service_id, 0)
+        if (service.capacity or 0) - booked >= requested_quantity:
+            available_listing_ids.add(service.listing_id)
+
+    return [l for l in listings if l.id in available_listing_ids]

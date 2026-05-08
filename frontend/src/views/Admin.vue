@@ -34,8 +34,7 @@
           <path
             class="opacity-75"
             fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
         </svg>
         <p class="mt-4 text-sm text-slate-500">Loading listing moderation data...</p>
       </div>
@@ -128,8 +127,7 @@
                 v-if="listing.image_urls?.length"
                 :src="listing.image_urls[0]"
                 :alt="listing.title"
-                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              />
+                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"/>
               <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -150,8 +148,7 @@
               <div class="absolute left-3 top-3">
                 <span
                   class="rounded-xl px-3 py-1 text-xs font-semibold"
-                  :class="statusBadgeClass(listing.status)"
-                >
+                  :class="statusBadgeClass(listing.status)">
                   {{ statusLabel(listing.status) }}
                 </span>
               </div>
@@ -242,8 +239,7 @@
                   v-if="canRejectListing(listing)"
                   @click="openConfirmModal('reject', listing)"
                   :disabled="decisionSubmitting"
-                  class="flex-1 rounded-2xl border border-red-100 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+                  class="flex-1 rounded-2xl border border-red-100 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60">
                   Reject
                 </button>
                 <button
@@ -690,8 +686,7 @@
           <button
             @click="showConfirmModal = false"
             :disabled="decisionSubmitting"
-            class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+            class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
             Cancel
           </button>
           <button

@@ -18,30 +18,24 @@ class PaceLevel(str, Enum):
     packed = "packed"
 
 
+class ItineraryStatus(str, Enum):
+    draft = "draft"
+    saved = "saved"
+    archived = "archived"
+
+
 class ItineraryPlanRequest(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     trip_days: Optional[int] = Field(default=None, ge=1, le=14)
 
-    city: Optional[str] = None
     country: Optional[str] = None
     interests: list[str] = Field(default_factory=list)
-    preferred_business_types: list[str] = Field(default_factory=list)
+    bookable_only: bool = False
 
     budget_level: BudgetLevel = BudgetLevel.medium
-    total_budget: Optional[float] = Field(default=None, gt=0)
-    strict_budget: bool = True
-
     pace: PaceLevel = PaceLevel.balanced
-    max_listings_per_day: Optional[int] = Field(default=None, ge=1, le=8)
-    day_start_hour: int = Field(default=9, ge=0, le=23)
-    day_end_hour: int = Field(default=21, ge=1, le=24)
-
-    max_travel_km_between_stops: float = Field(default=30, gt=0, le=250)
-
-    must_include_listing_ids: list[UUID] = Field(default_factory=list)
-    excluded_listing_ids: list[UUID] = Field(default_factory=list)
-    limit_candidates: int = Field(default=200, ge=20, le=500)
+    number_of_people: int = Field(default=1, ge=1, le=20)
 
     @model_validator(mode="after")
     def _validate_dates_and_hours(self):
@@ -56,11 +50,7 @@ class ItineraryPlanRequest(BaseModel):
         if not self.end_date and self.trip_days is None:
             raise ValueError("Provide either end_date or trip_days")
 
-        if self.day_end_hour <= self.day_start_hour:
-            raise ValueError("day_end_hour must be later than day_start_hour")
-
         self.interests = _normalize_strings(self.interests)
-        self.preferred_business_types = _normalize_strings(self.preferred_business_types)
         return self
 
     @property
@@ -74,6 +64,7 @@ class ItineraryPlanRequest(BaseModel):
 class ItineraryStop(BaseModel):
     listing_id: UUID
     title: str
+    description: Optional[str] = None
     business_type_name: Optional[str] = None
     address: Optional[dict] = None
     estimated_cost: float
@@ -99,6 +90,63 @@ class ItineraryPlanResponse(BaseModel):
     target_total_budget: Optional[float] = None
     daily_target_budget: float
     days: list[ItineraryDay] = Field(default_factory=list)
+
+
+class ItinerarySaveRequest(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+    status: ItineraryStatus = ItineraryStatus.saved
+    plan_request: ItineraryPlanRequest
+    plan_response: Optional[ItineraryPlanResponse] = None
+
+
+class ItineraryItemResponse(BaseModel):
+    id: UUID
+    itinerary_id: UUID
+    listing_id: Optional[UUID] = None
+    linked_booking_id: Optional[UUID] = None
+    item_type: str
+    title: str
+    description: Optional[str] = None
+    day_date: date
+    start_at: datetime
+    end_at: datetime
+    sort_order: int
+    estimated_cost: float
+    address_snapshot: Optional[dict] = None
+    reason_tags: list[str] = Field(default_factory=list)
+    extra_metadata: Optional[dict] = None
+
+
+class SavedItinerarySummaryResponse(BaseModel):
+    id: UUID
+    title: str
+    status: ItineraryStatus
+    start_date: date
+    end_date: date
+    total_estimated_cost: float
+    item_count: int
+    created_at: datetime
+
+
+class SavedItineraryResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    title: str
+    status: ItineraryStatus
+    start_date: date
+    end_date: date
+    budget_level: BudgetLevel
+    pace: PaceLevel
+    total_budget: Optional[float] = None
+    strict_budget: bool
+    city: Optional[str] = None
+    country: Optional[str] = None
+    interests: list[str] = Field(default_factory=list)
+    preferred_business_types: list[str] = Field(default_factory=list)
+    total_estimated_cost: float
+    created_at: datetime
+    updated_at: datetime
+    items: list[ItineraryItemResponse] = Field(default_factory=list)
 
 
 def _normalize_strings(items: list[str]) -> list[str]:

@@ -10,6 +10,12 @@
       <p class="mt-2 text-sm text-slate-500">
         Track upcoming reservations and manage pending bookings.
       </p>
+      <router-link
+        to="/calendar"
+        class="mt-4 inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+      >
+        Open Calendar
+      </router-link>
     </div>
 
     <div

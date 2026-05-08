@@ -225,3 +225,46 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
     db.commit()
     db.refresh(booking)
     return booking
+    
+def get_booked_count(
+    db: Session,
+    service_id: UUID,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    """Count confirmed bookings that overlap the requested window."""
+    result = db.exec(
+        select(func.coalesce(func.sum(Booking.amount_of_people), 0))
+        .where(Booking.service_id == service_id)
+        .where(col(Booking.status).notin_([
+            BookingStatus.cancelled,
+            BookingStatus.pending,
+        ]))
+        # Overlap condition: existing booking starts before our end
+        # AND ends after our start
+        .where(Booking.booking_from_time < end_dt)
+        .where(Booking.booking_to_time > start_dt)
+    ).one()
+    return int(result or 0)
+
+
+def get_available_slots(
+    db: Session,
+    service_id: UUID,
+    capacity: int,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    booked = get_booked_count(db, service_id, start_dt, end_dt)
+    return max(0, capacity - booked)
+
+
+def is_available(
+    db: Session,
+    service_id: UUID,
+    capacity: int,
+    start_dt: datetime,
+    end_dt: datetime,
+    requested_quantity: int = 1,
+) -> bool:
+    return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity

@@ -18,8 +18,7 @@
       <p class="mt-2 max-w-sm text-sm text-slate-500">{{ employeeStore.loadError }}</p>
       <button
         @click="employeeStore.fetchAssignments()"
-        class="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-      >
+        class="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
         Try again
       </button>
     </div>
@@ -43,8 +42,7 @@
           <div class="mt-2 flex flex-wrap items-center gap-3">
             <span
               class="rounded-xl px-3 py-1 text-xs font-semibold"
-              :class="statusBadgeClass(employeeStore.activeListing.status)"
-            >
+              :class="statusBadgeClass(employeeStore.activeListing.status)">
               {{ statusLabel(employeeStore.activeListing.status) }}
             </span>
             <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
