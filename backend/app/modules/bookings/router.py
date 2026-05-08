@@ -8,13 +8,14 @@ from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_booking_owner, require_roles
 
 from .models import Booking
-from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse
+from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse
 from .service import (
     cancel_booking,
     create_booking,
     get_booking_by_id,
     list_bookings,
     update_booking,
+    price_booking_by_id,
 )
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
@@ -70,4 +71,12 @@ def cancel_booking_endpoint(
 
     cancel_booking(db, booking)
     return Response(status_code=204)
-    
+
+@router.get("/{booking_id}/price", response_model=BookingPriceResponse)
+def get_booking_price_endpoint(
+    current_user: User = Depends(require_roles("regular", "admin")),
+    booking: Booking = Depends(require_booking_owner),
+    db: Session = Depends(get_db),
+):
+    price = price_booking_by_id(db, booking.id, current_user.id)
+    return BookingPriceResponse(**price)

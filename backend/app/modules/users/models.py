@@ -12,6 +12,7 @@ from sqlmodel import (
     Boolean,
     Text,
     DateTime,
+    Relationship,
 )
 
 
@@ -78,3 +79,4 @@ class User(SQLModel, table=True):
     updated_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    itineraries: list["Itinerary"] = Relationship(back_populates="user_rel")

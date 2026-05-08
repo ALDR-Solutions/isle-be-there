@@ -12,11 +12,8 @@ from shapely.geometry import Point
 from sqlmodel import Session, asc, desc, select
 
 from app.modules.businesses.models import Business
-from app.modules.interests.models import (
-    BusinessTypeInterest,
-    ListingInterest,
-    UserInterest,
-)
+from app.modules.interests.models import ListingInterest, UserInterest
+from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 
 from .models import Listing, Statuses
@@ -288,23 +285,14 @@ def get_listing_by_id(db: Session, listing_id: str):
     return _serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
-def create_listing(db: Session, data: dict, user_id: str):
-    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-    if not business:
-        raise HTTPException(status_code=400, detail="User does not have a business")
-
-    interest_ids = data.pop("interest_ids", None)
-    location_data = data.pop("location", None)
-    data["business_id"] = business.id
-    validated_interest_ids = _validate_interest_ids_for_business_type(
-        db,
-        data.get("business_type"),
-        interest_ids,
+def create_listing(db: Session, data: ListingCreate, user_id: str):
+    listing = Listing(
+        **data.model_dump()
     )
 
-    listing = Listing(**data)
-    if location_data:
-        listing.location = _build_location(location_data)
+    if data.location:
+        listing.location = _build_location(data.location)
+
     db.add(listing)
     db.flush()
     _sync_listing_interests(db, listing.id, validated_interest_ids)
@@ -356,22 +344,10 @@ def update_listing(
     for key, value in update_data.items():
         setattr(listing, key, value)
 
-    updated_interest_ids: list[UUID] | None = None
-    if should_update_interests:
-        updated_interest_ids = _validate_interest_ids_for_business_type(
-            db,
-            next_business_type,
-            requested_interest_ids,
-        )
-        _sync_listing_interests(db, listing.id, updated_interest_ids)
-
     db.commit()
     db.refresh(listing)
     review_stats = get_listing_review_stats(db, listing.id)
-    if updated_interest_ids is None:
-        interest_map = _batch_listing_interest_ids(db, [listing.id])
-        updated_interest_ids = interest_map.get(listing.id, [])
-    return _serialize_listing(listing, review_stats, updated_interest_ids)
+    return _serialize_listing(listing, review_stats)
 
 
 def delete_listing(db: Session,listing: Listing):
@@ -414,8 +390,23 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
         return _serialize_listings(db, _fetch_active_listings(db, limit))
 
     try:
-        listings = db.exec(
-            select(Listing)
+        # PostgreSQL doesn't allow ORDER BY random() with DISTINCT unless random() is in SELECT
+        # So we fetch listing IDs first, then fetch the listings
+        listing_ids_subq = (
+            select(ListingInterest.listing_id)
+            .join(Listing, Listing.id == ListingInterest.listing_id)
+            .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
+            .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+            .options(
+                selectinload(Listing.business_type_rel),
+                selectinload(Listing.business_rel),
+            )
+            .distinct()
+        )
+
+        # Get IDs with random ordering using a subquery approach
+        ids_with_random = db.exec(
+            select(Listing.id, func.random().label('rand'))
             .join(ListingInterest, ListingInterest.listing_id == Listing.id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
             .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
@@ -428,9 +419,20 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
             .order_by(func.random())
         ).all()
 
-        if not listings:
+        if ids_with_random:
+            # Sort by random value and pick limit
+            shuffled = sorted(ids_with_random, key=lambda x: x.rand)[:limit]
+            listing_ids = [row.id for row in shuffled]
+            listings = db.exec(
+                select(Listing)
+                .where(Listing.id.in_(listing_ids))
+                .where(Listing.status == Statuses.active)
+            ).all()
+        else:
             listings = _fetch_active_listings(db, limit)
 
+        if not listings:
+            listings = _fetch_active_listings(db, limit)
 
         return _serialize_listings(db, listings)
     except Exception:
