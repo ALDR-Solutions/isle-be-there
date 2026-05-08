@@ -13,6 +13,7 @@ from .models import Booking, BookingStatus
 from app.modules.itineraries.models import ItineraryItem, Itinerary
 from app.modules.discounts.models import Discount
 from app.modules.pricing.service import calculate_display_price
+from datetime import datetime
 
 
 def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:

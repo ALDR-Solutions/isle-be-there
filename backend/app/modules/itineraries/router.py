@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.infrastructure.database import get_db
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select
 from typing import List, Optional
 from .schemas import (
     ItineraryPlanRequest,

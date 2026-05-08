@@ -21,7 +21,12 @@ from app.modules.listings.models import Listing, Statuses
 from app.modules.listings.service import filter_by_availability
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 
-from .models import Itinerary, ItineraryItem, ItineraryStatus, ItineraryItemStatus
+from .models import (
+    Itinerary,
+    ItineraryItem,
+    ItineraryItemStatus,
+    ItineraryStatus as ItineraryModelStatus,
+)
 from .schemas import (
     BudgetLevel,
     ItineraryDay,
@@ -29,7 +34,7 @@ from .schemas import (
     ItineraryPlanRequest,
     ItineraryPlanResponse,
     ItinerarySaveRequest,
-    ItineraryStatus,
+    ItineraryStatus as ItinerarySchemaStatus,
     ItineraryStop,
     PaceLevel,
     SavedItineraryResponse,
@@ -281,7 +286,7 @@ def list_saved_itineraries(db: Session, user_id: UUID) -> list[SavedItinerarySum
         SavedItinerarySummaryResponse(
             id=itinerary.id,
             title=itinerary.title,
-            status=ItineraryStatus(itinerary.status),
+            status=ItinerarySchemaStatus(_status_value(itinerary.status)),
             start_date=itinerary.start_date,
             end_date=itinerary.end_date,
             total_estimated_cost=float(itinerary.total_estimated_cost or 0),
@@ -631,6 +636,10 @@ def _build_items_for_saved_itinerary(
     return items
 
 
+def _status_value(status) -> str:
+    return status.value if hasattr(status, "value") else str(status)
+
+
 def _serialize_saved_itinerary(
     itinerary: Itinerary,
     items: list[ItineraryItem],
@@ -639,7 +648,7 @@ def _serialize_saved_itinerary(
         id=itinerary.id,
         user_id=itinerary.user_id,
         title=itinerary.title,
-        status=ItineraryStatus(itinerary.status),
+        status=ItinerarySchemaStatus(_status_value(itinerary.status)),
         start_date=itinerary.start_date,
         end_date=itinerary.end_date,
         budget_level=BudgetLevel(itinerary.budget_level),
@@ -695,7 +704,7 @@ def create_itinerary(db: Session, user_id: UUID, data: dict) -> Itinerary:
 
     itinerary = Itinerary(
         user_id=user_id,
-        status=ItineraryStatus.DRAFT,
+        status=ItineraryModelStatus.DRAFT,
         total_estimated_cost=total_cost,
         **data,
     )
@@ -733,7 +742,7 @@ def confirm_itinerary(db: Session, itinerary_id: UUID, user_id: UUID) -> dict:
     """Confirm a DRAFT itinerary, apply discount if eligible, update status to CONFIRMED."""
     itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
 
-    if itinerary.status != ItineraryStatus.DRAFT:
+    if itinerary.status != ItineraryModelStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Only DRAFT itineraries can be confirmed")
 
     discount_info = check_package_discount_eligibility(db, itinerary)
@@ -747,7 +756,7 @@ def confirm_itinerary(db: Session, itinerary_id: UUID, user_id: UUID) -> dict:
         itinerary.discount_amount = discount_amount
         discount_applied = True
 
-    itinerary.status = ItineraryStatus.CONFIRMED
+    itinerary.status = ItineraryModelStatus.CONFIRMED
     db.commit()
     db.refresh(itinerary)
 
@@ -767,7 +776,7 @@ def convert_itinerary_to_bookings(
     """Convert a confirmed itinerary's items to bookings."""
     itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
 
-    if itinerary.status != ItineraryStatus.CONFIRMED:
+    if itinerary.status != ItineraryModelStatus.CONFIRMED:
         raise HTTPException(status_code=400, detail="Only CONFIRMED itineraries can be converted to bookings")
 
     items = itinerary.items
@@ -796,7 +805,7 @@ def convert_itinerary_to_bookings(
             all_booked = False
 
     if all_booked and items:
-        itinerary.status = ItineraryStatus.COMPLETED
+        itinerary.status = ItineraryModelStatus.COMPLETED
 
     db.commit()
     db.refresh(itinerary)

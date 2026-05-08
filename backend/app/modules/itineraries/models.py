@@ -14,12 +14,18 @@ from app.modules.listings.models import Listing
 from app.modules.bookings.models import Booking
 
 
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
+
+
 # Enums representing status values for itineraries and their items
 class ItineraryStatus(str, Enum):
     DRAFT = "draft"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     COMPLETED = "completed"
+    SAVED = "saved"
+    ARCHIVED = "archived"
 
 
 class ItineraryItemStatus(str, Enum):
@@ -51,7 +57,13 @@ class Itinerary(SQLModel, table=True):
     title: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     start_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
     end_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))
-    status: Optional[ItineraryStatus] = Field(default=None, sa_column=Column(SAEnum(ItineraryStatus), nullable=True))
+    status: Optional[ItineraryStatus] = Field(
+        default=None,
+        sa_column=Column(
+            SAEnum(ItineraryStatus, values_callable=_enum_values),
+            nullable=True,
+        ),
+    )
     budget_level: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     pace: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     total_budget: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))

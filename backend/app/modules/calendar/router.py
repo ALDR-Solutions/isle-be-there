@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/calendar", tags=["Calendar"])
 def list_calendar_events_endpoint(
     start: datetime | None = None,
     end: datetime | None = None,
-    current_user: User = Depends(require_roles("user", "admin")),
+    current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
     return list_calendar_events(db, current_user.id, start=start, end=end)

@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.modules.bookings.models import Booking
-from app.modules.itineraries.model import Itinerary, ItineraryItem
+from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.services.models import Service
 from app.modules.listings.models import Listing
 
@@ -120,6 +120,7 @@ def _load_itinerary_events(
     for row in rows:
         item: ItineraryItem = row[0]
         itinerary: Itinerary = row[1]
+        status = _itinerary_status_value(itinerary.status)
         events.append(
             CalendarEventResponse(
                 id=f"itinerary-{item.id}",
@@ -127,8 +128,8 @@ def _load_itinerary_events(
                 title=item.title,
                 start=item.start_at,
                 end=item.end_at,
-                status=itinerary.status,
-                color=_itinerary_color(itinerary.status),
+                status=status,
+                color=_itinerary_color(status),
                 listing_id=item.listing_id,
                 booking_id=item.linked_booking_id,
                 itinerary_id=itinerary.id,
@@ -169,6 +170,10 @@ def _itinerary_color(status: str) -> str:
     if status == "saved":
         return "#7c3aed"
     return "#64748b"
+
+
+def _itinerary_status_value(status) -> str:
+    return status.value if hasattr(status, "value") else str(status)
 
 
 def _normalize_timestamp(value: datetime | None) -> datetime | None:
