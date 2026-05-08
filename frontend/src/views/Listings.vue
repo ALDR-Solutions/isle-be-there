@@ -57,12 +57,14 @@
                         Categories
                       </h3>
                       <button
-                        v-if="selectedCategoryIds.length"
+                        v-if="
+                          selectedCategoryIds.length || hasActiveExtraFilters
+                        "
                         type="button"
                         class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="clearQuickCategory"
+                        @click="clearAllFilters"
                       >
-                        Clear
+                        Clear all
                       </button>
                     </div>
 
@@ -181,7 +183,9 @@
           class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pt-16 pb-5 sm:pt-24 sm:pb-6"
         >
           <div class="flex min-w-0 items-center gap-3">
-            <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h1
+              class="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+            >
               {{
                 hasSearchQuery
                   ? `Results for "${searchQuery}"`
@@ -203,7 +207,8 @@
               <MenuButton
                 class="group inline-flex items-center justify-center text-sm font-medium text-gray-700 hover:text-gray-900"
               >
-                {{ activeSortLabel }}
+                <span class="hidden sm:inline">{{ activeSortLabel }}</span>
+                <span class="sm:hidden">Sort</span>
                 <ChevronDownIcon
                   class="-mr-1 ml-1 size-5 shrink-0 text-gray-400 group-hover:text-gray-500"
                   aria-hidden="true"
@@ -219,7 +224,7 @@
                 leave-to-class="transform opacity-0 scale-95"
               >
                 <MenuItems
-                  class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden"
+                  class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden sm:right-0 sm:left-auto -left-24"
                 >
                   <div class="py-1">
                     <MenuItem
@@ -262,11 +267,18 @@
             <!-- Mobile filter button -->
             <button
               type="button"
-              class="-m-2 ml-3 p-2.5 text-gray-400 hover:text-gray-500 lg:hidden"
+              class="relative -m-2 ml-3 p-2.5 text-gray-400 hover:text-gray-500 lg:hidden"
+              :class="activeFilterCount > 0 ? 'text-indigo-600' : ''"
               @click="mobileFiltersOpen = true"
             >
               <span class="sr-only">Filters</span>
               <FunnelIcon class="size-5" aria-hidden="true" />
+              <span
+                v-if="activeFilterCount > 0"
+                class="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white"
+              >
+                {{ activeFilterCount }}
+              </span>
             </button>
           </div>
         </div>
@@ -276,24 +288,15 @@
 
           <div class="mb-5 lg:hidden">
             <div class="flex items-center justify-between gap-2">
-              <p class="text-sm font-semibold text-gray-900">Quick categories</p>
-              <div class="flex items-center gap-2">
-                <button
-                  v-if="selectedCategoryIds.length"
-                  type="button"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                  @click="clearQuickCategory"
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800"
-                  @click="mobileFiltersOpen = true"
-                >
-                  More filters
-                </button>
-              </div>
+              <p class="text-sm font-semibold text-gray-900">Categories</p>
+              <button
+                v-if="selectedCategoryIds.length || hasActiveExtraFilters"
+                type="button"
+                class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                @click="clearAllFilters"
+              >
+                Clear all
+              </button>
             </div>
 
             <div class="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -331,6 +334,18 @@
             <form class="hidden lg:block" @submit.prevent>
               <!-- Quick-filter category list (business types) -->
               <h3 class="sr-only">Categories</h3>
+              <div
+                v-if="selectedCategoryIds.length || hasActiveExtraFilters"
+                class="mb-4 flex justify-end"
+              >
+                <button
+                  type="button"
+                  class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                  @click="clearAllFilters"
+                >
+                  Clear all
+                </button>
+              </div>
               <ul
                 role="list"
                 class="space-y-4 border-b border-gray-200 pb-6 text-sm font-medium text-gray-900"
@@ -646,6 +661,14 @@ const filteredListings = computed(() => {
   }
 });
 
+const activeFilterCount = computed(() => {
+  const categoryCount = selectedCategoryIds.value.length > 0 ? 1 : 0;
+  const extraCount = Object.values(selectedFilters.value).filter(
+    (s) => s.size > 0,
+  ).length;
+  return categoryCount + extraCount;
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function numberValue(value) {
   const num = Number(value ?? 0);
@@ -695,6 +718,11 @@ function toggleQuickCategory(categoryId) {
 
 function clearQuickCategory() {
   selectedCategoryIds.value = [];
+}
+
+function clearAllFilters() {
+  clearQuickCategory();
+  selectedFilters.value = {};
 }
 
 // ── Extra accordion filter helpers ────────────────────────────────────────────
