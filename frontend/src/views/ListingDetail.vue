@@ -61,7 +61,6 @@
 
           <div class="lg:col-span-2 space-y-6">
 
-  
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -140,8 +139,44 @@
             <h2 class="mt-2 text-2xl font-bold text-slate-900">Reviews</h2>
           </div>
 
+          <div class="mb-4 flex items-center justify-between">
+            <div v-if="reviews.length > 0" class="flex flex-wrap gap-2">
+              <button
+                @click="selectedLabel = null"
+                :class="selectedLabel === null
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-slate-200 text-slate-700'"
+                class="px-4 py-2 rounded-full text-sm font-medium transition"
+              >
+                All
+              </button>
+              <button
+                v-for="label in availableLabels"
+                :key="label"
+                @click="selectedLabel = label"
+                :class="selectedLabel === label
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-slate-200 text-slate-700'"
+                class="px-4 py-2 rounded-full text-sm font-medium transition"
+              >
+                {{ label }}
+              </button>
+            </div>
+
+            <button
+              v-if="hasProfanity"
+              @click="showOriginal = !showOriginal"
+              :class="showOriginal
+                ? 'bg-red-100 text-red-700'
+                : 'bg-slate-200 text-slate-700'"
+              class="px-4 py-2 rounded-full text-sm font-medium transition"
+            >
+              {{ showOriginal ? 'Show Censored' : 'Show Original' }}
+            </button>
+          </div>
+
           <div
-            v-if="reviews.length === 0"
+            v-if="filteredReviews.length === 0"
             class="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p class="text-base font-medium text-slate-500">No reviews yet.</p>
             <p class="mt-1 text-sm text-slate-400">Be the first to share your experience.</p>
@@ -149,7 +184,7 @@
 
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div
-              v-for="review in reviews"
+              v-for="review in filteredReviews"
               :key="review.id"
               class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
             >
@@ -177,8 +212,12 @@
                 </div>
               </div>
               <p v-if="review.comment" class="mt-4 text-sm leading-6 text-slate-600">
-                {{ review.comment }}
+                {{ getDisplayComment(review) }}
               </p>
+              <div v-if="review.translated_comment && review.detected_language && review.detected_language !== 'en'" class="mt-3 border-t border-slate-100 pt-3">
+                <p class="text-xs text-slate-400 mb-1">Translated:</p>
+                <p class="text-sm text-slate-500 italic">"{{ review.translated_comment }}"</p>
+              </div>
             </div>
           </div>
         </div>
@@ -203,6 +242,8 @@ const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+const selectedLabel = ref(null);
+const showOriginal = ref(false);
 
 const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
@@ -213,6 +254,44 @@ const detailsComponent = computed(() => {
     default:           return null
   }
 })
+
+const availableLabels = computed(() => {
+  const labelCounts = {};
+  reviews.value.forEach(r => {
+    if (r.classification_labels) {
+      try {
+        JSON.parse(r.classification_labels).forEach(l => {
+          if (l !== "(none)") {
+            labelCounts[l] = (labelCounts[l] || 0) + 1;
+          }
+        });
+      } catch {}
+    }
+  });
+  return Object.entries(labelCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label]) => label);
+});
+
+const filteredReviews = computed(() => {
+  if (!selectedLabel.value) return reviews.value;
+  return reviews.value.filter(r => {
+    if (!r.classification_labels) return false;
+    try {
+      return JSON.parse(r.classification_labels).includes(selectedLabel.value);
+    } catch { return false; }
+  });
+});
+
+const hasProfanity = computed(() => {
+  return reviews.value.some(r => r.censored_comment && r.censored_comment !== r.comment);
+});
+
+const getDisplayComment = (review) => {
+  if (!review.censored_comment) return review.comment;
+  if (review.censored_comment === review.comment) return review.comment;
+  return showOriginal.value ? review.comment : review.censored_comment;
+};
 
 const fetchListings = async () => {
   try {

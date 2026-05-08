@@ -21,12 +21,20 @@ class Business(SQLModel, table=True):
         )
     )
     business_name: str = Field(sa_column=Column(Text, nullable=False))
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    business_email: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    description: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    business_email: Optional[str] = Field(
+        default=None, sa_column=Column(String, nullable=True)
+    )
     phone: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     address: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    website: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
-    logo_url: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    website: Optional[str] = Field(
+        default=None, sa_column=Column(String, nullable=True)
+    )
+    logo_url: Optional[str] = Field(
+        default=None, sa_column=Column(String, nullable=True)
+    )
     is_verified: Optional[bool] = Field(
         default=False,
         sa_column=Column(Boolean, nullable=False, server_default=text("false")),
@@ -46,8 +54,12 @@ class Business(SQLModel, table=True):
             nullable=True,
         ),
     )
-    latitude: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
-    longitude: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    latitude: Optional[float] = Field(
+        default=None, sa_column=Column(Float, nullable=True)
+    )
+    longitude: Optional[float] = Field(
+        default=None, sa_column=Column(Float, nullable=True)
+    )
 
     listings: list["Listing"] = Relationship(back_populates="business_rel")
 
@@ -71,9 +83,12 @@ class BusinessType(SQLModel, table=True):
         )
     )
     name: str = Field(sa_column=Column(Text, nullable=False, unique=True))
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    description: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
 
     listings: list["Listing"] = Relationship(back_populates="business_type_rel")
+
 
 class BusinessEmployees(SQLModel, table=True):
     __tablename__ = "business_employees"

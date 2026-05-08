@@ -16,7 +16,10 @@ from app.modules.users.models import User, UserTypes
 from app.modules.businesses.models import Business, BusinessType
 from app.modules.listings.models import Listing, Statuses, EmployeeListings
 from app.modules.bookings.models import Booking
-from app.modules.reviews.models import Review
+from app.modules.reviews.models import Review, BusinessReply
+from app.modules.itineraries.models import Itinerary, ItineraryItem
+from app.modules.discounts.models import Discount
+from app.modules.pricing.models import PlatformPricingConfig
 from app.modules.interests.models import Interests, UserInterest, ListingInterest
 from app.modules.favourites.models import Favourites
 from app.modules.services.models import Service
@@ -78,9 +81,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

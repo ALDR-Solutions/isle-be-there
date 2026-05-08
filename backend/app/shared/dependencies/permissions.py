@@ -94,14 +94,14 @@ def require_booking_owner(
 
 
 def require_review_owner(
-    review_id: int,
+    review_id: UUID,
     user: User = Depends(require_roles("user", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
     review = db.exec(select(Review).where(Review.id == review_id)).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    if not user.is_super_admin and str(review.user_id) != str(user.id):
+    if str(review.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return review
 
@@ -134,7 +134,9 @@ def require_listing_owner(
     if not listing.business_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    business = db.exec(select(Business).where(Business.id == listing.business_id)).first()
+    business = db.exec(
+        select(Business).where(Business.id == listing.business_id)
+    ).first()
     if not business or str(business.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return listing

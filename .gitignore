@@ -156,3 +156,11 @@ node_modules/
 .env.local
 .envrc
 *.secret
+
+# HuggingFace model cache
+.huggingface/
+
+# Local ML models (downloaded on deployment, not committed)
+backend/app/modules/reviews/classifiers/ml_models/all-MiniLM-L6-v2/
+backend/app/modules/reviews/classifiers/ml_models/sentence_transformers/
+

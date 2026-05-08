@@ -1,5 +1,6 @@
 import os
 import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,6 +11,27 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    logger.info("Pre-loading ML classification model...")
+    from app.modules.reviews.classifiers.ml_classifier import (
+        _get_embedding_model_with_timeout,
+    )
+
+    model = _get_embedding_model_with_timeout(timeout=120)
+    if model:
+        logger.info("ML model loaded successfully")
+    else:
+        logger.warning("ML model failed to load, will use keyword fallback")
+
+    yield
+
+
 from app.modules.auth.router import router as auth_router
 from app.modules.bookings.router import router as bookings_router
 from app.modules.businesses.router import router as businesses_router
@@ -19,6 +41,9 @@ from app.modules.listings.router import router as listings_router
 from app.modules.recommendations.router import router as recommendations_router
 from app.modules.reviews.router import router as reviews_router
 from app.modules.users.router import router as profile_router
+from app.modules.itineraries.models import Itinerary, ItineraryItem
+from app.modules.discounts.models import Discount
+from app.modules.pricing.models import PlatformPricingConfig
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,13 +55,16 @@ app = FastAPI(
     title="Isle Be There API",
     description="Travel platform API with AI recommendations",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
 def get_allowed_origins() -> list[str]:
     configured_origins = os.getenv("CORS_ALLOW_ORIGINS", "")
     if configured_origins.strip():
-        return [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in configured_origins.split(",") if origin.strip()
+        ]
 
     return [
         "http://localhost:5173",
@@ -58,7 +86,9 @@ app.add_middleware(
 
 # Serve static files
 if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+    app.mount(
+        "/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets"
+    )
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
@@ -74,9 +104,11 @@ app.include_router(favourites_router)
 app.include_router(interests_router)
 app.include_router(businesses_router)
 
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
 
 @app.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):
@@ -85,12 +117,14 @@ async def upload_image(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     return {"filename": file.filename, "url": f"/uploads/{file.filename}"}
 
+
 # Root route - serve Vue app
 @app.get("/")
 async def root():
     if FRONTEND_DIST.exists():
         return FileResponse(str(FRONTEND_DIST / "index.html"))
     return {"message": "Isle Be There API"}
+
 
 # Catch-all for Vue Router SPA
 @app.get("/{path:path}")
