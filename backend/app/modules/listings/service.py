@@ -409,10 +409,14 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
             select(Listing.id, func.random().label('rand'))
             .join(ListingInterest, ListingInterest.listing_id == Listing.id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
-            .where(Listing.status == Statuses.active)
-            .distinct(Listing.id)
-            .order_by(Listing.id)
-            .limit(limit * 3)
+            .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+            .options(
+                selectinload(Listing.business_type_rel),
+                selectinload(Listing.business_rel),
+            )
+            .distinct()
+            .limit(limit)
+            .order_by(func.random())
         ).all()
 
         if ids_with_random:
