@@ -1,9 +1,11 @@
 <template>
-  <div class="bg-slate-50 min-h-screen">
-    <div class="bg-white border-b border-slate-200">
-      <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <p
-          class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
+  <div class="bg-white">
+    <div>
+      <!-- Mobile filter dialog -->
+      <TransitionRoot as="template" :show="mobileFiltersOpen">
+        <Dialog
+          class="relative z-40 lg:hidden"
+          @close="mobileFiltersOpen = false"
         >
           <TransitionChild
             as="template"
@@ -512,9 +514,32 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { listingsAPI } from "../services/api";
+import { businessesAPI, listingsAPI } from "../services/api";
 import DestinationCard from "../components/DestinationCard.vue";
+import {
+  Dialog,
+  DialogPanel,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  TransitionChild,
+  TransitionRoot,
+} from "@headlessui/vue";
+import { XMarkIcon } from "@heroicons/vue/24/outline";
+import {
+  ChevronDownIcon,
+  FunnelIcon,
+  MinusIcon,
+  PlusIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+} from "@heroicons/vue/20/solid";
 
+// ── State ─────────────────────────────────────────────────────────────────────
 const listings = ref([]);
 const businessTypes = ref([]);
 const loading = ref(true);
@@ -546,7 +571,6 @@ const sortOptions = [
 // ── Computed ──────────────────────────────────────────────────────────────────
 const searchQuery = computed(() => {
   const rawQ = route.query.q;
-  return typeof rawQ === "string" ? rawQ.trim() : "";
   return typeof rawQ === "string" ? rawQ.trim() : "";
 });
 
@@ -747,10 +771,9 @@ async function fetchListings() {
   try {
     const response = hasSearchQuery.value
       ? await listingsAPI.search(searchQuery.value)
-      : await listingsAPI.getAll();
-    listings.value = response.data;
+      : await listingsAPI.getAll({ status: "active" });
+    listings.value = Array.isArray(response.data) ? response.data : [];
   } catch (err) {
-    console.error("Failed to load listings", err);
     console.error("Failed to load listings", err);
     listings.value = [];
   } finally {
@@ -806,7 +829,6 @@ watch(
   () => {
     fetchListings();
   },
-  { immediate: true },
   { immediate: true },
 );
 

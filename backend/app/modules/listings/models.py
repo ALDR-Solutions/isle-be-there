@@ -19,7 +19,6 @@ class Statuses(str, Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
-    suspended = "suspended"
 
 
 class Listing(SQLModel, table=True):
