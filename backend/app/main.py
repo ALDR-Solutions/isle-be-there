@@ -27,7 +27,6 @@ from app.modules.businesses.router import router as businesses_router
 from app.modules.users.models import User
 from app.modules.favourites.router import router as favourites_router
 from app.modules.interests.router import router as interests_router
-from app.modules.itineraries.router import router as itineraries_router
 from app.modules.listings.router import router as listings_router
 from app.modules.calendar.router import router as calendar_router
 from app.modules.recommendations.router import router as recommendations_router
@@ -96,7 +95,6 @@ app.include_router(employees_router)
 app.include_router(services_router)
 app.include_router(pricing_router)
 app.include_router(discounts_router)
-app.include_router(itineraries_router)
 
 
 @app.get("/health")
