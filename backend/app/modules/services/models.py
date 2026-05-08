@@ -43,7 +43,7 @@ class Service(SQLModel, table=True):
         sa_column=Column(
             SAEnum(StatusTypes, name="status_types"),
             nullable=False,
-            server_default=text("'active'"),
+            server_default=StatusTypes.active,
         ),
     )
     capacity: Optional[int] = Field(default=None, sa_column=Column(SmallInteger, nullable=True))

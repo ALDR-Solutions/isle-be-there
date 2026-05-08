@@ -7,7 +7,6 @@ from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import func
-from sqlalchemy.sql.functions import count
 from sqlalchemy.orm import selectinload
 from shapely.geometry import Point
 from sqlmodel import Session, asc, desc, select
@@ -19,22 +18,30 @@ from app.modules.interests.models import (
     UserInterest,
 )
 from app.modules.reviews.models import Review
-from app.modules.users.models import User
 
 from .models import Listing, Statuses
 
 ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
 
 
-def _build_location(location_data: dict | None):
+def _build_location(location_data):
     if not location_data:
         return None
 
     try:
-        lat = float(location_data["lat"])
-        lng = float(location_data["lng"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="Invalid location payload") from exc
+        if isinstance(location_data, dict):
+            lat = float(location_data.get("lat"))
+            lng = float(location_data.get("lng"))
+        else:
+            # Pydantic object
+            lat = float(location_data.lat)
+            lng = float(location_data.lng)
+
+    except (AttributeError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid location payload")
+
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat and lng are required")
 
     if not (-90 <= lat <= 90 and -180 <= lng <= 180):
         raise HTTPException(status_code=400, detail="Location coordinates are out of range")
@@ -50,22 +57,25 @@ def _batch_review_stats(db: Session, listing_ids: list) -> dict:
         select(
             Review.listing_id,
             func.avg(Review.rating).label("avg_rating"),
-            count(Review.id).label("review_count"),
+            func.count(Review.id).label("review_count"),
         )
-        .where(Review.__table__.c.listing_id.in_(listing_ids))
+        .where(Review.listing_id.in_(listing_ids))
         .group_by(Review.listing_id)
     ).all()
 
     stats = {
         row.listing_id: {
             "avg_rating": float(row.avg_rating) if row.avg_rating is not None else None,
-            "review_count": int(row.review_count),
+            "review_count": int(row.review_count or 0),
         }
         for row in rows
     }
 
     for listing_id in listing_ids:
-        stats.setdefault(listing_id, {"avg_rating": None, "review_count": 0})
+        stats.setdefault(
+            listing_id,
+            {"avg_rating": None, "review_count": 0}
+        )
 
     return stats
 
@@ -176,7 +186,8 @@ def _serialize_listing(
     )
 
     if review_stats is not None:
-        data.update(review_stats)
+        data["avg_rating"] = review_stats.get("avg_rating")
+        data["review_count"] = review_stats.get("review_count")
 
     data["interest_ids"] = interest_ids or []
 
@@ -214,15 +225,7 @@ def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
 
 
 def get_listing_review_stats(db: Session, listing_id) -> dict:
-    stmt = select(
-        func.avg(Review.rating).label("avg_rating"),
-        count(Review.id).label("review_count"),
-    ).where(Review.listing_id == listing_id)
-    row = db.exec(stmt).one()
-    return {
-        "avg_rating": float(row.avg_rating) if row.avg_rating is not None else None,
-        "review_count": int(row.review_count) if row.review_count is not None else 0,
-    }
+    return _batch_review_stats(db, [listing_id])[listing_id]
 
 
 def list_listings(
@@ -307,6 +310,7 @@ def create_listing(db: Session, data: dict, user_id: str):
     _sync_listing_interests(db, listing.id, validated_interest_ids)
     db.commit()
     db.refresh(listing)
+
     review_stats = get_listing_review_stats(db, listing.id)
     return _serialize_listing(listing, review_stats, validated_interest_ids)
 
@@ -370,21 +374,15 @@ def update_listing(
     return _serialize_listing(listing, review_stats, updated_interest_ids)
 
 
-def delete_listing(
-    db: Session,
-    listing_id: str,
-    user_id: str,
-    is_admin: bool = False,
-):
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if not is_admin:
-        business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-        if not business or str(listing.business_id) != str(business.id):
-            raise HTTPException(status_code=403, detail="Not authorized")
-    db.delete(listing)
+def delete_listing(db: Session,listing: Listing):
+
+    listing.status = Statuses.deleted
+    listing.updated_at = func.now()
+
     db.commit()
+    db.refresh(listing)
+    return listing
+
 
 
 def get_active_listings(db: Session, limit: int = 20):
@@ -427,12 +425,12 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
             )
             .distinct()
             .limit(limit)
+            .order_by(func.random())
         ).all()
 
         if not listings:
             listings = _fetch_active_listings(db, limit)
-        else:
-            random.shuffle(listings)
+
 
         return _serialize_listings(db, listings)
     except Exception:
@@ -468,8 +466,10 @@ def search_listings_combined(
 
     distance_expr = None
     if lat is not None and lng is not None:
-        point = f"SRID=4326;POINT({lng} {lat})"
+        point = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+
         distance_expr = func.ST_Distance(Listing.location, point).label("distance_m")
+
         query = query.add_columns(distance_expr).where(
             func.ST_DWithin(Listing.location, point, radius_km * 1000)
         )
@@ -486,15 +486,16 @@ def search_listings_combined(
     if not rows:
         return []
 
-    if isinstance(rows[0], Listing):
-        return _serialize_listings(db, rows)
+    listings = [
+        row[0] if isinstance(row, tuple) else row
+        for row in rows
+    ]
 
-    listings = [row[0] for row in rows]
     serialized = _serialize_listings(db, listings)
     listing_data_by_id = {item["id"]: item for item in serialized}
 
     for row in rows:
-        listing = row[0]
+        listing = row[0] if isinstance(row, tuple) else row
         payload = listing_data_by_id.get(str(listing.id))
         if not payload:
             continue
