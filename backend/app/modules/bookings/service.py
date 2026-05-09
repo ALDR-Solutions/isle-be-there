@@ -28,10 +28,6 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
     )
     results = db.exec(query).all()
 
-    if not results:
-        raise HTTPException(status_code=404, detail="Bookings not found")
-
-
     return [
         BookingResponse(
             **booking.model_dump(),

@@ -1,29 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.infrastructure.database import get_db
 from sqlalchemy.orm import selectinload
-from typing import List, Optional
+from typing import List
 from .schemas import (
     ItineraryPlanRequest,
     ItineraryPlanResponse,
-    ItineraryItemCreate,
     ItineraryItemResponse,
     ItineraryPriceItem,
     ItineraryPriceResponse,
     ItineraryResponse,
     ItineraryBookRequest,
     ItineraryConfirmResponse,
+    ItinerarySaveRequest,
+    SavedItineraryResponse,
+    SavedItinerarySummaryResponse,
 )
-from .service import plan_itinerary, create_itinerary, get_itinerary_by_id, confirm_itinerary, convert_itinerary_to_bookings
+from .service import (
+    plan_itinerary,
+    confirm_itinerary,
+    convert_itinerary_to_bookings,
+    get_saved_itinerary,
+    list_saved_itineraries,
+    save_itinerary,
+)
 from .models import Itinerary
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_roles
 from app.modules.listings.models import Listing
 import uuid
-from datetime import date
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/itineraries", tags=["Itineraries"])
 
@@ -36,50 +42,22 @@ def plan_itinerary_endpoint(
     return plan_itinerary(db, payload)
 
 
-class ItineraryCreateRequest(BaseModel):
-    title: Optional[str] = None
-    budget_level: Optional[str] = None
-    pace: Optional[str] = None
-    strict_budget: Optional[bool] = None
-    start_date: date
-    end_date: date
-    items: List[ItineraryItemCreate]
-
-
-@router.post("", response_model=ItineraryResponse, status_code=201)
+@router.post("", response_model=SavedItineraryResponse, status_code=201)
 def create_itinerary_endpoint(
-    payload: ItineraryCreateRequest,
+    payload: ItinerarySaveRequest,
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    data = {
-        "title": payload.title,
-        "budget_level": payload.budget_level,
-        "pace": payload.pace,
-        "strict_budget": payload.strict_budget,
-        "start_date": payload.start_date,
-        "end_date": payload.end_date,
-        "items": [item.dict() for item in payload.items],
-    }
-    return create_itinerary(db, current_user.id, data)
+    return save_itinerary(db, current_user.id, payload)
 
 
-@router.get("/{itinerary_id}", response_model=ItineraryResponse)
+@router.get("/{itinerary_id}", response_model=SavedItineraryResponse)
 def get_itinerary_endpoint(
     itinerary_id: uuid.UUID,
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    itinerary = get_itinerary_by_id(db, itinerary_id, current_user.id)
-    response_items = [
-        ItineraryItemResponse(
-            id=item.id,
-            listing_id=item.listing_id,
-            booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
-        )
-        for item in itinerary.items
-    ]
-    return ItineraryResponse(id=itinerary.id, applied_discount=None, items=response_items)
+    return get_saved_itinerary(db, current_user.id, itinerary_id)
 
 
 @router.get("/{itinerary_id}/price", response_model=ItineraryPriceResponse)
@@ -140,10 +118,9 @@ def itinerary_confirm_endpoint(
         )
         for item in itinerary.items
     ]
-    # Build ItineraryResponse from ORM object
     response_itinerary = ItineraryResponse(
         id=itinerary.id,
-        applied_discount=None,  # May be populated via discount_id if available
+        applied_discount=None,
         items=response_items,
     )
     return ItineraryConfirmResponse(
@@ -174,24 +151,10 @@ def itinerary_book_endpoint(
     return ItineraryResponse(id=updated_itinerary.id, applied_discount=None, items=response_items)
 
 
-@router.get("", response_model=List[ItineraryResponse])
+@router.get("", response_model=List[SavedItinerarySummaryResponse])
 def list_itineraries_endpoint(
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    itineraries = db.exec(
-        select(Itinerary).where(Itinerary.user_id == current_user.id).options(selectinload(Itinerary.items))
-    ).all()
-    result = []
-    for i in itineraries:
-        response_items = [
-            ItineraryItemResponse(
-                id=item.id,
-                listing_id=item.listing_id,
-                booking={"id": str(item.linked_booking_id)} if item.linked_booking_id else None,
-            )
-            for item in i.items
-        ]
-        result.append(ItineraryResponse(id=i.id, applied_discount=None, items=response_items))
-    return result
+    return list_saved_itineraries(db, current_user.id)
 

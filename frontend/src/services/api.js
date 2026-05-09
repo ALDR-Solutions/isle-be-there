@@ -111,7 +111,7 @@ export const bookingsAPI = {
   getById: (id) => api.get(`/api/bookings/${id}`),
   create: (data) => api.post("/api/bookings", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
-  cancel: (id) => api.patch(`/api/bookings/${id}`),
+  cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
 };
 
 export const itinerariesAPI = {
