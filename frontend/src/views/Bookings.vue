@@ -96,7 +96,7 @@
             class="rounded-full px-3 py-1 text-xs font-semibold"
             :class="statusClasses(booking.status)"
           >
-            {{ statusLabel(booking.status.value) }}
+            {{ statusLabel(booking.status) }}
           </span>
         </div>
 
@@ -163,17 +163,17 @@
         </div>
 
         <div class="mt-6 flex items-center justify-between gap-3">
-          <p class="text-sm text-slate-500">
-            {{
-              booking.status === "pending"
+            <p class="text-sm text-slate-500">
+              {{
+              normalizedStatus(booking.status) === "pending"
                 ? "This booking is still awaiting confirmation."
-                : booking.status === "cancelled"
+                : normalizedStatus(booking.status) === "cancelled"
                   ? "This booking has been cancelled."
                   : "Your booking status is up to date."
             }}
           </p>
           <button
-            v-if="booking.status === 'pending' || booking.status === 'approved'"
+            v-if="normalizedStatus(booking.status) === 'pending' || normalizedStatus(booking.status) === 'approved'"
             @click="bookingToCancel = booking"
             class="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
@@ -241,7 +241,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { bookingsAPI, servicesAPI, listingsAPI } from "../services/api";
+import { bookingsAPI } from "../services/api";
 import { useToastStore } from "../stores/toast";
 
 const toastStore = useToastStore();
@@ -291,19 +291,25 @@ function formatDate(date) {
 }
 
 function statusLabel(status) {
-  if (status === "pending") return "Pending";
-  if (status === "approved") return "Approved";
-  if (status === "cancelled") return "Cancelled";
-  if (status === "completed") return "Completed";
-  return status;
+  const value = normalizedStatus(status);
+  if (value === "pending") return "Pending";
+  if (value === "approved") return "Approved";
+  if (value === "cancelled") return "Cancelled";
+  if (value === "completed") return "Completed";
+  return value || "Unknown";
 }
 
 function statusClasses(status) {
-  if (status === "pending") return "bg-amber-100 text-amber-800";
-  if (status === "approved") return "bg-emerald-100 text-emerald-800";
-  if (status === "cancelled") return "bg-red-100 text-red-800";
-  if (status === "completed") return "bg-cyan-100 text-cyan-800";
+  const value = normalizedStatus(status);
+  if (value === "pending") return "bg-amber-100 text-amber-800";
+  if (value === "approved") return "bg-emerald-100 text-emerald-800";
+  if (value === "cancelled") return "bg-red-100 text-red-800";
+  if (value === "completed") return "bg-cyan-100 text-cyan-800";
   return "bg-slate-100 text-slate-700";
+}
+
+function normalizedStatus(status) {
+  return typeof status === "string" ? status : status?.value;
 }
 
 onMounted(() => {

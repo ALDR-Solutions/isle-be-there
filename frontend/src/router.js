@@ -117,12 +117,6 @@ const routes = [
     redirect: '/favourites'
   },
   {
-    path: '/mock-booking-test',
-    name: 'MockBookingTest',
-    component: () => import('./views/MockBookingTest.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/bulk-booking/:itineraryId',
     name: 'BulkBooking',
     component: () => import('./views/BulkBooking.vue'),

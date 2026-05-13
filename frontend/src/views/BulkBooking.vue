@@ -149,6 +149,8 @@
               :ref="el => { if (el) formCardRefs[item._key] = el }"
               :item="item"
               :modelValue="formDataMap[item._key]"
+              :services="getServicesForItem(item)"
+              :services-loading="isServicesLoading(item)"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
             <BookingFormCard
@@ -156,6 +158,8 @@
               :ref="el => { if (el) formCardRefs[item._key] = el }"
               :item="item"
               :modelValue="formDataMap[item._key]"
+              :services="getServicesForItem(item)"
+              :services-loading="isServicesLoading(item)"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
           </div>
@@ -283,7 +287,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { itinerariesAPI, bookingsAPI, discountsAPI } from '../services/api';
+import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import BookingFormCard from '../components/BookingFormCard.vue';
@@ -306,6 +310,8 @@ const availableDiscounts = ref([]);
 const selectedDiscountId = ref(null);
 const receiptDiscountLoading = ref(false);
 const selectedItemsIds = ref(new Set());
+const servicesByListing = ref({});
+const servicesLoadingByListing = ref({});
 
 // Selection helpers
 function isItemSelected(key) {
@@ -420,6 +426,14 @@ function getUserFullName() {
 // Set active tab
 function setActiveTab(tabId) {
   activeTab.value = tabId;
+}
+
+function getServicesForItem(item) {
+  return servicesByListing.value[item.listing_id] || [];
+}
+
+function isServicesLoading(item) {
+  return Boolean(servicesLoadingByListing.value[item.listing_id]);
 }
 
 // Build bookable items from itinerary items
@@ -539,6 +553,7 @@ watch(bookableItems, (items) => {
     if (item.isHotel) {
       // Hotel: use check_in_date/check_out_date with standard times
       newMap[item._key] = {
+        service_id: null,
         bookers_name: capitalizedName,
         amount_of_people: 1,
         special_requests: '',
@@ -548,6 +563,7 @@ watch(bookableItems, (items) => {
     } else {
       // Regular item: use start_at/end_at
       newMap[item._key] = {
+        service_id: null,
         bookers_name: capitalizedName,
         amount_of_people: 1,
         special_requests: '',
@@ -560,6 +576,66 @@ watch(bookableItems, (items) => {
   formDataMap.value = newMap;
   formCardRefs.value = [];
 }, { immediate: true });
+
+watch(
+  bookableItems,
+  async (items) => {
+    const listingIds = [...new Set(items.map((item) => item.listing_id).filter(Boolean))];
+    const nextServicesByListing = {};
+    const nextLoadingState = {};
+
+    if (listingIds.length === 0) {
+      servicesByListing.value = nextServicesByListing;
+      servicesLoadingByListing.value = nextLoadingState;
+      return;
+    }
+
+    servicesLoadingByListing.value = listingIds.reduce((acc, listingId) => {
+      acc[listingId] = true;
+      return acc;
+    }, {});
+
+    await Promise.all(
+      listingIds.map(async (listingId) => {
+        try {
+          const response = await servicesAPI.getAll({ listing_id: listingId });
+          nextServicesByListing[listingId] = Array.isArray(response.data) ? response.data : [];
+        } catch (serviceError) {
+          console.error(`Failed to load services for listing ${listingId}`, serviceError);
+          nextServicesByListing[listingId] = [];
+        } finally {
+          nextLoadingState[listingId] = false;
+        }
+      })
+    );
+
+    servicesByListing.value = nextServicesByListing;
+    servicesLoadingByListing.value = nextLoadingState;
+
+    const nextFormDataMap = { ...formDataMap.value };
+    for (const item of items) {
+      const availableServices = nextServicesByListing[item.listing_id] || [];
+      const currentFormData = nextFormDataMap[item._key] || {};
+      const hasCurrentSelection = availableServices.some(
+        (service) => service.service_id === currentFormData.service_id
+      );
+
+      if (availableServices.length === 1) {
+        nextFormDataMap[item._key] = {
+          ...currentFormData,
+          service_id: availableServices[0].service_id,
+        };
+      } else if (!hasCurrentSelection) {
+        nextFormDataMap[item._key] = {
+          ...currentFormData,
+          service_id: null,
+        };
+      }
+    }
+    formDataMap.value = nextFormDataMap;
+  },
+  { immediate: true }
+);
 
 async function fetchItinerary() {
   loading.value = true;
@@ -578,6 +654,10 @@ async function fetchItinerary() {
 }
 
 async function openReceiptModal() {
+  if (!validateSelectedItems()) {
+    return;
+  }
+
   // Validate all cards first
   const cardRefs = formCardRefs.value;
   for (const key in cardRefs) {
@@ -610,13 +690,57 @@ async function openReceiptModal() {
   }
 }
 
+function validateSelectedItems() {
+  for (const item of selectedItems.value) {
+    const formData = formDataMap.value[item._key];
+    const services = getServicesForItem(item);
+
+    if (isServicesLoading(item)) {
+      toastStore.show('Services are still loading for one or more selections.', 'error');
+      return false;
+    }
+
+    if (services.length === 0) {
+      toastStore.show(`"${item.title}" is not bookable because it has no active services.`, 'error');
+      return false;
+    }
+
+    if (!formData?.service_id) {
+      toastStore.show(`Choose a service for "${item.title}" before continuing.`, 'error');
+      return false;
+    }
+
+    if (!formData.bookers_name?.trim()) {
+      toastStore.show(`Enter the booking name for "${item.title}".`, 'error');
+      return false;
+    }
+
+    if (!formData.booking_from_time || !formData.booking_to_time) {
+      toastStore.show(`Complete the booking dates/times for "${item.title}".`, 'error');
+      return false;
+    }
+
+    if (new Date(formData.booking_to_time) <= new Date(formData.booking_from_time)) {
+      toastStore.show(`The booking time range for "${item.title}" is invalid.`, 'error');
+      return false;
+    }
+  }
+
+  return true;
+}
+
 async function handleConfirmBooking() {
+  if (!validateSelectedItems()) {
+    return;
+  }
+
   confirming.value = true;
   try {
     // Create bookings for each selected item
     const bookingPromises = selectedItems.value.map((item) => {
       const formData = formDataMap.value[item._key];
       return bookingsAPI.create({
+        service_id: formData.service_id,
         itinerary_item_id: item._originalItems?.[0]?.id || item.id,
         booking_from_time: formData.booking_from_time,
         booking_to_time: formData.booking_to_time,
@@ -633,7 +757,13 @@ async function handleConfirmBooking() {
     router.back();
   } catch (err) {
     console.error('Booking failed', err);
-    toastStore.show('Booking failed. Please try again.', 'error');
+    const detail = err.response?.data?.detail;
+    toastStore.show(
+      typeof detail === 'string' && detail.trim()
+        ? detail
+        : 'Booking failed. Please try again.',
+      'error'
+    );
   } finally {
     confirming.value = false;
   }

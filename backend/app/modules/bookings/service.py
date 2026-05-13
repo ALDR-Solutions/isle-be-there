@@ -1,21 +1,21 @@
 """Business logic for booking operations."""
 
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy.orm import joinedload
-from sqlmodel import Session, select
-from datetime import datetime
+from sqlalchemy import func
+from sqlmodel import Session, col, select
 
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
-from app.modules.listings.models import Listing
-from app.modules.services.models import Service
-from .models import Booking, BookingStatus
-from app.modules.itineraries.models import ItineraryItem, Itinerary
 from app.modules.discounts.models import Discount
+from app.modules.itineraries.models import Itinerary, ItineraryItem
+from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
-from datetime import datetime
+from app.modules.services.models import Service, StatusTypes
+
+from .models import Booking, BookingStatus
 
 
 def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
@@ -69,7 +69,84 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
     )
 
 
-def price_booking_from_itinerary_item(db: Session, itinerary_item_id: UUID, user_id: UUID) -> dict:
+def _get_service_or_404(db: Session, service_id: UUID) -> Service:
+    service = db.get(Service, service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return service
+
+
+def _validate_booking_window(booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]) -> None:
+    if booking_from_time is None or booking_to_time is None:
+        raise HTTPException(status_code=400, detail="Booking start and end time are required")
+    if booking_to_time <= booking_from_time:
+        raise HTTPException(status_code=400, detail="Booking end time must be after start time")
+
+
+def _validate_service_for_booking(
+    db: Session,
+    service_id: UUID,
+    itinerary_item_id: Optional[UUID],
+    user_id: UUID,
+) -> tuple[Service, Optional[ItineraryItem]]:
+    service = _get_service_or_404(db, service_id)
+    if service.status != StatusTypes.active:
+        raise HTTPException(status_code=400, detail="Only active services can be booked")
+
+    itinerary_item = None
+    if itinerary_item_id is not None:
+        itinerary_item = db.get(ItineraryItem, itinerary_item_id)
+        if not itinerary_item:
+            raise HTTPException(status_code=404, detail="Itinerary item not found")
+
+        itinerary = db.get(Itinerary, itinerary_item.itinerary_id)
+        if not itinerary:
+            raise HTTPException(status_code=404, detail="Itinerary not found")
+        if itinerary.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized for this itinerary")
+        if service.listing_id != itinerary_item.listing_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Selected service does not belong to this itinerary item's listing",
+            )
+
+    return service, itinerary_item
+
+
+def _validate_service_capacity(
+    db: Session,
+    service: Service,
+    booking_from_time: datetime,
+    booking_to_time: datetime,
+    amount_of_people: int,
+) -> None:
+    if service.capacity is None:
+        return
+    if amount_of_people < 1:
+        raise HTTPException(status_code=400, detail="Amount of people must be at least 1")
+    available_slots = get_available_slots(
+        db,
+        service.service_id,
+        service.capacity,
+        booking_from_time,
+        booking_to_time,
+    )
+    if available_slots < amount_of_people:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Service is not available for the selected time. "
+                f"Requested {amount_of_people} slot(s), but only {available_slots} remain."
+            ),
+        )
+
+
+def price_booking_from_itinerary_item(
+    db: Session,
+    itinerary_item_id: UUID,
+    user_id: UUID,
+    service: Service,
+) -> dict:
     # 1. Get ItineraryItem by ID
     itinerary_item = db.get(ItineraryItem, itinerary_item_id)
     if not itinerary_item:
@@ -82,8 +159,8 @@ def price_booking_from_itinerary_item(db: Session, itinerary_item_id: UUID, user
     if itinerary.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized for this itinerary")
 
-    # 3. Get pricing via PricingService (base_price from listing)
-    price_info = calculate_display_price(db, itinerary_item.listing_id)
+    # 3. Get pricing via PricingService using the selected service
+    price_info = calculate_display_price(db, service.listing_id, service.service_id)
     base_price = float(price_info.get("base_price", 0.0))
     service_fee_percent = float(price_info.get("service_fee_percent", 0.0))
     service_fee_amount = base_price * service_fee_percent
@@ -127,16 +204,15 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    # Get listing_id via service relationship
-    listing_id = None
-    if booking.service_id:
-        service = db.get(Service, booking.service_id)
-        if service:
-            listing_id = service.listing_id
+    if booking.service_id is None:
+        raise HTTPException(status_code=400, detail="Booking is missing a linked service")
+
+    service = _get_service_or_404(db, booking.service_id)
+    listing_id = service.listing_id
 
     # If tied to an itinerary item, use itinerary-based pricing
     if booking.itinerary_item_id is not None:
-        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id)
+        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id, service)
 
     # Use stored base_price if available, otherwise recalculate
     if booking.base_price is not None:
@@ -169,43 +245,56 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
 
 
 def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
-    booking = Booking(**booking.model_dump())
-    booking.user_id = user_id
+    _validate_booking_window(booking.booking_from_time, booking.booking_to_time)
+    service, _ = _validate_service_for_booking(
+        db,
+        booking.service_id,
+        booking.itinerary_item_id,
+        user_id,
+    )
+    _validate_service_capacity(
+        db,
+        service,
+        booking.booking_from_time,
+        booking.booking_to_time,
+        booking.amount_of_people or 1,
+    )
 
-    # Get listing_id via service relationship if service_id provided
-    listing_id = None
-    if booking.service_id:
-        service = db.get(Service, booking.service_id)
-        if service:
-            listing_id = service.listing_id
+    booking_record = Booking(**booking.model_dump())
+    booking_record.user_id = user_id
 
     # If booking is tied to an itinerary item, calculate price accordingly
     price_breakdown: Optional[dict] = None
-    if booking.itinerary_item_id is not None:
-        price_breakdown = price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id)
+    if booking_record.itinerary_item_id is not None:
+        price_breakdown = price_booking_from_itinerary_item(
+            db,
+            booking_record.itinerary_item_id,
+            user_id,
+            service,
+        )
         # Populate price fields on the Booking object
-        booking.base_price = price_breakdown.get("base_price")
-        booking.service_fee_percent = price_breakdown.get("service_fee_percent")
-        booking.service_fee_amount = price_breakdown.get("service_fee_amount")
-        booking.discount_percent = price_breakdown.get("discount_percent")
-        booking.discount_amount = price_breakdown.get("discount_amount")
-        booking.display_price = price_breakdown.get("display_price")
-        booking.final_price = price_breakdown.get("final_price")
+        booking_record.base_price = price_breakdown.get("base_price")
+        booking_record.service_fee_percent = price_breakdown.get("service_fee_percent")
+        booking_record.service_fee_amount = price_breakdown.get("service_fee_amount")
+        booking_record.discount_percent = price_breakdown.get("discount_percent")
+        booking_record.discount_amount = price_breakdown.get("discount_amount")
+        booking_record.display_price = price_breakdown.get("display_price")
+        booking_record.final_price = price_breakdown.get("final_price")
     else:
         # Standalone booking: price via PricingService with no discount
-        price_breakdown = calculate_display_price(db, listing_id, booking.service_id)
-        booking.base_price = price_breakdown.get("base_price")
-        booking.service_fee_percent = price_breakdown.get("service_fee_percent")
-        booking.service_fee_amount = price_breakdown.get("service_fee_amount")
-        booking.discount_percent = 0
-        booking.discount_amount = 0
-        booking.display_price = price_breakdown.get("display_price")
-        booking.final_price = price_breakdown.get("final_price")
+        price_breakdown = calculate_display_price(db, service.listing_id, service.service_id)
+        booking_record.base_price = price_breakdown.get("base_price")
+        booking_record.service_fee_percent = price_breakdown.get("service_fee_percent")
+        booking_record.service_fee_amount = price_breakdown.get("service_fee_amount")
+        booking_record.discount_percent = 0
+        booking_record.discount_amount = 0
+        booking_record.display_price = price_breakdown.get("display_price")
+        booking_record.final_price = price_breakdown.get("final_price")
 
-    db.add(booking)
+    db.add(booking_record)
     db.commit()
-    db.refresh(booking)
-    return booking
+    db.refresh(booking_record)
+    return booking_record
 
 
 def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID) -> List[Booking]:
@@ -222,6 +311,9 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
 
 
 def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
+    next_from_time = update_data.get("booking_from_time", booking.booking_from_time)
+    next_to_time = update_data.get("booking_to_time", booking.booking_to_time)
+    _validate_booking_window(next_from_time, next_to_time)
 
     for key, value in update_data.items():
         setattr(booking, key, value)

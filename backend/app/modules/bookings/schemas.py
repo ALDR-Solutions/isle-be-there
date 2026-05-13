@@ -23,7 +23,7 @@ class BookingBase(BaseModel):
 
 class BookingCreate(BookingBase):
     status: BookingStatus = BookingStatus.pending
-    service_id: Optional[UUID] = None
+    service_id: UUID
     base_price: Optional[float] = None
 
 

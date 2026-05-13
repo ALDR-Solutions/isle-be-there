@@ -187,7 +187,7 @@
               <div class="my-6 border-t border-slate-100"></div>
 
               <button
-                @click="showBooking = true"
+                @click="handleOpenBooking"
                 class="w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
               >
                 Book Now
@@ -253,26 +253,208 @@
       </div>
     </div>
 
+    <Teleport to="body">
+      <div
+        v-if="showBooking"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8"
+        @click.self="handleCloseBooking"
+      >
+        <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-600">Book Listing</p>
+              <h2 class="mt-2 text-xl font-bold text-slate-900">{{ listing.title }}</h2>
+              <p class="mt-1 text-sm text-slate-500">
+                Choose a real service for this listing and complete your booking details.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+              @click="handleCloseBooking"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-5 px-6 py-6">
+            <div v-if="bookingError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {{ bookingError }}
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">
+                Service <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="bookingForm.service_id"
+                class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                :disabled="bookingServicesLoading || bookingServices.length === 0"
+              >
+                <option value="">
+                  {{ bookingServicesLoading ? 'Loading services...' : bookingServices.length === 0 ? 'No active services available' : '-- Select a service --' }}
+                </option>
+                <option
+                  v-for="service in bookingServices"
+                  :key="service.service_id"
+                  :value="service.service_id"
+                >
+                  {{ bookingServiceLabel(service) }}
+                </option>
+              </select>
+              <p v-if="bookingServices.length > 1" class="mt-1 text-xs text-slate-500">
+                This listing has multiple services. Pick the exact one you want to reserve.
+              </p>
+              <p v-if="bookingServices.length === 0 && !bookingServicesLoading" class="mt-1 text-xs text-amber-600">
+                This listing is not bookable right now because it has no active services.
+              </p>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">
+                  Booker's name <span class="text-red-500">*</span>
+                </span>
+                <input
+                  v-model="bookingForm.bookers_name"
+                  type="text"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  placeholder="Enter your full name"
+                />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">Number of people</span>
+                <input
+                  v-model.number="bookingForm.amount_of_people"
+                  type="number"
+                  min="1"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </label>
+            </div>
+
+            <div v-if="isHotelType" class="grid gap-5 md:grid-cols-2">
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">
+                  Check-in date <span class="text-red-500">*</span>
+                </span>
+                <input
+                  :value="hotelCheckInDate"
+                  type="date"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  @input="updateHotelCheckIn($event.target.value)"
+                />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">
+                  Check-out date <span class="text-red-500">*</span>
+                </span>
+                <input
+                  :value="hotelCheckOutDate"
+                  type="date"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  @input="updateHotelCheckOut($event.target.value)"
+                />
+              </label>
+            </div>
+
+            <div v-else class="grid gap-5 md:grid-cols-2">
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">
+                  Booking start <span class="text-red-500">*</span>
+                </span>
+                <input
+                  v-model="bookingForm.booking_from_time"
+                  type="datetime-local"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-700">
+                  Booking end <span class="text-red-500">*</span>
+                </span>
+                <input
+                  v-model="bookingForm.booking_to_time"
+                  type="datetime-local"
+                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </label>
+            </div>
+
+            <label class="block">
+              <span class="text-sm font-semibold text-slate-700">Special requests</span>
+              <textarea
+                v-model="bookingForm.special_requests"
+                rows="3"
+                class="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                placeholder="Accessibility needs, timing notes, or other requests"
+              ></textarea>
+            </label>
+          </div>
+
+          <div class="flex gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
+            <button
+              type="button"
+              class="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              @click="handleCloseBooking"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="bookingSubmitting || bookingServicesLoading || bookingServices.length === 0"
+              @click="submitBooking"
+            >
+              {{ bookingSubmitting ? 'Booking...' : 'Confirm Booking' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted} from 'vue';
-import {useRoute } from 'vue-router';
-import { listingsAPI, reviewsAPI } from '../services/api';
+import { ref, computed, onMounted, reactive } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI } from '../services/api';
+import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
 import RestaurantDetailSection from '../components/listings/detail-sections/RestaurantDetailSection.vue'
 import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
 import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
 
 const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const toastStore = useToastStore();
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
+const bookingServices = ref([]);
+const bookingServicesLoading = ref(false);
+const bookingSubmitting = ref(false);
+const bookingError = ref('');
 const currentImageIndex = ref(0);
 const brokenImages = ref(new Set());
 let heroInterval = null;
+const bookingForm = reactive({
+  service_id: '',
+  bookers_name: '',
+  amount_of_people: 1,
+  booking_from_time: '',
+  booking_to_time: '',
+  special_requests: '',
+});
 
 const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
@@ -283,6 +465,10 @@ const detailsComponent = computed(() => {
     default:           return null
   }
 })
+
+const isHotelType = computed(() => listing.value?.business_type_name === 'Hotel')
+const hotelCheckInDate = computed(() => bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : '')
+const hotelCheckOutDate = computed(() => bookingForm.booking_to_time ? bookingForm.booking_to_time.slice(0, 10) : '')
 
 const mapCoordinates = computed(() => {
   const lat = Number(listing.value?.location?.lat)
@@ -357,6 +543,160 @@ const stopSlideshow = () => {
     heroInterval = null;
   }
 };
+
+function capitalizeName(name) {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function getUserFullName() {
+  const user = authStore.user;
+  if (!user) return '';
+  return capitalizeName(`${user.first_name || ''} ${user.last_name || ''}`.trim());
+}
+
+function resetBookingForm() {
+  bookingForm.service_id = '';
+  bookingForm.bookers_name = getUserFullName();
+  bookingForm.amount_of_people = 1;
+  bookingForm.booking_from_time = '';
+  bookingForm.booking_to_time = '';
+  bookingForm.special_requests = '';
+  bookingError.value = '';
+}
+
+function applySingleServiceDefault() {
+  if (bookingServices.value.length === 1) {
+    bookingForm.service_id = bookingServices.value[0].service_id;
+    return;
+  }
+
+  const stillValid = bookingServices.value.some(
+    (service) => service.service_id === bookingForm.service_id
+  );
+  if (!stillValid) {
+    bookingForm.service_id = '';
+  }
+}
+
+async function loadBookingServices() {
+  if (!listing.value?.id) {
+    bookingServices.value = [];
+    return;
+  }
+
+  bookingServicesLoading.value = true;
+  bookingError.value = '';
+  try {
+    const response = await servicesAPI.getAll({ listing_id: listing.value.id });
+    bookingServices.value = Array.isArray(response.data) ? response.data : [];
+    applySingleServiceDefault();
+  } catch (err) {
+    bookingServices.value = [];
+    bookingError.value = 'Failed to load active services for this listing.';
+  } finally {
+    bookingServicesLoading.value = false;
+  }
+}
+
+async function handleOpenBooking() {
+  await authStore.initialize();
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'Login', query: { redirect: route.fullPath } });
+    return;
+  }
+
+  resetBookingForm();
+  showBooking.value = true;
+  await loadBookingServices();
+}
+
+function handleCloseBooking() {
+  showBooking.value = false;
+  bookingError.value = '';
+}
+
+function updateHotelCheckIn(date) {
+  bookingForm.booking_from_time = date ? `${date}T14:00:00` : '';
+}
+
+function updateHotelCheckOut(date) {
+  bookingForm.booking_to_time = date ? `${date}T11:00:00` : '';
+}
+
+function bookingServiceLabel(service) {
+  if (service?.price !== null && service?.price !== undefined) {
+    const price = Number(service.price);
+    if (Number.isFinite(price)) {
+      return `${service.name} ($${price.toFixed(2)})`;
+    }
+  }
+  return service?.name || 'Unnamed service';
+}
+
+function validateListingBooking() {
+  bookingError.value = '';
+
+  if (bookingServicesLoading.value) {
+    bookingError.value = 'Services are still loading. Please wait a moment.';
+    return false;
+  }
+  if (bookingServices.value.length === 0) {
+    bookingError.value = 'This listing is not bookable right now because it has no active services.';
+    return false;
+  }
+  if (!bookingForm.service_id) {
+    bookingError.value = 'Please choose a service before continuing.';
+    return false;
+  }
+  if (!bookingForm.bookers_name.trim()) {
+    bookingError.value = "Booker's name is required.";
+    return false;
+  }
+  if (!bookingForm.booking_from_time || !bookingForm.booking_to_time) {
+    bookingError.value = isHotelType.value
+      ? 'Please choose both check-in and check-out dates.'
+      : 'Please choose both a booking start and end time.';
+    return false;
+  }
+  if (new Date(bookingForm.booking_to_time) <= new Date(bookingForm.booking_from_time)) {
+    bookingError.value = isHotelType.value
+      ? 'Check-out must be after check-in.'
+      : 'Booking end time must be after the start time.';
+    return false;
+  }
+
+  return true;
+}
+
+async function submitBooking() {
+  if (!validateListingBooking()) {
+    return;
+  }
+
+  bookingSubmitting.value = true;
+  try {
+    await bookingsAPI.create({
+      service_id: bookingForm.service_id,
+      bookers_name: bookingForm.bookers_name.trim(),
+      amount_of_people: bookingForm.amount_of_people || 1,
+      booking_from_time: new Date(bookingForm.booking_from_time).toISOString(),
+      booking_to_time: new Date(bookingForm.booking_to_time).toISOString(),
+      special_requests: bookingForm.special_requests.trim() || null,
+    });
+    toastStore.show('Booking created successfully.', 'success');
+    handleCloseBooking();
+    router.push({ name: 'Bookings' });
+  } catch (err) {
+    bookingError.value = err.response?.data?.detail || 'Failed to create booking.';
+    toastStore.show('Failed to create booking.', 'error');
+  } finally {
+    bookingSubmitting.value = false;
+  }
+}
 
 const fetchListings = async () => {
   try {

@@ -806,9 +806,20 @@ def convert_itinerary_to_bookings(
         if item.linked_booking_id is not None:
             continue
 
+        service = db.exec(
+            select(Service)
+            .where(Service.listing_id == item.listing_id)
+            .where(Service.status == ServiceStatusTypes.active)
+            .order_by(Service.created_at)
+        ).first()
+        if not service:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot convert itinerary item to booking without an active service",
+            )
+
         booking_data = BookingCreate(
-            listing_id=item.listing_id,
-            itinerary_id=itinerary_id,
+            service_id=service.service_id,
             itinerary_item_id=item.id,
             booking_from_time=item.start_at,
             booking_to_time=item.end_at,

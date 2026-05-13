@@ -26,6 +26,38 @@
       <!-- Booker's Name -->
       <label class="block">
         <span class="text-sm font-semibold text-slate-700">
+          Service <span class="text-red-500">*</span>
+        </span>
+        <select
+          :value="formData.service_id || ''"
+          class="mt-2 w-full rounded-2xl border bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+          :class="errors.service_id ? 'border-red-300' : 'border-slate-200'"
+          :disabled="servicesLoading || services.length === 0"
+          @change="updateField('service_id', $event.target.value || null)"
+        >
+          <option value="">
+            {{ servicesLoading ? 'Loading services...' : services.length === 0 ? 'No active services available' : '-- Select a service --' }}
+          </option>
+          <option
+            v-for="service in services"
+            :key="service.service_id"
+            :value="service.service_id"
+          >
+            {{ serviceOptionLabel(service) }}
+          </option>
+        </select>
+        <p v-if="services.length > 1" class="mt-1 text-xs text-slate-500">
+          Choose the exact service you want to book for this listing.
+        </p>
+        <p v-if="services.length === 0 && !servicesLoading" class="mt-1 text-xs text-amber-600">
+          This listing has no active services available for booking right now.
+        </p>
+        <p v-if="errors.service_id" class="mt-1 text-xs text-red-500">{{ errors.service_id }}</p>
+      </label>
+
+      <!-- Booker's Name -->
+      <label class="block">
+        <span class="text-sm font-semibold text-slate-700">
           Booker's name <span class="text-red-500">*</span>
         </span>
         <input
@@ -110,12 +142,21 @@ const props = defineProps({
   modelValue: {
     type: Object,
     required: true
+  },
+  services: {
+    type: Array,
+    default: () => []
+  },
+  servicesLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
 const errors = reactive({
+  service_id: '',
   bookers_name: ''
 })
 
@@ -193,14 +234,29 @@ function updateTimeEndField(time) {
   })
 }
 
+function serviceOptionLabel(service) {
+  if (service?.price !== null && service?.price !== undefined) {
+    const price = Number(service.price)
+    if (Number.isFinite(price)) {
+      return `${service.name} ($${price.toFixed(2)})`
+    }
+  }
+  return service?.name || 'Unnamed service'
+}
+
 // Validate the form
 function validate() {
+  errors.service_id = ''
   errors.bookers_name = ''
+  if (!formData.value.service_id) {
+    errors.service_id = props.services.length === 0
+      ? 'No active services are available for this listing.'
+      : 'Please choose a service.'
+  }
   if (!formData.value.bookers_name || !formData.value.bookers_name.trim()) {
     errors.bookers_name = "Booker's name is required"
-    return false
   }
-  return true
+  return !errors.service_id && !errors.bookers_name
 }
 
 // Expose validate method for parent components
