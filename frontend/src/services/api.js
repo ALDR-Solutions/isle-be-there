@@ -110,6 +110,7 @@ export const bookingsAPI = {
   getAll: (params) => api.get("/api/bookings", { params }),
   getById: (id) => api.get(`/api/bookings/${id}`),
   create: (data) => api.post("/api/bookings", data),
+  createBulk: (data) => api.post("/api/bookings/bulk", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
 };

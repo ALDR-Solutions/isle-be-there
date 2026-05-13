@@ -121,6 +121,12 @@ const routes = [
     name: 'MockBookingTest',
     component: () => import('./views/MockBookingTest.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/bulk-booking/:itineraryId',
+    name: 'BulkBooking',
+    component: () => import('./views/BulkBooking.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
