@@ -106,22 +106,59 @@
         </button>
       </div>
 
-      <div v-else class="grid gap-6">
+      <div v-if="!loading && !error && bookableItems.length > 0" class="mb-4 flex items-center justify-between px-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            :checked="allVisibleSelected"
+            :indeterminate="someVisibleSelected && !allVisibleSelected"
+            @change="toggleSelectAllVisible"
+            class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+          />
+          <span class="text-sm font-medium text-slate-700">
+            {{ allVisibleSelected ? 'Deselect All' : 'Select All' }} ({{ filteredItems.length }} visible)
+          </span>
+        </label>
+        <div v-if="selectedCount > 0" class="text-sm text-slate-600">
+          {{ selectedCount }} item{{ selectedCount === 1 ? '' : 's' }} selected
+        </div>
+      </div>
+
+      <div class="grid gap-6">
         <template v-for="(item, index) in filteredItems" :key="item._key">
-          <HotelBookingFormCard
-            v-if="item.isHotel"
-            :ref="el => { if (el) formCardRefs[item._key] = el }"
-            :item="item"
-            :modelValue="formDataMap[item._key]"
-            @update:modelValue="val => formDataMap[item._key] = val"
-          />
-          <BookingFormCard
-            v-else
-            :ref="el => { if (el) formCardRefs[item._key] = el }"
-            :item="item"
-            :modelValue="formDataMap[item._key]"
-            @update:modelValue="val => formDataMap[item._key] = val"
-          />
+          <div
+            :class="[
+              'relative overflow-hidden rounded-3xl border transition-all',
+              isItemSelected(item._key)
+                ? 'border-cyan-400 bg-cyan-50 ring-1 ring-cyan-200'
+                : 'border-slate-200 bg-white'
+            ]"
+          >
+            <!-- Checkbox -->
+            <label class="absolute top-4 left-4 z-10 flex items-center justify-center">
+              <input
+                type="checkbox"
+                :checked="isItemSelected(item._key)"
+                @change="toggleItem(item._key)"
+                class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+              />
+            </label>
+
+            <HotelBookingFormCard
+              v-if="item.isHotel"
+              :ref="el => { if (el) formCardRefs[item._key] = el }"
+              :item="item"
+              :modelValue="formDataMap[item._key]"
+              @update:modelValue="val => formDataMap[item._key] = val"
+            />
+            <BookingFormCard
+              v-else
+              :ref="el => { if (el) formCardRefs[item._key] = el }"
+              :item="item"
+              :modelValue="formDataMap[item._key]"
+              @update:modelValue="val => formDataMap[item._key] = val"
+            />
+          </div>
         </template>
       </div>
 
@@ -133,10 +170,10 @@
           <button
             type="button"
             @click="openReceiptModal"
-            :disabled="confirming"
-            class="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+            :disabled="confirming || selectedCount === 0"
+            class="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {{ confirming ? 'Processing...' : 'Review & Book' }}
+            {{ confirming ? 'Processing...' : (selectedCount === 0 ? 'Select items to book' : `Review & Book (${selectedCount})`) }}
           </button>
 
           <button
@@ -268,20 +305,56 @@ const showReceiptModal = ref(false);
 const availableDiscounts = ref([]);
 const selectedDiscountId = ref(null);
 const receiptDiscountLoading = ref(false);
+const selectedItemsIds = ref(new Set());
+
+// Selection helpers
+function isItemSelected(key) {
+  return selectedItemsIds.value.has(key);
+}
+
+function toggleItem(key) {
+  const newSet = new Set(selectedItemsIds.value);
+  if (newSet.has(key)) {
+    newSet.delete(key);
+  } else {
+    newSet.add(key);
+  }
+  selectedItemsIds.value = newSet;
+}
+
+function toggleSelectAllVisible() {
+  if (allVisibleSelected.value) {
+    // Deselect all visible
+    const newSet = new Set(selectedItemsIds.value);
+    filteredItems.value.forEach(item => newSet.delete(item._key));
+    selectedItemsIds.value = newSet;
+  } else {
+    // Select all visible
+    const newSet = new Set(selectedItemsIds.value);
+    filteredItems.value.forEach(item => newSet.add(item._key));
+    selectedItemsIds.value = newSet;
+  }
+}
+
+const allVisibleSelected = computed(() => {
+  return filteredItems.value.length > 0 && filteredItems.value.every(item => selectedItemsIds.value.has(item._key));
+});
+
+const someVisibleSelected = computed(() => {
+  return filteredItems.value.some(item => selectedItemsIds.value.has(item._key));
+});
+
+const selectedCount = computed(() => selectedItemsIds.value.size);
 
 const itineraryTitle = computed(() => {
   return itinerary.value?.title || 'Your Itinerary';
 });
 
-// Items that are checked/selected (have valid form data)
+// Items that are checked/selected (based on checkbox selection, not form data)
 const selectedItems = computed(() => {
-  return bookableItems.value.filter(item => {
-    const form = formDataMap.value[item._key];
-    return form && form.bookers_name && form.amount_of_people >= 1;
-  });
+  // Return all bookable items that are selected via checkbox
+  return bookableItems.value.filter(item => selectedItemsIds.value.has(item._key));
 });
-
-const selectedCount = computed(() => selectedItems.value.length);
 
 // Receipt computeds
 const receiptSubtotal = computed(() => {
@@ -297,6 +370,8 @@ const selectedDiscount = computed(() => {
 });
 
 const receiptDiscountAmount = computed(() => {
+  // Only apply discount if 50%+ items are selected
+  if (!isDiscountEligible.value) return 0;
   return receiptSubtotal.value * (selectedDiscount.value?.discount_percent || 0);
 });
 
