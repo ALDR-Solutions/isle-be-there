@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -78,3 +78,11 @@ class BookingCreateResponse(BaseModel):
     service_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+
+
+class BulkBookingCreateRequest(BaseModel):
+    items: List[BookingCreate]
+
+
+class BulkBookingCreateResponse(BaseModel):
+    bookings: List[BookingCreateResponse]

@@ -8,10 +8,11 @@ from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_booking_owner, require_roles
 
 from .models import Booking
-from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse
+from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse, BulkBookingCreateRequest, BulkBookingCreateResponse
 from .service import (
     cancel_booking,
     create_booking,
+    create_bulk_bookings,
     get_booking_by_id,
     list_bookings,
     update_booking,
@@ -49,6 +50,18 @@ def create_booking_endpoint(
     db: Session = Depends(get_db),
 ):
     return create_booking(db, booking_data, current_user.id)
+
+
+@router.post("/bulk", response_model=BulkBookingCreateResponse, status_code=201)
+def create_bulk_bookings_endpoint(
+    request: BulkBookingCreateRequest,
+    current_user: User = Depends(require_roles("regular")),
+    db: Session = Depends(get_db),
+):
+    bookings = create_bulk_bookings(db, request.items, current_user.id)
+    return BulkBookingCreateResponse(
+        bookings=[BookingCreateResponse.model_validate(b) for b in bookings]
+    )
 
 
 @router.put("/{booking_id}", response_model=BookingResponse)

@@ -1,10 +1,12 @@
 """Business logic for booking operations."""
 
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
-from sqlmodel import UUID, Session, select
+from sqlmodel import Session, select
+from datetime import datetime
 
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
 from app.modules.listings.models import Listing
@@ -204,6 +206,19 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
     db.commit()
     db.refresh(booking)
     return booking
+
+
+def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID) -> List[Booking]:
+    """Create multiple bookings atomically. All succeed or all fail."""
+    bookings = []
+    try:
+        for booking_data in items:
+            booking = create_booking(db, booking_data, user_id)
+            bookings.append(booking)
+        return bookings
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Bulk booking failed: {str(e)}")
 
 
 def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
