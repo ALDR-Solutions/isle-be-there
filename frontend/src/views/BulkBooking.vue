@@ -132,11 +132,11 @@
         <div class="flex gap-3">
           <button
             type="button"
-            @click="handleConfirmAll"
+            @click="openReceiptModal"
             :disabled="confirming"
             class="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
           >
-            {{ confirming ? 'Confirming...' : 'Confirm All Bookings' }}
+            {{ confirming ? 'Processing...' : 'Review & Book' }}
           </button>
 
           <button
@@ -153,13 +153,100 @@
         </p>
       </div>
     </section>
+
+    <!-- Receipt Modal -->
+    <Teleport to="body">
+      <div v-if="showReceiptModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+          <!-- Header -->
+          <div class="rounded-t-3xl border-b border-slate-100 bg-slate-50 px-6 py-5">
+            <h2 class="text-xl font-bold text-slate-900">Booking Receipt</h2>
+          </div>
+
+          <!-- Body -->
+          <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
+            <!-- Items List -->
+            <div class="mb-6 space-y-3">
+              <div v-for="item in selectedItems" :key="item._key" class="flex justify-between text-sm">
+                <div class="flex-1">
+                  <p class="font-medium text-slate-900">{{ item.title || item.name }}</p>
+                  <p class="text-slate-500">{{ item.start_at ? new Date(item.start_at).toLocaleDateString() : (item.day_date || 'N/A') }}</p>
+                </div>
+                <p class="font-medium text-slate-900">${{ (item.estimated_cost || 0).toFixed(2) }}</p>
+              </div>
+            </div>
+
+            <!-- Subtotal -->
+            <div class="border-t border-slate-100 pt-4">
+              <div class="flex justify-between text-sm">
+                <p class="text-slate-600">Subtotal</p>
+                <p class="font-medium text-slate-900">${{ receiptSubtotal.toFixed(2) }}</p>
+              </div>
+            </div>
+
+            <!-- Discount Section -->
+            <div class="mt-4 border-t border-slate-100 pt-4">
+              <p class="mb-2 text-sm font-medium text-slate-700">Discount</p>
+              <div v-if="availableDiscounts.length === 0" class="text-sm text-slate-500">
+                No discounts available
+              </div>
+              <div v-else-if="availableDiscounts.length > 0">
+                <select
+                  v-model="selectedDiscountId"
+                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                >
+                  <option v-for="discount in availableDiscounts" :key="discount.id" :value="discount.id">
+                    {{ discount.name }} ({{ (discount.discount_percent * 100).toFixed(0) }}% off)
+                  </option>
+                </select>
+                <div class="mt-2 flex items-center gap-2">
+                  <span v-if="isDiscountEligible && selectedDiscount" class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    {{ (selectedDiscount.discount_percent * 100).toFixed(0) }}% discount applied!
+                  </span>
+                  <span v-else-if="!isDiscountEligible" class="text-xs text-amber-600">
+                    Select 50%+ items to unlock discount
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Final Total -->
+            <div class="mt-4 border-t border-slate-200 pt-4">
+              <div class="flex justify-between">
+                <p class="text-base font-semibold text-slate-900">Final Total</p>
+                <p class="text-xl font-bold text-cyan-600">${{ receiptFinalTotal.toFixed(2) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <button
+              type="button"
+              @click="showReceiptModal = false"
+              class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              ← Back to Selection
+            </button>
+            <button
+              type="button"
+              @click="handleConfirmBooking"
+              :disabled="confirming"
+              class="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+            >
+              {{ confirming ? 'Processing...' : 'Confirm Booking' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { itinerariesAPI, bookingsAPI } from '../services/api';
+import { itinerariesAPI, bookingsAPI, discountsAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import BookingFormCard from '../components/BookingFormCard.vue';
@@ -177,9 +264,44 @@ const itinerary = ref(null);
 const formDataMap = ref({});
 const formCardRefs = ref([]);
 const activeTab = ref('');
+const showReceiptModal = ref(false);
+const availableDiscounts = ref([]);
+const selectedDiscountId = ref(null);
+const receiptDiscountLoading = ref(false);
 
 const itineraryTitle = computed(() => {
   return itinerary.value?.title || 'Your Itinerary';
+});
+
+// Items that are checked/selected (have valid form data)
+const selectedItems = computed(() => {
+  return bookableItems.value.filter(item => {
+    const form = formDataMap.value[item._key];
+    return form && form.bookers_name && form.amount_of_people >= 1;
+  });
+});
+
+const selectedCount = computed(() => selectedItems.value.length);
+
+// Receipt computeds
+const receiptSubtotal = computed(() => {
+  return selectedItems.value.map(i => i.estimated_cost).reduce((a, b) => a + b, 0);
+});
+
+const isDiscountEligible = computed(() => {
+  return selectedCount.value >= bookableItems.value.length * 0.5;
+});
+
+const selectedDiscount = computed(() => {
+  return availableDiscounts.value.find(d => d.id === selectedDiscountId.value);
+});
+
+const receiptDiscountAmount = computed(() => {
+  return receiptSubtotal.value * (selectedDiscount.value?.discount_percent || 0);
+});
+
+const receiptFinalTotal = computed(() => {
+  return receiptSubtotal.value - receiptDiscountAmount.value;
 });
 
 // Helper to normalize day date to YYYY-MM-DD string
@@ -380,7 +502,7 @@ async function fetchItinerary() {
   }
 }
 
-async function handleConfirmAll() {
+async function openReceiptModal() {
   // Validate all cards first
   const cardRefs = formCardRefs.value;
   for (const key in cardRefs) {
@@ -393,10 +515,31 @@ async function handleConfirmAll() {
     }
   }
 
+  receiptDiscountLoading.value = true;
+  try {
+    const response = await discountsAPI.getPackageDiscounts();
+    availableDiscounts.value = response.data || [];
+    if (availableDiscounts.value.length > 0) {
+      selectedDiscountId.value = availableDiscounts.value[0].id;
+    } else {
+      selectedDiscountId.value = null;
+    }
+    showReceiptModal.value = true;
+  } catch (err) {
+    console.error('Failed to load discounts', err);
+    availableDiscounts.value = [];
+    selectedDiscountId.value = null;
+    showReceiptModal.value = true;
+  } finally {
+    receiptDiscountLoading.value = false;
+  }
+}
+
+async function handleConfirmBooking() {
   confirming.value = true;
   try {
-    // Create bookings for each filtered item
-    const bookingPromises = filteredItems.value.map((item) => {
+    // Create bookings for each selected item
+    const bookingPromises = selectedItems.value.map((item) => {
       const formData = formDataMap.value[item._key];
       return bookingsAPI.create({
         itinerary_item_id: item._originalItems?.[0]?.id || item.id,
@@ -410,7 +553,8 @@ async function handleConfirmAll() {
 
     await Promise.all(bookingPromises);
 
-    toastStore.show(`Confirmed ${filteredItems.value.length} bookings!`, 'success');
+    toastStore.show(`Confirmed ${selectedItems.value.length} bookings!`, 'success');
+    showReceiptModal.value = false;
     router.back();
   } catch (err) {
     console.error('Booking failed', err);

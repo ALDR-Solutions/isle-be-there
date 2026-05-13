@@ -222,4 +222,9 @@ export const uploadsAPI = {
   deleteImages: (urls) => api.delete("/api/upload", { data: { urls } }),
 };
 
+// Discounts API
+export const discountsAPI = {
+  getPackageDiscounts: () => api.get("/api/discounts", { params: { discount_type: "package" } }),
+};
+
 export default api;
