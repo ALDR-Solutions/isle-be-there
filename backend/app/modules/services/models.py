@@ -66,3 +66,4 @@ class Service(SQLModel, table=True):
         ),
     )
     # listing_rel: Optional["Listing"] = Relationship(back_populates="services")
+    service_slots: list["ServiceSlots"] = Relationship(back_populates="service_rel")
