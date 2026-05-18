@@ -1,26 +1,56 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from math import atan2, cos, radians, sin, sqrt
 from typing import Optional
+from uuid import UUID
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
+from sqlalchemy import desc
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from app.modules.bookings.schemas import BookingCreate
+from app.modules.bookings.service import create_booking as booking_service_create
+from app.modules.discounts.models import Discount, DiscountType
+from app.modules.discounts.service import check_package_discount_eligibility, get_or_create_package_discount as discount_get_or_create
 from app.modules.listings.models import Listing, Statuses
+from app.modules.listings.service import filter_by_availability
+from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 
+from .models import (
+    Itinerary,
+    ItineraryItem,
+    ItineraryItemStatus,
+    ItineraryStatus as ItineraryModelStatus,
+)
 from .schemas import (
     BudgetLevel,
     ItineraryDay,
+    ItineraryItemCreate,
     ItineraryPlanRequest,
     ItineraryPlanResponse,
+    ItinerarySaveRequest,
+    ItineraryStatus as ItinerarySchemaStatus,
     ItineraryStop,
     PaceLevel,
+    SavedItineraryResponse,
+    SavedItinerarySummaryResponse,
 )
+
+DEFAULT_DAY_START_HOUR = 9.0
+DEFAULT_DAY_END_HOUR = 19.0
+DEFAULT_MAX_TRAVEL_KM_BETWEEN_STOPS = 25.0
+DEFAULT_LIMIT_CANDIDATES = 120
+
+# Business types selected once for the whole trip, not greedily per day
+ANCHOR_TYPES = {"hotel"}
+REPEATABLE_TYPES = {"restaurant"}
+HOTEL_CHECKIN_DURATION_HOURS = 1.0
+HOTEL_STAY_DURATION_HOURS = 0.0
 
 
 @dataclass
@@ -34,58 +64,86 @@ class Candidate:
 
 
 def plan_itinerary(db: Session, request: ItineraryPlanRequest) -> ItineraryPlanResponse:
-    candidates = _load_candidates(db, request)
-    if not candidates:
+    all_candidates = _load_candidates(db, request)
+
+    if not all_candidates:
         return ItineraryPlanResponse(
             trip_days=request.resolved_trip_days,
             budget_level=request.budget_level,
             pace=request.pace,
             total_estimated_cost=0,
-            target_total_budget=request.total_budget,
+            target_total_budget=None,
             daily_target_budget=_daily_budget_target(request),
-            days=[ItineraryDay(date=_day_at(request.start_date, i), total_estimated_cost=0, total_duration_hours=0) for i in range(request.resolved_trip_days)],
+            days=[
+                ItineraryDay(
+                    date=_day_at(request.start_date, i),
+                    total_estimated_cost=0,
+                    total_duration_hours=0,
+                )
+                for i in range(request.resolved_trip_days)
+            ],
         )
 
-    must_include = [c for c in candidates if c.listing.id in set(request.must_include_listing_ids)]
-    optional = [c for c in candidates if c.listing.id not in set(request.must_include_listing_ids)]
     days = request.resolved_trip_days
-    slots_per_day = _slots_per_day(request.pace, request.max_listings_per_day)
+    slots_per_day = _slots_per_day(request.pace)
     daily_budget_target = _daily_budget_target(request)
+    hotel_nights = _hotel_nights(request)
+
+    # --- Select one hotel for the whole trip upfront ---
+    hotel_candidate = _pick_hotel(all_candidates, request)
+    used_listing_ids: set = {hotel_candidate.listing.id} if hotel_candidate else set()
+
+    # Non-hotel candidates available for daily scheduling
+    activity_candidates = [
+        c for c in all_candidates if c.business_type_name not in ANCHOR_TYPES
+    ]
 
     day_rows: list[ItineraryDay] = []
-    used_listing_ids = set()
-
-    must_by_day: list[list[Candidate]] = [[] for _ in range(days)]
-    for idx, candidate in enumerate(must_include):
-        must_by_day[idx % days].append(candidate)
 
     for day_idx in range(days):
         current_date = _day_at(request.start_date, day_idx)
         day_stops: list[ItineraryStop] = []
+        day_used_listing_ids: set[UUID] = set()
+        scheduled_activity_count = 0
         type_counts: dict[str, int] = {}
         remaining_budget = daily_budget_target
-        current_hour = float(request.day_start_hour)
-        previous = None
+        current_hour = DEFAULT_DAY_START_HOUR
+        previous: Optional[Candidate] = None
 
-        day_candidates = must_by_day[day_idx] + optional
+        # Charge hotel nightly without consuming activity slots.
+        if hotel_candidate is not None and day_idx < hotel_nights:
+            hotel_duration = HOTEL_CHECKIN_DURATION_HOURS if day_idx == 0 else HOTEL_STAY_DURATION_HOURS
+            hotel_reasons = ["hotel_checkin"] if day_idx == 0 else ["hotel_stay"]
+            hotel_stop = _make_stop(
+                hotel_candidate,
+                current_hour,
+                best_score=100.0,
+                reasons=hotel_reasons,
+                estimated_cost=hotel_candidate.estimated_cost,
+                estimated_duration_hours=hotel_duration,
+            )
+            day_stops.append(hotel_stop)
+            used_listing_ids.add(hotel_candidate.listing.id)
+            day_used_listing_ids.add(hotel_candidate.listing.id)
+            remaining_budget = max(0.0, remaining_budget - hotel_stop.estimated_cost)
+            if hotel_duration > 0:
+                current_hour += hotel_duration + 0.5
+                previous = hotel_candidate
+            type_counts["hotel"] = 1
 
-        while len(day_stops) < slots_per_day:
-            best_candidate = None
+        while scheduled_activity_count < slots_per_day:
+            best_candidate: Optional[Candidate] = None
             best_score = -10_000.0
             best_reasons: list[str] = []
 
-            for candidate in day_candidates:
-                listing_id = candidate.listing.id
-                if listing_id in used_listing_ids:
+            for candidate in activity_candidates:
+                if candidate.listing.id in day_used_listing_ids:
                     continue
-                if listing_id in set(request.excluded_listing_ids):
-                    continue
-
-                if request.strict_budget and candidate.estimated_cost > remaining_budget and day_stops:
+                if candidate.listing.id in used_listing_ids and not _is_repeatable_type(candidate.business_type_name):
                     continue
 
                 end_hour = current_hour + candidate.estimated_duration_hours
-                if end_hour > request.day_end_hour:
+                if end_hour > DEFAULT_DAY_END_HOUR:
                     continue
 
                 score, reasons = _score_candidate(
@@ -104,25 +162,21 @@ def plan_itinerary(db: Session, request: ItineraryPlanRequest) -> ItineraryPlanR
             if best_candidate is None:
                 break
 
-            end_hour = current_hour + best_candidate.estimated_duration_hours
-            stop = ItineraryStop(
-                listing_id=best_candidate.listing.id,
-                title=best_candidate.listing.title,
-                business_type_name=best_candidate.business_type_name,
-                address=best_candidate.listing.address,
-                estimated_cost=round(best_candidate.estimated_cost, 2),
-                estimated_duration_hours=round(best_candidate.estimated_duration_hours, 2),
-                start_time=_format_hour(current_hour),
-                end_time=_format_hour(end_hour),
-                score=round(best_score, 2),
-                reason_tags=best_reasons,
-            )
+            stop = _make_stop(best_candidate, current_hour, best_score, best_reasons)
             day_stops.append(stop)
-            used_listing_ids.add(best_candidate.listing.id)
-            current_hour = end_hour + 0.5
+            scheduled_activity_count += 1
+
+            # Mark used so the same listing isn't picked on another day either
+            day_used_listing_ids.add(best_candidate.listing.id)
+            if not _is_repeatable_type(best_candidate.business_type_name):
+                used_listing_ids.add(best_candidate.listing.id)
+
+            current_hour += best_candidate.estimated_duration_hours + 0.5
             remaining_budget = max(0.0, remaining_budget - best_candidate.estimated_cost)
             previous = best_candidate
-            type_counts[best_candidate.business_type_name] = type_counts.get(best_candidate.business_type_name, 0) + 1
+            type_counts[best_candidate.business_type_name] = (
+                type_counts.get(best_candidate.business_type_name, 0) + 1
+            )
 
         day_rows.append(
             ItineraryDay(
@@ -138,46 +192,242 @@ def plan_itinerary(db: Session, request: ItineraryPlanRequest) -> ItineraryPlanR
         budget_level=request.budget_level,
         pace=request.pace,
         total_estimated_cost=round(sum(day.total_estimated_cost for day in day_rows), 2),
-        target_total_budget=request.total_budget,
+        target_total_budget=None,
         daily_target_budget=round(daily_budget_target, 2),
         days=day_rows,
     )
 
 
+def _pick_hotel(candidates: list[Candidate], request: ItineraryPlanRequest) -> Optional[Candidate]:
+    """
+    Select the single best hotel for the whole trip.
+    Scored independently of day-level logic — proximity and variety don't apply here.
+    """
+    if _hotel_nights(request) == 0:
+        return None
+
+    hotel_candidates = [c for c in candidates if c.business_type_name == "hotel"]
+    if not hotel_candidates:
+        return None
+
+    best: Optional[Candidate] = None
+    best_score = -10_000.0
+
+    for candidate in hotel_candidates:
+        score = 0.0
+
+        # Budget fit
+        score += _budget_score(candidate.estimated_cost, request.budget_level)
+
+        # Interest match in title/description
+        text_blob = f"{candidate.listing.title} {candidate.listing.description or ''}".lower()
+        if request.interests:
+            matches = sum(1 for interest in request.interests if interest in text_blob)
+            score += 10 * matches
+
+        if score > best_score:
+            best_score = score
+            best = candidate
+
+    return best
+
+
+def _make_stop(
+    candidate: Candidate,
+    current_hour: float,
+    best_score: float,
+    reasons: list[str],
+    estimated_cost: Optional[float] = None,
+    estimated_duration_hours: Optional[float] = None,
+) -> ItineraryStop:
+    resolved_cost = candidate.estimated_cost if estimated_cost is None else estimated_cost
+    resolved_duration = candidate.estimated_duration_hours if estimated_duration_hours is None else estimated_duration_hours
+    end_hour = current_hour + resolved_duration
+    return ItineraryStop(
+        listing_id=candidate.listing.id,
+        title=candidate.listing.title,
+        description=candidate.listing.description,
+        business_type_name=candidate.business_type_name,
+        address=candidate.listing.address,
+        estimated_cost=round(resolved_cost, 2),
+        estimated_duration_hours=round(resolved_duration, 2),
+        start_time=_format_hour(current_hour),
+        end_time=_format_hour(end_hour),
+        score=round(best_score, 2),
+        reason_tags=reasons,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Persistence helpers (unchanged)
+# ---------------------------------------------------------------------------
+
+def list_saved_itineraries(db: Session, user_id: UUID) -> list[SavedItinerarySummaryResponse]:
+    itineraries = db.exec(
+        select(Itinerary)
+        .where(Itinerary.user_id == user_id)
+        .order_by(desc(Itinerary.created_at))
+    ).all()
+
+    if not itineraries:
+        return []
+
+    itinerary_ids = [itinerary.id for itinerary in itineraries]
+    item_rows = db.exec(
+        select(ItineraryItem)
+        .where(ItineraryItem.__table__.c.itinerary_id.in_(itinerary_ids))
+    ).all()
+
+    item_counts: dict[UUID, int] = {itinerary_id: 0 for itinerary_id in itinerary_ids}
+    for item in item_rows:
+        item_counts[item.itinerary_id] = item_counts.get(item.itinerary_id, 0) + 1
+
+    return [
+        SavedItinerarySummaryResponse(
+            id=itinerary.id,
+            title=itinerary.title,
+            status=ItinerarySchemaStatus(_status_value(itinerary.status)),
+            start_date=itinerary.start_date,
+            end_date=itinerary.end_date,
+            total_estimated_cost=float(itinerary.total_estimated_cost or 0),
+            item_count=item_counts.get(itinerary.id, 0),
+            created_at=itinerary.created_at,
+        )
+        for itinerary in itineraries
+    ]
+
+
+def get_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> SavedItineraryResponse:
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id)
+        .where(Itinerary.user_id == user_id)
+    ).first()
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    items = db.exec(
+        select(ItineraryItem)
+        .where(ItineraryItem.itinerary_id == itinerary.id)
+        .order_by(ItineraryItem.day_date, ItineraryItem.sort_order, ItineraryItem.start_at)
+    ).all()
+
+    return _serialize_saved_itinerary(itinerary, items)
+
+
+def save_itinerary(
+    db: Session,
+    user_id: UUID,
+    payload: ItinerarySaveRequest,
+) -> SavedItineraryResponse:
+    planned = plan_itinerary(db, payload.plan_request)
+    if len(planned.days) != payload.plan_request.resolved_trip_days:
+        raise HTTPException(status_code=400, detail="Saved itinerary does not match requested trip length")
+
+    try:
+        itinerary = Itinerary(
+            user_id=user_id,
+            title=_resolved_title(payload),
+            start_date=payload.plan_request.start_date,
+            end_date=_resolved_end_date(payload.plan_request),
+            status=payload.status.value,
+            budget_level=payload.plan_request.budget_level.value,
+            pace=payload.plan_request.pace.value,
+            total_budget=None,
+            strict_budget=False,
+            city=None,
+            country=payload.plan_request.country,
+            interests=payload.plan_request.interests,
+            preferred_business_types=[],
+            total_estimated_cost=float(planned.total_estimated_cost),
+        )
+        db.add(itinerary)
+        db.flush()
+
+        items = _build_items_for_saved_itinerary(itinerary.id, planned)
+        for item in items:
+            db.add(item)
+
+        db.commit()
+        db.refresh(itinerary)
+        saved_items = db.exec(
+            select(ItineraryItem)
+            .where(ItineraryItem.itinerary_id == itinerary.id)
+            .order_by(ItineraryItem.day_date, ItineraryItem.sort_order, ItineraryItem.start_at)
+        ).all()
+    except Exception:
+        db.rollback()
+        raise
+
+    return _serialize_saved_itinerary(itinerary, saved_items)
+
+
+def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> None:
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id)
+        .where(Itinerary.user_id == user_id)
+    ).first()
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    try:
+        db.delete(itinerary)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
 def _load_candidates(db: Session, request: ItineraryPlanRequest) -> list[Candidate]:
     query = (
         select(Listing)
-        .where(Listing.status == Statuses.active)
+        .where(Listing.status.in_((Statuses.active, Statuses.approved)))
         .options(selectinload(Listing.business_type_rel))
+        .order_by(Listing.created_at.desc(), Listing.id)
     )
 
-    if request.city:
-        query = query.where(Listing.address["city"].astext.ilike(f"%{request.city}%"))
     if request.country:
-        query = query.where(Listing.address["country"].astext.ilike(f"%{request.country}%"))
-    if request.excluded_listing_ids:
-        query = query.where(Listing.__table__.c.id.notin_(request.excluded_listing_ids))
+        query = query.where(
+            Listing.address["country"].astext.ilike(f"%{request.country}%")
+        )
 
-    rows = db.exec(query.limit(request.limit_candidates)).all()
+    if request.bookable_only:
+        query = (
+            query.join(Service, Service.listing_id == Listing.id)
+            .where(Service.status == ServiceStatusTypes.active)
+            .distinct()
+        )
+
+    rows = db.exec(query.limit(DEFAULT_LIMIT_CANDIDATES)).all()
     if not rows:
         return []
 
-    candidate_list = [_to_candidate(listing, request.budget_level) for listing in rows]
-    must_ids = set(request.must_include_listing_ids)
-    if not must_ids:
-        return candidate_list
+    if request.bookable_only:
+        start_dt = datetime.combine(request.start_date, time.min)
+        end_dt = datetime.combine(_resolved_end_date(request) + timedelta(days=1), time.min)
+        rows = filter_by_availability(db, rows, start_dt, end_dt)
 
-    found_ids = {candidate.listing.id for candidate in candidate_list}
-    missing = [str(value) for value in must_ids if value not in found_ids]
-    if missing:
-        raise HTTPException(status_code=404, detail=f"Must-include listings not found: {', '.join(missing)}")
+    return [_to_candidate(listing, request.budget_level) for listing in rows]
 
-    return candidate_list
+
+def _is_repeatable_type(business_type_name: str) -> bool:
+    return business_type_name in REPEATABLE_TYPES
+
+
+def _hotel_nights(request: ItineraryPlanRequest) -> int:
+    return max(request.resolved_trip_days - 1, 0)
 
 
 def _to_candidate(listing: Listing, budget_level: BudgetLevel) -> Candidate:
     lat, lng = _extract_lat_lng(listing.location)
-    business_type_name = (listing.business_type_rel.name if listing.business_type_rel else "unknown").lower()
+    business_type_name = (
+        listing.business_type_rel.name if listing.business_type_rel else "unknown"
+    ).lower()
     return Candidate(
         listing=listing,
         lat=lat,
@@ -197,13 +447,6 @@ def _score_candidate(
 ) -> tuple[float, list[str]]:
     score = 50.0
     reasons: list[str] = []
-
-    if request.preferred_business_types:
-        if candidate.business_type_name in request.preferred_business_types:
-            score += 20
-            reasons.append("preferred_type")
-        else:
-            score -= 4
 
     text_blob = f"{candidate.listing.title} {candidate.listing.description or ''}".lower()
     if request.interests:
@@ -225,15 +468,19 @@ def _score_candidate(
     if candidate.estimated_cost <= remaining_budget:
         score += 6
         reasons.append("within_budget")
-    elif request.strict_budget:
-        score -= 100
+    else:
+        score -= 10
 
-    if previous and all(v is not None for v in [previous.lat, previous.lng, candidate.lat, candidate.lng]):
-        distance_km = _haversine_km(previous.lat, previous.lng, candidate.lat, candidate.lng)  # type: ignore[arg-type]
-        if distance_km <= request.max_travel_km_between_stops:
+    if previous and all(
+        v is not None for v in [previous.lat, previous.lng, candidate.lat, candidate.lng]
+    ):
+        distance_km = _haversine_km(
+            previous.lat, previous.lng, candidate.lat, candidate.lng  # type: ignore[arg-type]
+        )
+        if distance_km <= DEFAULT_MAX_TRAVEL_KM_BETWEEN_STOPS:
             score += 8
             reasons.append("near_previous_stop")
-        elif distance_km > request.max_travel_km_between_stops * 1.5:
+        elif distance_km > DEFAULT_MAX_TRAVEL_KM_BETWEEN_STOPS * 1.5:
             score -= 20
 
     return score, reasons
@@ -252,6 +499,7 @@ def _budget_score(cost: float, budget_level: BudgetLevel) -> float:
         if cost <= 240:
             return 6
         return -6
+    # BudgetLevel.high — reward pricier options
     if cost <= 260:
         return 8
     return 14
@@ -300,9 +548,7 @@ def _extract_lat_lng(location) -> tuple[Optional[float], Optional[float]]:
     return None, None
 
 
-def _slots_per_day(pace: PaceLevel, override: Optional[int]) -> int:
-    if override is not None:
-        return override
+def _slots_per_day(pace: PaceLevel) -> int:
     if pace == PaceLevel.relaxed:
         return 2
     if pace == PaceLevel.packed:
@@ -311,9 +557,6 @@ def _slots_per_day(pace: PaceLevel, override: Optional[int]) -> int:
 
 
 def _daily_budget_target(request: ItineraryPlanRequest) -> float:
-    if request.total_budget:
-        return request.total_budget / request.resolved_trip_days
-
     defaults = {
         BudgetLevel.low: 120.0,
         BudgetLevel.medium: 240.0,
@@ -333,6 +576,115 @@ def _format_hour(hour_value: float) -> str:
     return f"{hours:02d}:{minutes:02d}"
 
 
+def _parse_hour_value(hour_value: str) -> time:
+    try:
+        hour_part, minute_part = hour_value.split(":", maxsplit=1)
+        parsed_hour = int(hour_part)
+        parsed_minute = int(minute_part)
+    except (AttributeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid itinerary stop time format") from exc
+
+    return time(hour=parsed_hour, minute=parsed_minute)
+
+
+def _resolved_end_date(request: ItineraryPlanRequest) -> date:
+    if request.end_date is not None:
+        return request.end_date
+    return _day_at(request.start_date, request.resolved_trip_days - 1)
+
+
+def _resolved_title(payload: ItinerarySaveRequest) -> str:
+    if payload.title and payload.title.strip():
+        return payload.title.strip()
+
+    location = payload.plan_request.country or "Trip"
+    return f"{location} itinerary"
+
+
+def _build_items_for_saved_itinerary(
+    itinerary_id: UUID,
+    planned: ItineraryPlanResponse,
+) -> list[ItineraryItem]:
+    items: list[ItineraryItem] = []
+
+    for day_index, day in enumerate(planned.days):
+        for stop_index, stop in enumerate(day.stops):
+            start_at = datetime.combine(day.date, _parse_hour_value(stop.start_time))
+            end_at = datetime.combine(day.date, _parse_hour_value(stop.end_time))
+            items.append(
+                ItineraryItem(
+                    itinerary_id=itinerary_id,
+                    listing_id=stop.listing_id,
+                    item_type="stop",
+                    title=stop.title,
+                    description=stop.description,
+                    day_date=day.date,
+                    start_at=start_at,
+                    end_at=end_at,
+                    sort_order=(day_index * 100) + stop_index,
+                    estimated_cost=float(stop.estimated_cost),
+                    address_snapshot=stop.address,
+                    reason_tags=stop.reason_tags,
+                    extra_metadata={
+                        "score": stop.score,
+                        "business_type_name": stop.business_type_name,
+                        "estimated_duration_hours": stop.estimated_duration_hours,
+                    },
+                )
+            )
+
+    return items
+
+
+def _status_value(status) -> str:
+    return status.value if hasattr(status, "value") else str(status)
+
+
+def _serialize_saved_itinerary(
+    itinerary: Itinerary,
+    items: list[ItineraryItem],
+) -> SavedItineraryResponse:
+    return SavedItineraryResponse(
+        id=itinerary.id,
+        user_id=itinerary.user_id,
+        title=itinerary.title,
+        status=ItinerarySchemaStatus(_status_value(itinerary.status)),
+        start_date=itinerary.start_date,
+        end_date=itinerary.end_date,
+        budget_level=BudgetLevel(itinerary.budget_level),
+        pace=PaceLevel(itinerary.pace),
+        total_budget=itinerary.total_budget,
+        strict_budget=itinerary.strict_budget,
+        city=itinerary.city,
+        country=itinerary.country,
+        interests=list(itinerary.interests or []),
+        preferred_business_types=list(itinerary.preferred_business_types or []),
+        total_estimated_cost=float(itinerary.total_estimated_cost or 0),
+        created_at=itinerary.created_at,
+        updated_at=itinerary.updated_at,
+        items=[
+            {
+                "id": item.id,
+                "itinerary_id": item.itinerary_id,
+                "listing_id": item.listing_id,
+                "linked_booking_id": item.linked_booking_id,
+                "item_type": item.item_type,
+                "title": item.title,
+                "description": item.description,
+                "day_date": item.day_date,
+                "start_at": item.start_at,
+                "end_at": item.end_at,
+                "sort_order": item.sort_order,
+                "estimated_cost": float(item.estimated_cost or 0),
+                "address_snapshot": item.address_snapshot,
+                "reason_tags": list(item.reason_tags or []),
+                "extra_metadata": item.extra_metadata,
+            }
+            for item in items
+        ],
+    )
+
+
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     earth_radius_km = 6371.0
     d_lat = radians(lat2 - lat1)
@@ -343,4 +695,195 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     )
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return earth_radius_km * c
+
+
+def create_itinerary(db: Session, user_id: UUID, data: dict) -> Itinerary:
+    """Create a new Itinerary with DRAFT status, create ItineraryItems, and calculate total_estimated_cost."""
+    items_data = data.pop("items", [])
+    total_cost = sum(item.get("estimated_cost", 0) for item in items_data)
+
+    itinerary = Itinerary(
+        user_id=user_id,
+        status=ItineraryModelStatus.DRAFT,
+        total_estimated_cost=total_cost,
+        **data,
+    )
+    db.add(itinerary)
+    db.flush()
+
+    for item_data in items_data:
+        item = ItineraryItem(
+            itinerary_id=itinerary.id,
+            status=ItineraryItemStatus.PLANNED,
+            **item_data,
+        )
+        db.add(item)
+
+    db.commit()
+    db.refresh(itinerary)
+    return itinerary
+
+
+def get_itinerary_by_id(db: Session, itinerary_id: UUID, user_id: UUID) -> Itinerary:
+    """Get an itinerary by ID with its items."""
+    itinerary = db.exec(
+        select(Itinerary)
+        .where(Itinerary.id == itinerary_id, Itinerary.user_id == user_id)
+        .options(selectinload(Itinerary.items))
+    ).first()
+
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+
+    return itinerary
+
+
+def confirm_itinerary(db: Session, itinerary_id: UUID, user_id: UUID) -> dict:
+    """Confirm a DRAFT itinerary, apply discount if eligible, update status to CONFIRMED."""
+    itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
+
+    if itinerary.status != ItineraryModelStatus.DRAFT:
+        raise HTTPException(status_code=400, detail="Only DRAFT itineraries can be confirmed")
+
+    discount_info = check_package_discount_eligibility(db, itinerary)
+    discount_applied = False
+    discount_amount = 0.0
+
+    if discount_info.get("eligible"):
+        discount = discount_info["discount"]
+        discount_amount = discount_info.get("estimated_discount", 0)
+        itinerary.applied_discount_id = discount.id
+        itinerary.discount_amount = discount_amount
+        discount_applied = True
+
+    itinerary.status = ItineraryModelStatus.CONFIRMED
+    db.commit()
+    db.refresh(itinerary)
+
+    return {
+        "itinerary": itinerary,
+        "discount_applied": discount_applied,
+        "discount_amount": discount_amount,
+    }
+
+
+def convert_itinerary_to_bookings(
+    db: Session,
+    itinerary_id: UUID,
+    user_id: UUID,
+    item_ids: list[UUID] | None = None,
+) -> Itinerary:
+    """Convert a confirmed itinerary's items to bookings."""
+    itinerary = get_itinerary_by_id(db, itinerary_id, user_id)
+
+    if itinerary.status != ItineraryModelStatus.CONFIRMED:
+        raise HTTPException(status_code=400, detail="Only CONFIRMED itineraries can be converted to bookings")
+
+    items = itinerary.items
+    if item_ids is not None:
+        items = [item for item in items if item.id in item_ids]
+
+    all_booked = True
+    for item in items:
+        if item.linked_booking_id is not None:
+            continue
+
+        booking_data = BookingCreate(
+            listing_id=item.listing_id,
+            itinerary_id=itinerary_id,
+            itinerary_item_id=item.id,
+            booking_from_time=item.start_at,
+            booking_to_time=item.end_at,
+        )
+        booking = booking_service_create(db, booking_data, user_id)
+
+        item.linked_booking_id = booking.id
+        item.status = ItineraryItemStatus.BOOKED
+        db.add(item)
+
+        if booking.status.value == "cancelled":
+            all_booked = False
+
+    if all_booked and items:
+        itinerary.status = ItineraryModelStatus.COMPLETED
+
+    db.commit()
+    db.refresh(itinerary)
+    return itinerary
+
+
+# ---------------------------------------------------------------------------
+# Discount helpers (fallback implementations until DiscountService exists)
+# ---------------------------------------------------------------------------
+
+
+def get_or_create_package_discount(db: Session) -> Discount:
+    """Get active package discount, create default if none exists."""
+    now = datetime.utcnow()
+    discount = db.exec(
+        select(Discount)
+        .where(
+            Discount.discount_type == DiscountType.PACKAGE,
+            Discount.is_active == True,
+            Discount.valid_from <= now,
+            (Discount.valid_to == None) | (Discount.valid_to >= now),
+        )
+        .order_by(Discount.created_at.desc())
+        .limit(1)
+    ).first()
+
+    if discount:
+        return discount
+
+    # Create default package discount
+    default_discount = Discount(
+        name="Package Discount",
+        discount_type=DiscountType.PACKAGE,
+        discount_percent=0.10,
+        min_services=3,
+        min_total_cost=100.0,
+        is_active=True,
+        valid_from=now,
+        max_uses=1000,
+        description="Default package discount for booking 3+ services",
+    )
+    db.add(default_discount)
+    db.commit()
+    db.refresh(default_discount)
+    return default_discount
+
+
+def check_package_discount_eligibility(db: Session, itinerary: Itinerary) -> dict:
+    """Check if an itinerary is eligible for a package discount."""
+    discount = get_or_create_package_discount(db)
+
+    item_count = len(itinerary.items) if itinerary.items else 0
+    total_cost = itinerary.total_estimated_cost or 0
+
+    eligible = True
+    reason = None
+    estimated_discount = 0.0
+
+    if discount.min_services and item_count < discount.min_services:
+        eligible = False
+        reason = f"Requires at least {discount.min_services} services, have {item_count}"
+    elif discount.min_total_cost and total_cost < discount.min_total_cost:
+        eligible = False
+        reason = f"Minimum total cost {discount.min_total_cost} required"
+    elif not discount.is_active:
+        eligible = False
+        reason = "Discount is not active"
+
+    if eligible and discount.discount_percent:
+        estimated_discount = min(
+            total_cost * discount.discount_percent,
+            discount.max_discount_amount or float("inf"),
+        )
+
+    return {
+        "discount": discount,
+        "eligible": eligible,
+        "reason": reason,
+        "estimated_discount": estimated_discount,
+    }
 

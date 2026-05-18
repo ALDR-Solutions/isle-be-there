@@ -15,6 +15,7 @@ from sqlmodel import Field, Relationship, SQLModel
 class Statuses(str, Enum):
     active = "active"
     inactive = "inactive"
+    suspended = "suspended"
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
@@ -88,6 +89,8 @@ class Listing(SQLModel, table=True):
     details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
     start_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
     end_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+
+    itinerary_items: list["ItineraryItem"] = Relationship(back_populates="listing_rel")
 
 
 

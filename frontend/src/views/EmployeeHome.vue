@@ -18,8 +18,7 @@
       <p class="mt-2 max-w-sm text-sm text-slate-500">{{ employeeStore.loadError }}</p>
       <button
         @click="employeeStore.fetchAssignments()"
-        class="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-      >
+        class="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
         Try again
       </button>
     </div>
@@ -43,8 +42,7 @@
           <div class="mt-2 flex flex-wrap items-center gap-3">
             <span
               class="rounded-xl px-3 py-1 text-xs font-semibold"
-              :class="statusBadgeClass(employeeStore.activeListing.status)"
-            >
+              :class="statusBadgeClass(employeeStore.activeListing.status)">
               {{ statusLabel(employeeStore.activeListing.status) }}
             </span>
             <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
@@ -86,6 +84,7 @@
 
         <ListingServicesSection
           :listing="employeeStore.activeListing"
+          :read-only="employeeStore.activeListing?.status === 'suspended'"
           @services-changed="handleServicesChanged"
         />
 
@@ -106,6 +105,7 @@ function statusLabel(status) {
   if (status === 'active') return 'Active'
   if (status === 'pending') return 'Pending Approval'
   if (status === 'inactive') return 'Archived'
+  if (status === 'suspended') return 'Suspended'
   return status ?? ''
 }
 
@@ -113,6 +113,7 @@ function statusBadgeClass(status) {
   if (status === 'active') return 'bg-emerald-500 text-white'
   if (status === 'pending') return 'bg-amber-400 text-slate-900'
   if (status === 'inactive') return 'bg-slate-500 text-white'
+  if (status === 'suspended') return 'bg-orange-500 text-white'
   return 'bg-slate-300 text-slate-900'
 }
 

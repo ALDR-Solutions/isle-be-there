@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.modules.services.models import StatusTypes
+
 
 class RoomsJson(BaseModel):
     room_amenities: Optional[List[str]] = None
@@ -18,7 +20,7 @@ class ServiceBase(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     season_price: Optional[float] = None
-    status: str | None = None
+    status: Optional[StatusTypes] = None
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[ServiceTypeData] = None
@@ -26,7 +28,7 @@ class ServiceBase(BaseModel):
 
 
 class ServiceCreate(ServiceBase):
-    status: str = "active"
+    status: StatusTypes = StatusTypes.active
 
 
 class ServiceUpdate(BaseModel):
@@ -34,7 +36,7 @@ class ServiceUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     season_price: Optional[float] = None
-    status: str | None = None
+    status: Optional[StatusTypes] = None
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[Dict[str, Any]] = None
@@ -45,4 +47,3 @@ class ServiceResponse(ServiceBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}

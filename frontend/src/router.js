@@ -96,9 +96,26 @@ const routes = [
     component: () => import('./views/ListingDetail.vue')
   },
   {
+    path: '/itinerary',
+    name: 'ItineraryPlanner',
+    component: () => import('./views/Itinerary.vue')
+  },
+  {
+    path: '/itinerary/:id',
+    name: 'SavedItinerary',
+    component: () => import('./views/Itinerary.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/bookings',
     name: 'Bookings',
     component: () => import('./views/Bookings.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/calendar',
+    name: 'Calendar',
+    component: () => import('./views/Calendar.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -116,6 +133,12 @@ const routes = [
   {
     path: '/favorites',
     redirect: '/favourites'
+  },
+  {
+    path: '/mock-booking-test',
+    name: 'MockBookingTest',
+    component: () => import('./views/MockBookingTest.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

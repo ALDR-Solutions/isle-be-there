@@ -1,5 +1,6 @@
 """Business logic for listings."""
 
+from datetime import datetime
 import random
 from uuid import UUID
 
@@ -7,32 +8,41 @@ from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import func
-from sqlalchemy.sql.functions import count
 from sqlalchemy.orm import selectinload
 from shapely.geometry import Point
-from sqlmodel import Session, asc, desc, select
+from sqlmodel import Session, asc, col, desc, select
 
+from app.modules.bookings.models import Booking, BookingStatus
 from app.modules.businesses.models import Business
-from app.modules.interests.models import (
-    BusinessTypeInterest,
-    ListingInterest,
-    UserInterest,
-)
+from app.modules.interests.models import ListingInterest, UserInterest
+from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
+from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 from app.modules.users.models import User
 
 from .models import Listing, Statuses
 
+ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
 
-def _build_location(location_data: dict | None):
+
+def _build_location(location_data):
     if not location_data:
         return None
 
     try:
-        lat = float(location_data["lat"])
-        lng = float(location_data["lng"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="Invalid location payload") from exc
+        if isinstance(location_data, dict):
+            lat = float(location_data.get("lat"))
+            lng = float(location_data.get("lng"))
+        else:
+            # Pydantic object
+            lat = float(location_data.lat)
+            lng = float(location_data.lng)
+
+    except (AttributeError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid location payload")
+
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat and lng are required")
 
     if not (-90 <= lat <= 90 and -180 <= lng <= 180):
         raise HTTPException(status_code=400, detail="Location coordinates are out of range")
@@ -48,22 +58,25 @@ def _batch_review_stats(db: Session, listing_ids: list) -> dict:
         select(
             Review.listing_id,
             func.avg(Review.rating).label("avg_rating"),
-            count(Review.id).label("review_count"),
+            func.count(Review.id).label("review_count"),
         )
-        .where(Review.__table__.c.listing_id.in_(listing_ids))
+        .where(Review.listing_id.in_(listing_ids))
         .group_by(Review.listing_id)
     ).all()
 
     stats = {
         row.listing_id: {
             "avg_rating": float(row.avg_rating) if row.avg_rating is not None else None,
-            "review_count": int(row.review_count),
+            "review_count": int(row.review_count or 0),
         }
         for row in rows
     }
 
     for listing_id in listing_ids:
-        stats.setdefault(listing_id, {"avg_rating": None, "review_count": 0})
+        stats.setdefault(
+            listing_id,
+            {"avg_rating": None, "review_count": 0}
+        )
 
     return stats
 
@@ -156,6 +169,8 @@ def _serialize_listing(
     interest_ids: list[UUID] | None = None,
 ) -> dict:
     data = listing.model_dump(exclude={"embedding", "location"})
+    if data.get("status") == Statuses.approved:
+        data["status"] = Statuses.active
 
     location = listing.location
     if isinstance(location, WKBElement):
@@ -167,9 +182,13 @@ def _serialize_listing(
     data["business_type_name"] = (
         listing.business_type_rel.name if listing.business_type_rel else None
     )
+    data["business_name"] = (
+        listing.business_rel.business_name if listing.business_rel else None
+    )
 
     if review_stats is not None:
-        data.update(review_stats)
+        data["avg_rating"] = review_stats.get("avg_rating")
+        data["review_count"] = review_stats.get("review_count")
 
     data["interest_ids"] = interest_ids or []
 
@@ -193,21 +212,21 @@ def _serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
 
 
 def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
-    listings = db.exec(select(Listing).where(Listing.status == Statuses.active).limit(limit)).all()
+    listings = db.exec(
+        select(Listing)
+        .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+        .limit(limit)
+    ).all()
     random.shuffle(listings)
     return listings
 
 
 def get_listing_review_stats(db: Session, listing_id) -> dict:
-    stmt = select(
-        func.avg(Review.rating).label("avg_rating"),
-        count(Review.id).label("review_count"),
-    ).where(Review.listing_id == listing_id)
-    row = db.exec(stmt).one()
-    return {
-        "avg_rating": float(row.avg_rating) if row.avg_rating is not None else None,
-        "review_count": int(row.review_count) if row.review_count is not None else 0,
-    }
+    return _batch_review_stats(db, [listing_id])[listing_id]
 
 
 def list_listings(
@@ -235,14 +254,19 @@ def list_listings(
         query = query.where(Listing.base_price >= min_price)
     if max_price is not None:
         query = query.where(Listing.base_price <= max_price)
-    if status:
+    if status == Statuses.active.value or status == Statuses.approved.value:
+        query = query.where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+    elif status:
         query = query.where(Listing.status == status)
     if sort_by:
         sort_column = getattr(Listing, sort_by, None)
         if sort_column is not None:
             query = query.order_by(asc(sort_column) if sort_order == "asc" else desc(sort_column))
 
-    query = query.options(selectinload(Listing.business_type_rel)).offset(skip)
+    query = query.options(
+        selectinload(Listing.business_type_rel),
+        selectinload(Listing.business_rel),
+    ).offset(skip)
     if limit is not None:
         query = query.limit(limit)
     listings = db.exec(query).all()
@@ -253,7 +277,10 @@ def get_listing_by_id(db: Session, listing_id: str):
     listing = db.exec(
         select(Listing)
         .where(Listing.id == listing_id)
-        .options(selectinload(Listing.business_type_rel))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
     ).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -262,28 +289,20 @@ def get_listing_by_id(db: Session, listing_id: str):
     return _serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
-def create_listing(db: Session, data: dict, user_id: str):
-    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-    if not business:
-        raise HTTPException(status_code=400, detail="User does not have a business")
-
-    interest_ids = data.pop("interest_ids", None)
-    location_data = data.pop("location", None)
-    data["business_id"] = business.id
-    validated_interest_ids = _validate_interest_ids_for_business_type(
-        db,
-        data.get("business_type"),
-        interest_ids,
+def create_listing(db: Session, data: ListingCreate, user_id: str):
+    listing = Listing(
+        **data.model_dump()
     )
 
-    listing = Listing(**data)
-    if location_data:
-        listing.location = _build_location(location_data)
+    if data.location:
+        listing.location = _build_location(data.location)
+
     db.add(listing)
     db.flush()
     _sync_listing_interests(db, listing.id, validated_interest_ids)
     db.commit()
     db.refresh(listing)
+
     review_stats = get_listing_review_stats(db, listing.id)
     return _serialize_listing(listing, review_stats, validated_interest_ids)
 
@@ -302,6 +321,22 @@ def update_listing(
         business = db.exec(select(Business).where(Business.user_id == user_id)).first()
         if not business or str(listing.business_id) != str(business.id):
             raise HTTPException(status_code=403, detail="Not authorized")
+        if listing.status == Statuses.suspended:
+            raise HTTPException(
+                status_code=403,
+                detail="Suspended listings can only be updated by an admin",
+            )
+        requested_status = update_data.get("status")
+        if requested_status is not None and requested_status != listing.status:
+            allowed_owner_transitions = {
+                (Statuses.active, Statuses.inactive),
+                (Statuses.inactive, Statuses.active),
+            }
+            if (listing.status, requested_status) not in allowed_owner_transitions:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Business owners can only archive or restore their listings",
+                )
 
     should_update_interests = "interest_ids" in update_data
     requested_interest_ids = update_data.pop("interest_ids", None)
@@ -313,39 +348,21 @@ def update_listing(
     for key, value in update_data.items():
         setattr(listing, key, value)
 
-    updated_interest_ids: list[UUID] | None = None
-    if should_update_interests:
-        updated_interest_ids = _validate_interest_ids_for_business_type(
-            db,
-            next_business_type,
-            requested_interest_ids,
-        )
-        _sync_listing_interests(db, listing.id, updated_interest_ids)
-
     db.commit()
     db.refresh(listing)
     review_stats = get_listing_review_stats(db, listing.id)
-    if updated_interest_ids is None:
-        interest_map = _batch_listing_interest_ids(db, [listing.id])
-        updated_interest_ids = interest_map.get(listing.id, [])
-    return _serialize_listing(listing, review_stats, updated_interest_ids)
+    return _serialize_listing(listing, review_stats)
 
 
-def delete_listing(
-    db: Session,
-    listing_id: str,
-    user_id: str,
-    is_admin: bool = False,
-):
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if not is_admin:
-        business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-        if not business or str(listing.business_id) != str(business.id):
-            raise HTTPException(status_code=403, detail="Not authorized")
-    db.delete(listing)
+def delete_listing(db: Session,listing: Listing):
+
+    listing.status = Statuses.deleted
+    listing.updated_at = func.now()
+
     db.commit()
+    db.refresh(listing)
+    return listing
+
 
 
 def get_active_listings(db: Session, limit: int = 20):
@@ -357,7 +374,13 @@ def get_business_listings(db: Session, user_id: str):
     if not business:
         return []
     listings = db.exec(
-        select(Listing).where(Listing.business_id == business.id).order_by(desc(Listing.created_at))
+        select(Listing)
+        .where(Listing.business_id == business.id)
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+        .order_by(desc(Listing.created_at))
     ).all()
     return _serialize_listings(db, listings)
 
@@ -371,19 +394,49 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
         return _serialize_listings(db, _fetch_active_listings(db, limit))
 
     try:
-        listings = db.exec(
-            select(Listing)
+        # PostgreSQL doesn't allow ORDER BY random() with DISTINCT unless random() is in SELECT
+        # So we fetch listing IDs first, then fetch the listings
+        listing_ids_subq = (
+            select(ListingInterest.listing_id)
+            .join(Listing, Listing.id == ListingInterest.listing_id)
+            .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
+            .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+            .options(
+                selectinload(Listing.business_type_rel),
+                selectinload(Listing.business_rel),
+            )
+            .distinct()
+        )
+
+        # Get IDs with random ordering using a subquery approach
+        ids_with_random = db.exec(
+            select(Listing.id, func.random().label('rand'))
             .join(ListingInterest, ListingInterest.listing_id == Listing.id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
-            .where(Listing.status == Statuses.active)
+            .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+            .options(
+                selectinload(Listing.business_type_rel),
+                selectinload(Listing.business_rel),
+            )
             .distinct()
             .limit(limit)
+            .order_by(func.random())
         ).all()
+
+        if ids_with_random:
+            # Sort by random value and pick limit
+            shuffled = sorted(ids_with_random, key=lambda x: x.rand)[:limit]
+            listing_ids = [row.id for row in shuffled]
+            listings = db.exec(
+                select(Listing)
+                .where(Listing.id.in_(listing_ids))
+                .where(Listing.status == Statuses.active)
+            ).all()
+        else:
+            listings = _fetch_active_listings(db, limit)
 
         if not listings:
             listings = _fetch_active_listings(db, limit)
-        else:
-            random.shuffle(listings)
 
         return _serialize_listings(db, listings)
     except Exception:
@@ -398,7 +451,14 @@ def search_listings_combined(
     radius_km: float = 25,
     limit: int = 20,
 ):
-    query = select(Listing).where(Listing.status == Statuses.active)
+    query = (
+        select(Listing)
+        .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+        .options(
+            selectinload(Listing.business_type_rel),
+            selectinload(Listing.business_rel),
+        )
+    )
 
     ts_vector = func.to_tsvector(
         "english",
@@ -412,13 +472,13 @@ def search_listings_combined(
 
     distance_expr = None
     if lat is not None and lng is not None:
-        point = f"SRID=4326;POINT({lng} {lat})"
+        point = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+
         distance_expr = func.ST_Distance(Listing.location, point).label("distance_m")
+
         query = query.add_columns(distance_expr).where(
             func.ST_DWithin(Listing.location, point, radius_km * 1000)
         )
-
-    query = query.options(selectinload(Listing.business_type_rel))
 
     if rank_expr is not None:
         query = query.order_by(desc(rank_expr))
@@ -432,15 +492,16 @@ def search_listings_combined(
     if not rows:
         return []
 
-    if isinstance(rows[0], Listing):
-        return _serialize_listings(db, rows)
+    listings = [
+        row[0] if isinstance(row, tuple) else row
+        for row in rows
+    ]
 
-    listings = [row[0] for row in rows]
     serialized = _serialize_listings(db, listings)
     listing_data_by_id = {item["id"]: item for item in serialized}
 
     for row in rows:
-        listing = row[0]
+        listing = row[0] if isinstance(row, tuple) else row
         payload = listing_data_by_id.get(str(listing.id))
         if not payload:
             continue
@@ -454,3 +515,54 @@ def search_listings_combined(
             payload["distance_m"] = float(dist_val) if dist_val is not None else None
 
     return serialized
+
+def filter_by_availability(
+    db: Session,
+    listings: list[Listing],
+    start_dt: datetime,
+    end_dt: datetime,
+    requested_quantity: int = 1,
+) -> list[Listing]:
+    """
+    Returns only listings that have at least one service with available slots
+    in the requested window. Uses a single batched query.
+    """
+    listing_ids = [l.id for l in listings]
+    if not listing_ids:
+        return []
+
+    # Fetch all active services for these listings
+    services = db.exec(
+        select(Service)
+        .where(col(Service.listing_id).in_(listing_ids))
+        .where(Service.status == ServiceStatusTypes.active)
+        .where(Service.capacity > 0)
+    ).all()
+
+    if not services:
+        return []
+
+    service_ids = [s.service_id for s in services]
+
+    booked_rows = db.exec(
+        select(Booking.service_id, func.coalesce(func.sum(Booking.amount_of_people), 0))
+        .where(col(Booking.service_id).in_(service_ids))
+        .where(col(Booking.status).notin_([
+            BookingStatus.cancelled,
+            BookingStatus.pending,
+        ]))
+        .where(Booking.booking_from_time < end_dt)
+        .where(Booking.booking_to_time > start_dt)
+        .group_by(Booking.service_id)
+    ).all()
+
+    booked_map = {service_id: int(booked or 0) for service_id, booked in booked_rows}
+
+    # Determine which listing_ids have at least one available service
+    available_listing_ids = set()
+    for service in services:
+        booked = booked_map.get(service.service_id, 0)
+        if (service.capacity or 0) - booked >= requested_quantity:
+            available_listing_ids.add(service.listing_id)
+
+    return [l for l in listings if l.id in available_listing_ids]

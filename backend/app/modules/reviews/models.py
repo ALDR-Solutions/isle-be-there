@@ -14,7 +14,7 @@ class Review(SQLModel, table=True):
         UniqueConstraint("listing_id", "user_id", name="unique_review_per_user_per_listing"),
     )
 
-    id: int = Field(sa_column=Column(Integer, primary_key=True, nullable=False))
+    id: UUID = Field(sa_column=Column(PGUUID(as_uuid=True), primary_key=True, nullable=False))
     listing_id: UUID = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
@@ -64,21 +64,19 @@ class Review(SQLModel, table=True):
 class BusinessReply(SQLModel, table=True):
     __tablename__ = "business_replies"
 
-    id: int = Field(
+    id: UUID = Field(
         sa_column=Column(
-            BigInteger,
-            Identity(always=False, start=1, increment=1),
+            PGUUID(as_uuid=True),
             primary_key=True,
             nullable=False,
-            autoincrement=True,
         )
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     )
-    review_id: int = Field(
+    review_id: UUID = Field(
         sa_column=Column(
-            BigInteger,
+            PGUUID(as_uuid=True),
             ForeignKey("reviews.id", onupdate="CASCADE", ondelete="CASCADE"),
             nullable=True,
         )
