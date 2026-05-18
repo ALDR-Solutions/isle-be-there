@@ -609,11 +609,12 @@
                   </p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
-                      v-for="tag in stop.reason_tags"
-                      :key="tag"
-                      class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"
+                      v-for="tag in getNormalizedReasonTags(stop.reason_tags)"
+                      :key="tag.key"
+                      class="rounded-full px-3 py-1 text-xs font-semibold"
+                      :class="getTagToneClasses(tag.tone)"
                     >
-                      {{ tag }}
+                      {{ tag.label }}
                     </span>
                   </div>
                 </div>
@@ -638,6 +639,7 @@ import { interestsAPI, itinerariesAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import { useToastStore } from "../stores/toast";
 import { CARIBBEAN_COUNTRIES } from "../stores/caribbeanLocations";
+import { normalizeItineraryTags } from "../utils/itineraryTags";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -1166,6 +1168,23 @@ function extractApiError(error, fallbackMessage) {
     return detail;
   }
   return fallbackMessage;
+}
+
+function getNormalizedReasonTags(tags) {
+  return normalizeItineraryTags(tags);
+}
+
+function getTagToneClasses(tone) {
+  if (tone === "success") {
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200";
+  }
+  if (tone === "info") {
+    return "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200";
+  }
+  if (tone === "warning") {
+    return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
+  }
+  return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
 }
 </script>
 
