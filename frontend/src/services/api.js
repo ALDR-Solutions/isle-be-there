@@ -84,10 +84,13 @@ export const authAPI = {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
   },
-  refresh: (refreshToken) =>
-    api.post("/api/auth/refresh", { refresh_token: refreshToken }),
-  getMe: () => api.get("/api/auth/me"),
-  disableAccount: () => api.delete("/api/auth/me"),
+  refresh: (refreshToken) => api.post('/api/auth/refresh', { refresh_token: refreshToken }),
+  getMe: () => api.get('/api/auth/me'),
+  disableAccount: () => api.delete('/api/auth/me'),
+  verifyEmail: (token) => api.get('/api/auth/verify-email', { params: { token } }),
+  resendVerification: (email) => api.post('/api/auth/resend-verification', { email }),
+  forgotPassword: (email) => api.post('/api/auth/forgot-password', { email }),
+  confirmPasswordReset: (data) => api.post('/api/auth/reset-password/confirm', data),
 };
 
 // Listings API
