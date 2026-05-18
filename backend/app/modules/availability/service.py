@@ -238,8 +238,8 @@ def get_booked_count(
         ]))
         .where(Booking.booking_from_time < end_dt)
         .where(Booking.booking_to_time > start_dt)
-    ).one()
-    return int(result or 0)
+    ).scalar_one()
+    return int(result)
 
 
 def get_available_slots(

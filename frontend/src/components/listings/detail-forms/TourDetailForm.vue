@@ -56,14 +56,18 @@
         class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
       />
     </div>
+
+    <AvailabilitySection v-if="listingId" :listing-id="listingId" />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import AvailabilitySection from '../detail-sections/AvailabilitySection.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
+  listingId: { type: String, default: null },
 })
 const emit = defineEmits(['update:modelValue'])
 

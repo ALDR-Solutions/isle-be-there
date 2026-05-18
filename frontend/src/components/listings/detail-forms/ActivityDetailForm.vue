@@ -55,14 +55,18 @@
         >{{ day }}</button>
       </div>
     </div>
+
+    <AvailabilitySection v-if="listingId" :listing-id="listingId" />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import AvailabilitySection from '../detail-sections/AvailabilitySection.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
+  listingId: { type: String, default: null },
 })
 const emit = defineEmits(['update:modelValue'])
 

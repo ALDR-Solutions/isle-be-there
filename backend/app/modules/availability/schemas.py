@@ -54,6 +54,7 @@ class ServiceSlotsBase(BaseModel):
 
 class ServiceSlotsCreate(ServiceSlotsBase):
     service_id: UUID
+    capacity: int = Field(default=1, ge=1)
 
 
 class ServiceSlotsUpdate(BaseModel):

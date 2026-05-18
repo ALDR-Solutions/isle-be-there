@@ -228,4 +228,17 @@ export const discountsAPI = {
   getPackageDiscounts: () => api.get("/api/discounts", { params: { discount_type: "package" } }),
 };
 
+// Availability API
+export const availabilityAPI = {
+  // ListingHours
+  getListingHours: (listingId) => api.get(`/api/availability/listings/${listingId}/hours`),
+  createListingHours: (listingId, data) => api.post(`/api/availability/listings/${listingId}/hours`, data),
+  updateListingHours: (listingId, day, data) => api.put(`/api/availability/listings/${listingId}/hours/${day}`, data),
+  deleteListingHours: (listingId, day) => api.delete(`/api/availability/listings/${listingId}/hours/${day}`),
+  // ServiceSlots
+  getServiceSlots: (serviceId) => api.get(`/api/availability/services/${serviceId}/slots`),
+  createServiceSlot: (serviceId, data) => api.post(`/api/availability/services/${serviceId}/slots`, data),
+  deleteServiceSlot: (serviceId, slotId) => api.delete(`/api/availability/services/${serviceId}/slots/${slotId}`),
+};
+
 export default api;
