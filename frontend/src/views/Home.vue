@@ -22,11 +22,11 @@
         <div class="flex max-w-3xl flex-col items-center text-center">
           <p
             class="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300 sm:text-sm">
-            Caribbean travel, simplified for you
+            Caribbean travel, Simplified for you
           </p>
           <h1
             class="mt-5 text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
-            Plan a island adventure trip today.
+            Plan Your Island Adventure Trip Today.
           </h1>
 
           <p

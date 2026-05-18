@@ -47,25 +47,9 @@
                 id="desktop-navbar-search"
                 v-model="searchInput"
                 type="text"
-                placeholder="Search stays, beaches, or experiences"
+                placeholder="Search . . . ."
                 class="w-full min-w-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"/>
-              <button
-                type="submit"
-                class="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
-                <span class="hidden lg:inline">Search</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4 lg:hidden"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/>
-                </svg>
-              </button>
+              
             </div>
           </form>
 
