@@ -62,8 +62,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '../../../stores/auth'
+import { ref, onMounted } from 'vue'
 import { useToastStore } from '../../../stores/toast'
 import { availabilityAPI } from '../../../services/api'
 import AvailabilityHoursEditor from '../detail-forms/AvailabilityHoursEditor.vue'
@@ -75,7 +74,6 @@ const props = defineProps({
   }
 })
 
-const authStore = useAuthStore()
 const toast = useToastStore()
 
 const days = [
@@ -93,11 +91,6 @@ const saving = ref(false)
 const isEditing = ref(false)
 const hoursMap = ref({})
 const editedHours = ref({})
-
-// Only show for business/admin users
-if (!authStore.isBusiness && !authStore.isAdmin) {
-  // Hide component by setting a flag
-}
 
 onMounted(async () => {
   await fetchHours()
@@ -132,20 +125,17 @@ function cancelEditing() {
 async function saveHours() {
   saving.value = true
   try {
-    // For each day that has changes, update or create
+    const promises = []
+
     for (const [dayNum, hours] of Object.entries(editedHours.value)) {
       const day = parseInt(dayNum)
       if (hours === null) {
-        // Delete if exists
         if (hoursMap.value[day]) {
-          await availabilityAPI.deleteListingHours(props.listingId, day)
+          promises.push(availabilityAPI.deleteListingHours(props.listingId, day))
         }
       } else if (hoursMap.value[day]) {
-        // Update existing
-        await availabilityAPI.updateListingHours(props.listingId, day, hours)
+        promises.push(availabilityAPI.updateListingHours(props.listingId, day, hours))
       } else {
-        // Create new - include day_of_week and listing_id in payload
-        // Convert time strings to HH:MM:SS format for pydantic
         const payload = {
           day_of_week: day,
           listing_id: props.listingId,
@@ -156,20 +146,19 @@ async function saveHours() {
             ? hours.close_time + ':00'
             : hours.close_time,
         }
-        await availabilityAPI.createListingHours(props.listingId, payload)
+        promises.push(availabilityAPI.createListingHours(props.listingId, payload))
       }
     }
 
-    // Also delete any days that were set to null
     for (const [dayNum, hours] of Object.entries(hoursMap.value)) {
       if (hours && !editedHours.value[dayNum]) {
-        await availabilityAPI.deleteListingHours(props.listingId, parseInt(dayNum))
+        promises.push(availabilityAPI.deleteListingHours(props.listingId, parseInt(dayNum)))
       }
     }
 
-    toast.show('Hours saved successfully', 'success')
+    await Promise.all(promises)
+    hoursMap.value = { ...editedHours.value }
     isEditing.value = false
-    await fetchHours()
   } catch (error) {
     console.error('Failed to save hours:', error)
     toast.show('Failed to save hours', 'error')

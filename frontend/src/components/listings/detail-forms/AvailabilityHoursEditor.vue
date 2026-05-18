@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -175,12 +175,7 @@ function saveDayHours() {
 }
 
 function availableCopyDays(currentDayNum) {
-  return days.filter(d => {
-    if (d.num === currentDayNum) return false
-    const existing = getHours(d.num)
-    if (existing) return false
-    return true
-  })
+  return days.filter(d => d.num !== currentDayNum)
 }
 
 function copyHoursToDay(sourceDay, targetDayNum) {

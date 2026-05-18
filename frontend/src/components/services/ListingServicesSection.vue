@@ -478,8 +478,6 @@ const serviceErrors = ref({})
 const roomAmenityInput = ref('')
 const serviceImageInputRef = ref(null)
 const serviceImageUploading = ref(false)
-const showSlotEditor = ref(false)
-const editingSlotsForService = ref(null)
 const serviceSlots = ref([])
 const loadingSlots = ref(false)
 const slotDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -852,9 +850,8 @@ async function handleAddSlot() {
   if (!validateSlotForm() || !editingService.value) return
   try {
     const payload = buildSlotPayload()
-    await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
-    const response = await availabilityAPI.getServiceSlots(editingService.value.service_id)
-    serviceSlots.value = response.data || []
+    const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
+    serviceSlots.value = [...serviceSlots.value, response.data]
     toastStore.show('Slot added', 'success')
     newSlot.value.startTime = '09:00'
     newSlot.value.endTime = '17:00'
@@ -875,9 +872,8 @@ async function handleCopySlotToDay(slot, targetDay) {
       end_time: slot.end_time,
       capacity: slot.capacity
     }
-    await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
-    const response = await availabilityAPI.getServiceSlots(editingService.value.service_id)
-    serviceSlots.value = response.data || []
+    const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
+    serviceSlots.value = [...serviceSlots.value, response.data]
     toastStore.show('Slot copied', 'success')
   } catch (error) {
     console.error('Failed to copy slot', error)

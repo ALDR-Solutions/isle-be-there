@@ -4,7 +4,7 @@ from datetime import datetime, time
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlmodel import Session, col
 
 from app.modules.availability.models import ListingHours, ServiceSlots
@@ -187,41 +187,6 @@ def _check_slot_overlap(
 # ============================================================================
 
 
-def get_slot_remaining_capacity(
-    db: Session,
-    service_id: UUID,
-    slot_id: int,
-    slot_date: datetime,
-) -> int:
-    """
-    Calculate remaining capacity for a slot on a specific date.
-    Uses the ServiceSlots.capacity and counts confirmed bookings for that time window.
-    """
-    slot = get_service_slot(db, slot_id)
-    if not slot:
-        return 0
-
-    # Build datetime window for this slot on the given date
-    slot_date_only = slot_date.date()
-    start_dt = datetime.combine(slot_date_only, slot.start_time)
-    end_dt = datetime.combine(slot_date_only, slot.end_time)
-
-    booked = get_booked_count(db, service_id, start_dt, end_dt)
-    return max(0, slot.capacity - booked)
-
-
-def is_slot_available(
-    db: Session,
-    service_id: UUID,
-    slot_id: int,
-    slot_date: datetime,
-    requested_count: int = 1,
-) -> bool:
-    """Check if a slot has enough remaining capacity for the requested count."""
-    remaining = get_slot_remaining_capacity(db, service_id, slot_id, slot_date)
-    return remaining >= requested_count
-
-
 def get_booked_count(
     db: Session,
     service_id: UUID,
@@ -240,6 +205,40 @@ def get_booked_count(
         .where(Booking.booking_to_time > start_dt)
     ).scalar_one()
     return int(result)
+
+
+def get_slot_remaining_capacity(
+    db: Session,
+    service_id: UUID,
+    slot_id: int,
+    slot_date: datetime,
+) -> int:
+    """
+    Calculate remaining capacity for a slot on a specific date.
+    Uses the ServiceSlots.capacity and counts confirmed bookings for that time window.
+    """
+    slot = get_service_slot(db, slot_id)
+    if not slot:
+        return 0
+
+    slot_date_only = slot_date.date()
+    start_dt = datetime.combine(slot_date_only, slot.start_time)
+    end_dt = datetime.combine(slot_date_only, slot.end_time)
+
+    booked = get_booked_count(db, service_id, start_dt, end_dt)
+    return max(0, slot.capacity - booked)
+
+
+def is_slot_available(
+    db: Session,
+    service_id: UUID,
+    slot_id: int,
+    slot_date: datetime,
+    requested_count: int = 1,
+) -> bool:
+    """Check if a slot has enough remaining capacity for the requested count."""
+    remaining = get_slot_remaining_capacity(db, service_id, slot_id, slot_date)
+    return remaining >= requested_count
 
 
 def get_available_slots(
