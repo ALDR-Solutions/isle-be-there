@@ -17,7 +17,7 @@ from app.modules.services.models import Service
 from app.modules.users.models import User
 
 security = HTTPBearer()
-
+optional_security = HTTPBearer(auto_error=False)
 
 def _get_user_from_token(
     credentials: HTTPAuthorizationCredentials,
@@ -200,3 +200,12 @@ __all__ = [
     "require_listing_owner",
     "require_service_access",
 ]
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    return _get_user_from_token(credentials, db)

@@ -1,9 +1,41 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.modules.listings.models import Listing
+
+
+class ListingInterest(SQLModel, table=True):
+    __tablename__ = "listing_interests"
+
+    listing_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("listings.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    interest_id: UUID = Field(
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("interests.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=text("now()"),
+        )
+    )
 
 
 class Interests(SQLModel, table=True):
@@ -26,6 +58,10 @@ class Interests(SQLModel, table=True):
             server_default=text("now()"),
         )
     )
+    listings: list["Listing"] = Relationship(
+        back_populates="interests",
+        link_model=ListingInterest,
+    )
 
 
 class UserInterest(SQLModel, table=True):
@@ -35,34 +71,6 @@ class UserInterest(SQLModel, table=True):
         sa_column=Column(
             PGUUID(as_uuid=True),
             ForeignKey("users.id", ondelete="CASCADE"),
-            primary_key=True,
-            nullable=False,
-        )
-    )
-    interest_id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("interests.id", ondelete="CASCADE"),
-            primary_key=True,
-            nullable=False,
-        )
-    )
-    created_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True),
-            nullable=False,
-            server_default=text("now()"),
-        )
-    )
-
-
-class ListingInterest(SQLModel, table=True):
-    __tablename__ = "listing_interests"
-
-    listing_id: UUID = Field(
-        sa_column=Column(
-            PGUUID(as_uuid=True),
-            ForeignKey("listings.id", ondelete="CASCADE"),
             primary_key=True,
             nullable=False,
         )

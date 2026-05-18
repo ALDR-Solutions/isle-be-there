@@ -27,7 +27,7 @@ from .service import (
 )
 from .models import Itinerary
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_roles
+from app.shared.dependencies.permissions import get_optional_current_user, require_roles
 from app.modules.listings.models import Listing
 import uuid
 
@@ -38,8 +38,9 @@ router = APIRouter(prefix="/api/itineraries", tags=["Itineraries"])
 def plan_itinerary_endpoint(
     payload: ItineraryPlanRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_current_user),
 ):
-    return plan_itinerary(db, payload)
+    return plan_itinerary(db, payload, current_user.id if current_user else None)
 
 
 @router.post("", response_model=SavedItineraryResponse, status_code=201)
