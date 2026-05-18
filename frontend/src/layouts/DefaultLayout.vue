@@ -24,20 +24,11 @@
             <router-link to="/listings" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">
               Listings
             </router-link>
-            <template v-if="authStore.isAuthenticated">
-              <router-link to="/bookings" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">
-                Bookings
-              </router-link>
-              <router-link to="/calendar" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">
-                Calendar
-              </router-link>
-            </template>
           </nav>
 
           <form
             class="min-w-0 flex-1 max-w-xs lg:max-w-sm xl:max-w-md"
-            @submit.prevent="submitSearch"
-          >
+            @submit.prevent="submitSearch">
             <label for="desktop-navbar-search" class="sr-only">Search listings</label>
             <div class="group flex items-center gap-3 rounded-full border border-slate-200 bg-slate-100/85 px-3 py-2 text-slate-700 shadow-sm transition duration-200 hover:border-cyan-200 hover:bg-white focus-within:border-cyan-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-cyan-100">
               <svg
@@ -45,40 +36,34 @@
                 class="h-4 w-4 shrink-0 text-cyan-600 transition group-focus-within:text-cyan-700"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
+                stroke="currentColor">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="1.8"
-                  d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
-                />
+                  d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/>
               </svg>
               <input
                 id="desktop-navbar-search"
                 v-model="searchInput"
                 type="text"
                 placeholder="Search stays, beaches, or experiences"
-                class="w-full min-w-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
-              />
+                class="w-full min-w-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"/>
               <button
                 type="submit"
-                class="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-              >
+                class="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
                 <span class="hidden lg:inline">Search</span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-4 w-4 lg:hidden"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                  stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
-                  />
+                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/>
                 </svg>
               </button>
             </div>
@@ -94,8 +79,7 @@
                     v-if="authStore.user?.avatar_url"
                     :src="authStore.user.avatar_url"
                     alt="Profile"
-                    class="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200"
-                  />
+                    class="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200"/>
                   <div
                     v-else
                     class="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold text-white ring-2 ring-slate-200">
@@ -115,6 +99,18 @@
                     Profile
                   </router-link>
                   <router-link
+                    to="/bookings"
+                    @click="desktopDropdownOpen = false"
+                    class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
+                    Bookings
+                  </router-link>
+                  <router-link
+                    to="/calendar"
+                    @click="desktopDropdownOpen = false"
+                    class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
+                    Calendar
+                  </router-link>
+                  <router-link
                     to="/favourites"
                     @click="desktopDropdownOpen = false"
                     class="block px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
@@ -123,8 +119,7 @@
                   <hr class="my-1 border-slate-100" />
                   <button
                     @click="handleLogout"
-                    class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50"
-                  >
+                    class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50">
                     Logout
                   </button>
                 </div>
@@ -163,8 +158,7 @@
         <div class="mx-auto max-w-7xl space-y-1 px-4 py-3 sm:px-6">
           <form
             class="mb-3"
-            @submit.prevent="submitSearch"
-          >
+            @submit.prevent="submitSearch">
             <label for="mobile-navbar-search" class="sr-only">Search listings</label>
             <div class="rounded-[1.6rem] border border-slate-200 bg-slate-50 p-2 shadow-sm">
               <div class="flex items-center gap-3 rounded-[1.2rem] border border-slate-200 bg-white px-3 py-3 text-slate-700 focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-100">
@@ -173,26 +167,22 @@
                   class="h-5 w-5 shrink-0 text-cyan-600"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                  stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="1.8"
-                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
-                  />
+                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/>
                 </svg>
                 <input
                   id="mobile-navbar-search"
                   v-model="searchInput"
                   type="text"
                   placeholder="Search stays, beaches, or experiences"
-                  class="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
-                />
+                  class="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"/>
                 <button
                   type="submit"
-                  class="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-                >
+                  class="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
                   Search
                 </button>
               </div>
@@ -213,26 +203,13 @@
           </router-link>
 
           <template v-if="authStore.isAuthenticated">
-            <router-link
-              to="/bookings"
-              @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
-              Bookings
-            </router-link>
-            <router-link
-              to="/calendar"
-              @click="mobileMenuOpen = false"
-              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
-              Calendar
-            </router-link>
             <hr class="border-slate-100" />
             <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">
               <img
                 v-if="authStore.user?.avatar_url"
                 :src="authStore.user.avatar_url"
                 alt="Profile"
-                class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-200 shrink-0"
-              />
+                class="h-12 w-12 rounded-full object-cover ring-2 ring-slate-200 shrink-0"/>
               <div
                 v-else
                 class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-base font-bold text-white ring-2 ring-slate-200">
@@ -248,6 +225,18 @@
               @click="mobileMenuOpen = false"
               class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
               Profile
+            </router-link>
+            <router-link
+              to="/bookings"
+              @click="mobileMenuOpen = false"
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+              Bookings
+            </router-link>
+            <router-link
+              to="/calendar"
+              @click="mobileMenuOpen = false"
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+              Calendar
             </router-link>
             <router-link
               to="/favourites"
