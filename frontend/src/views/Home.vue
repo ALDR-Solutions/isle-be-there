@@ -7,82 +7,86 @@
         <div
           v-for="(img, i) in heroImages"
           v-show="currentSlide === i"
-          :key="i"
+          :key="img"
           class="absolute inset-0 bg-cover bg-center"
-          :style="{ backgroundImage: `url(${img})` }"
-        >
-          <div class="absolute inset-0 bg-slate-950/55"></div>
+          :style="{ backgroundImage: `url(${img})` }">
+          <div class="absolute inset-0 bg-slate-950/60"></div>
           <div
-            class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"
+            class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.2),_transparent_40%)]"
           ></div>
         </div>
       </transition-group>
 
       <div
-        class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8"
-      >
+        class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
         <div class="flex max-w-3xl flex-col items-center text-center">
+          <p
+            class="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300 sm:text-sm">
+            Caribbean travel, simplified for you
+          </p>
           <h1
-            class="text-3xl font-bold leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-7xl"
-          >
-            Discover the Paradise of the Caribbean Islands
+            class="mt-5 text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
+            Plan a island adventure trip today.
           </h1>
 
           <p
-            class="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg"
-          >
-            Experience a once in a lifetime trip to the hidden gems of the
-            Caribbean with stays, adventures, and coastal escapes curated for
-            modern travelers.
+            class="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+            Search stays and experiences, then shape them into a trip that
+            feels clear from the first idea to the final booking.
           </p>
 
           <div class="mt-10 w-full max-w-4xl">
             <div
-              class="flex flex-col gap-4 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:flex-row sm:items-center"
-            >
+              class="flex flex-col gap-4 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:flex-row sm:items-center">
               <div
-                class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white"
-              >
+                class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5 shrink-0 text-cyan-300"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                  stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="1.8"
-                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
-                  />
+                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/>
                 </svg>
 
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="Search islands, stays, beaches, or experiences"
+                  placeholder="Search stays, beaches, restaurants, or tours"
                   class="w-full bg-transparent text-sm text-white placeholder:text-slate-300/80 focus:outline-none sm:text-base"
-                  @keyup.enter="submitSearch"
-                />
+                  @keyup.enter="submitSearch"/>
               </div>
 
               <div class="flex gap-3 sm:contents">
                 <button
                   type="button"
                   @click="submitSearch"
-                  class="inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4"
-                >
-                  Search
+                  class="inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4">
+                  Search stays
                 </button>
 
                 <router-link
-                  to="/itinerary"
-                  class="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4"
-                >
-                  Plan Your Trip Now
+                  :to="{ name: 'ItineraryPlanner' }"
+                  class="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4">
+                  Build itinerary
                 </router-link>
               </div>
+            </div>
+          </div>
+
+          <div class="mt-6 grid w-full gap-3 sm:grid-cols-3">
+            <div
+              v-for="item in heroHighlights"
+              :key="item.label"
+              class="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-left backdrop-blur-md">
+              <p class="text-sm font-semibold text-white">{{ item.label }}</p>
+              <p class="mt-1 text-sm leading-6 text-slate-200">
+                {{ item.text }}
+              </p>
             </div>
           </div>
         </div>
@@ -90,10 +94,13 @@
 
       <div class="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 gap-3">
         <button
-          v-for="(_, i) in heroImages"
-          :key="i"
+          v-for="(img, i) in heroImages"
+          :key="`${img}-dot`"
+          type="button"
+          :aria-label="`Show hero image ${i + 1}`"
+          :aria-pressed="currentSlide === i"
           @click="currentSlide = i"
-          class="h-3 rounded-full transition-all duration-500"
+          class="h-3 rounded-full transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:ring-offset-2 focus:ring-offset-slate-900"
           :class="
             currentSlide === i
               ? 'w-10 bg-cyan-300'
@@ -103,240 +110,278 @@
       </div>
     </section>
 
-    <section class="relative px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
+    <section class="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div
-          class="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end lg:mb-12"
-        >
+          class="mb-8 flex flex-col items-start justify-between gap-6 lg:mb-12 lg:flex-row lg:items-end">
           <div class="max-w-2xl">
             <p
-              class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
-            >
-              Featured Destinations
+              class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+              {{ discoveryEyebrow }}
             </p>
             <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-              Recommended for You
+              {{ discoveryTitle }}
             </h2>
             <p class="mt-4 text-base leading-7 text-slate-600">
-              Browse these amazing places that are tailored to your desires and
-              interests.
+              {{ discoveryBody }}
             </p>
           </div>
 
-          <div class="hidden sm:flex items-center gap-3">
+          <div class="hidden items-center gap-3 sm:flex">
             <button
+              type="button"
+              :aria-label="'Show previous listing'"
               @click="prevSlide"
               :disabled="carouselIndex === 0"
-              class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
-            >
+              class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
+                stroke="currentColor">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M15 19l-7-7 7-7"
-                />
+                  d="M15 19l-7-7 7-7"/>
               </svg>
             </button>
 
             <button
+              type="button"
+              :aria-label="'Show next listing'"
               @click="nextSlide"
               :disabled="carouselIndex >= maxIndex"
-              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
+              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
+                stroke="currentColor">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M9 5l7 7-7 7"
-                />
+                  d="M9 5l7 7-7 7"/>
               </svg>
             </button>
           </div>
         </div>
 
-        <div v-if="loading" class="flex justify-center py-20">
+        <div
+          v-if="loading"
+          class="rounded-[2rem] border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
           <svg
-            class="h-8 w-8 animate-spin text-cyan-500"
+            class="mx-auto h-8 w-8 animate-spin text-cyan-500"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
-            viewBox="0 0 24 24"
-          >
+            viewBox="0 0 24 24">
             <circle
               class="opacity-25"
               cx="12"
               cy="12"
               r="10"
               stroke="currentColor"
-              stroke-width="4"
-            />
+              stroke-width="4"/>
             <path
               class="opacity-75"
               fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
           </svg>
+          <p class="mt-4 text-sm font-medium text-slate-500">
+            Loading suggestions for you...
+          </p>
         </div>
 
         <div
           v-else-if="personalizedListings.length === 0"
-          class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-slate-500 shadow-sm"
-        >
-          No destinations available.
+          class="rounded-[2rem] border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+          <p class="text-lg font-semibold text-slate-900">
+            {{
+              listingsLoadFailed
+                ? "We couldn't load suggestions right now."
+                : "Nothing has been added here yet."
+            }}
+          </p>
+          <p class="mt-3 text-sm leading-6 text-slate-500">
+            {{
+              listingsLoadFailed
+                ? "Try again in a moment, or browse the full listings page instead."
+                : "You can still browse every available stay and experience from the listings page."
+            }}
+          </p>
+          <div class="mt-6 flex flex-wrap justify-center gap-3">
+            <button
+              v-if="listingsLoadFailed"
+              type="button"
+              @click="fetchPersonalizedListings"
+              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+              Try again
+            </button>
+            <router-link
+              :to="{ name: 'Listings' }"
+              class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+              View listings
+            </router-link>
+          </div>
         </div>
 
-        <div v-else class="relative">
+        <div v-else class="space-y-5">
           <div
-            class="overflow-hidden"
-            @touchstart.passive="onTouchStart"
-            @touchend.passive="onTouchEnd"
-          >
+            class="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div
-              ref="trackRef"
-              class="flex gap-6 transition-transform duration-500 ease-out"
-              :style="{ transform: `translateX(-${carouselOffset}px)` }"
-            >
+              class="overflow-hidden"
+              role="region"
+              aria-label="Suggested places"
+              @touchstart.passive="onTouchStart"
+              @touchend.passive="onTouchEnd">
               <div
-                v-for="listing in personalizedListings"
-                :key="listing.id"
-                class="shrink-0"
-                :style="{ width: `${cardWidth}px` }"
-              >
-                <DestinationCard :listing="listing" />
+                ref="trackRef"
+                class="flex gap-6 transition-transform duration-500 ease-out"
+                :style="{ transform: `translateX(-${carouselOffset}px)` }">
+                <div
+                  v-for="listing in personalizedListings"
+                  :key="listing.id"
+                  class="shrink-0"
+                  :style="{ width: `${cardWidth}px` }">
+                  <DestinationCard :listing="listing" />
+                </div>
               </div>
             </div>
+          </div>
+
+          <div
+            class="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>Swipe on mobile or use the arrows to move through the list.</p>
+            <router-link
+              :to="{ name: 'Listings' }"
+              class="font-semibold text-cyan-700 transition hover:text-cyan-800">
+              Browse all listings
+            </router-link>
           </div>
         </div>
       </div>
     </section>
 
-    <section
-      class="relative mx-4 overflow-hidden rounded-[2rem] sm:mx-6 lg:mx-8"
-      style="
-        background-image:
-          linear-gradient(rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.82)),
-          url(&quot;/images/bay.jpg&quot;);
-        background-size: cover;
-        background-position: center;
-      "
-    >
-      <div
-        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"
-      ></div>
+    <section class="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
+      <div class="mx-auto max-w-7xl">
+        <div class="max-w-2xl">
+          <p
+            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+            Quick paths
+          </p>
+          <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+            Start with what matters most.
+          </h2>
+          <p class="mt-4 text-base leading-7 text-slate-600">
+            Choose a direction first, then narrow your trip from there.
+          </p>
+        </div>
 
-      <div
-        class="relative mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center px-6 py-20 text-center text-white"
-      >
-        <p
-          class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300"
-        >
-          Start Exploring
-        </p>
-        <h2 class="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
-          Ready for your Caribbean adventure?
-        </h2>
-        <p class="mt-5 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
-          Join thousands of travelers discovering places to stay, local gems,
-          and unforgettable island experiences.
-        </p>
-
-        <div class="mt-10 flex flex-wrap justify-center gap-4">
+        <div class="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <router-link
-            to="/listings"
-            class="rounded-2xl bg-cyan-400 px-8 py-4 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300"
-          >
-            Explore Listings
+            v-for="shortcut in categoryShortcuts"
+            :key="shortcut.title"
+            :to="{ name: 'Listings', query: { q: shortcut.query } }"
+            class="group rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-slate-300 hover:bg-white hover:shadow-lg">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
+              {{ shortcut.eyebrow }}
+            </p>
+            <h3 class="mt-3 text-xl font-bold text-slate-900">
+              {{ shortcut.title }}
+            </h3>
+            <p class="mt-3 text-sm leading-6 text-slate-600">
+              {{ shortcut.description }}
+            </p>
+            <div
+              class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+              View options
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 transition group-hover:translate-x-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
           </router-link>
         </div>
       </div>
     </section>
 
-    <section class="px-4 py-12 sm:py-20 sm:px-6 lg:px-8">
+    <section class="px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
       <div class="mx-auto max-w-7xl">
-        <div class="mb-10 max-w-2xl">
+        <div class="max-w-2xl">
           <p
-            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
-          >
-            Popular Destinations
+            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
+            Planning
           </p>
           <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-            Find Your Perfect Caribbean Escape
+            Three simple steps.
           </h2>
+          <p class="mt-4 text-base leading-7 text-slate-600">
+            Keep the process short: find ideas, shape the route, and save what
+            you want to come back to.
+          </p>
         </div>
 
-        <div class="grid gap-6 md:grid-cols-3">
+        <div class="mt-10 grid gap-5 lg:grid-cols-3">
           <div
-            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
-          >
-            <p class="text-sm font-semibold text-slate-500">Beach Escapes</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">
-              Crystal water and quiet mornings
+            v-for="step in planningSteps"
+            :key="step.step"
+            class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div
+              class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
+              {{ step.step }}
+            </div>
+            <h3 class="mt-5 text-xl font-bold text-slate-900">
+              {{ step.title }}
             </h3>
             <p class="mt-3 text-sm leading-6 text-slate-600">
-              Discover coastlines, hidden coves, and stays built for slow island
-              days.
-            </p>
-          </div>
-
-          <div
-            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
-          >
-            <p class="text-sm font-semibold text-slate-500">Cultural Spots</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">
-              Local rhythm, food, and festivals
-            </h3>
-            <p class="mt-3 text-sm leading-6 text-slate-600">
-              Explore destinations known for history, music, and authentic local
-              experiences.
-            </p>
-          </div>
-
-          <div
-            class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
-          >
-            <p class="text-sm font-semibold text-slate-500">Nature Retreats</p>
-            <h3 class="mt-3 text-xl font-bold text-slate-900">
-              Rainforests, cliffs, and trails
-            </h3>
-            <p class="mt-3 text-sm leading-6 text-slate-600">
-              Perfect for travelers who want hiking, views, and a little more
-              adventure.
+              {{ step.description }}
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="px-4 pb-12 sm:pb-20 sm:px-6 lg:px-8">
+    <section class="px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
       <div
-        class="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10"
-      >
-        <div class="max-w-2xl">
+        class="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200"
+        :style="finalCtaStyle">
+        <div class="absolute inset-0 bg-slate-950/65"></div>
+        <div
+          class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"
+        ></div>
+
+        <div
+          class="relative mx-auto flex min-h-[360px] max-w-3xl flex-col items-center justify-center px-6 py-16 text-center text-white">
           <p
-            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600"
-          >
-            Hotels and Villas
+            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
+            Itinerary planner
           </p>
-          <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-            Most luxurious places to stay on your trip
+          <h2 class="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
+            Turn a few good ideas into a real trip plan.
           </h2>
-          <p class="mt-4 text-base leading-7 text-slate-600">
-            Explore hand-picked villas, boutique hotels, and luxury stays for an
-            elevated island experience.
+          <p class="mt-5 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+            Keep your picks in one place, map out the flow of the trip, and
+            move forward with more confidence.
           </p>
+
+          <div class="mt-8">
+            <router-link
+              :to="{ name: 'ItineraryPlanner' }"
+              class="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-8 py-4 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300">
+              Start planning
+            </router-link>
+          </div>
         </div>
       </div>
     </section>
@@ -344,67 +389,186 @@
     <InterestsModal
       v-if="showInterestsModal"
       @close="showInterestsModal = false"
-      @interests-saved="onInterestsSaved"
-    />
+      @interests-saved="onInterestsSaved"/>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  watch,
+} from "vue";
 import { useRouter } from "vue-router";
 import { listingsAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import DestinationCard from "../components/DestinationCard.vue";
-import InterestsModal from "../components/InterestsModal.vue";
+import InterestsModal from "../components/interestsModal.vue";
+import trinidadImage from "../../images/trinidad.jpg";
+import barbadosImage from "../../images/barbados.jpg";
+import caribbeanImage from "../../images/carib-bkg.jpg";
+import beachImage from "../../images/beach-bkg.jpg";
+import islandImage from "../../images/island-bkg.jpg";
 
 const authStore = useAuthStore();
 const router = useRouter();
 
 const heroImages = [
-  "/images/trinidad.jpg",
-  "/images/barbados.jpg",
-  "/images/carib-bkg.jpg",
-  "/images/beach-bkg.jpg",
-  "/images/island-bkg.jpg",
+  trinidadImage,
+  barbadosImage,
+  caribbeanImage,
+  beachImage,
+  islandImage,
+];
+
+const heroHighlights = [
+  {
+    label: "Tailored picks",
+    text: "See more relevant places once your interests are set.",
+  },
+  {
+    label: "Clear planning",
+    text: "Move from browsing to a simple itinerary without extra steps.",
+  },
+  {
+    label: "Save good options",
+    text: "Keep the places you like close while you compare them.",
+  },
+];
+
+const categoryShortcuts = [
+  {
+    eyebrow: "Stay well",
+    title: "Hotels and villas",
+    description: "Start with places to stay, from quick resort breaks to longer villa stays.",
+    query: "hotel",
+  },
+  {
+    eyebrow: "Beach days",
+    title: "Coastal stops",
+    description: "Look for beaches, nearby stays, and places that fit slower island days.",
+    query: "beach",
+  },
+  {
+    eyebrow: "Local food",
+    title: "Restaurants",
+    description: "Find places to eat when food is one of the main reasons for the trip.",
+    query: "restaurant",
+  },
+  {
+    eyebrow: "Get outside",
+    title: "Tours and activities",
+    description: "Browse guided experiences, day trips, and more active ways to spend the trip.",
+    query: "tour",
+  },
+];
+
+const planningSteps = [
+  {
+    step: "01",
+    title: "Browse a few strong options",
+    description: "Start with stays or experiences that already fit the kind of trip you want.",
+  },
+  {
+    step: "02",
+    title: "Shape the flow of the trip",
+    description: "Use the itinerary planner to turn separate ideas into a route that makes sense.",
+  },
+  {
+    step: "03",
+    title: "Save what you want to keep",
+    description: "Return to the best choices without restarting the search each time.",
+  },
 ];
 
 const currentSlide = ref(0);
 let heroInterval = null;
 
 const loading = ref(true);
+const listingsLoadFailed = ref(false);
 const personalizedListings = ref([]);
 const searchQuery = ref("");
 
 const trackRef = ref(null);
 const carouselIndex = ref(0);
 const cardWidth = ref(350);
+const visibleCards = ref(3);
 const gap = 24;
 
 const showInterestsModal = ref(false);
+let interestsPromptTimeout = null;
+let interestsPromptQueued = false;
+
+const discoveryEyebrow = computed(() =>
+  authStore.isAuthenticated ? "Tailored picks" : "Where to start",
+);
+
+const discoveryTitle = computed(() =>
+  authStore.isAuthenticated
+    ? "A short list worth opening first."
+    : "A good place to begin.",
+);
+
+const discoveryBody = computed(() =>
+  authStore.isAuthenticated
+    ? "These suggestions use your account context so the page gets you to better options faster."
+    : "Start with a small set of places to stay and things to do, then open the ones that feel right for your trip.",
+);
+
+const finalCtaStyle = computed(() => ({
+  backgroundImage: `url(${beachImage})`,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+}));
+
+const maxIndex = computed(() =>
+  Math.max(0, personalizedListings.value.length - visibleCards.value),
+);
+
+const carouselOffset = computed(
+  () => carouselIndex.value * (cardWidth.value + gap),
+);
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated, wasAuthenticated) => {
+    if (isAuthenticated !== wasAuthenticated) {
+      fetchPersonalizedListings();
+    }
+  },
+);
+
+watch(
+  () => authStore.shouldPromptForInterests,
+  (shouldPrompt) => {
+    if (!shouldPrompt || interestsPromptQueued) return;
+
+    interestsPromptQueued = true;
+    interestsPromptTimeout = window.setTimeout(() => {
+      showInterestsModal.value = true;
+    }, 700);
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
-  heroInterval = setInterval(() => {
+  heroInterval = window.setInterval(() => {
     currentSlide.value = (currentSlide.value + 1) % heroImages.length;
   }, 4000);
 
   fetchPersonalizedListings();
   window.addEventListener("resize", updateCardWidth);
   updateCardWidth();
-  maybeShowInterestsModal();
 });
 
 onUnmounted(() => {
-  clearInterval(heroInterval);
+  window.clearInterval(heroInterval);
+  window.clearTimeout(interestsPromptTimeout);
   window.removeEventListener("resize", updateCardWidth);
 });
-
-function maybeShowInterestsModal() {
-  if (authStore.shouldPromptForInterests) {
-    setTimeout(() => {
-      showInterestsModal.value = true;
-    }, 700);
-  }
-}
 
 function onInterestsSaved() {
   fetchPersonalizedListings();
@@ -413,12 +577,15 @@ function onInterestsSaved() {
 function submitSearch() {
   const q = searchQuery.value.trim();
   router.push({
-    path: "/listings",
+    name: "Listings",
     query: q ? { q } : {},
   });
 }
 
 async function fetchPersonalizedListings() {
+  loading.value = true;
+  listingsLoadFailed.value = false;
+
   try {
     if (!authStore.isAuthenticated) {
       const response = await listingsAPI.getAll({ limit: 20 });
@@ -435,9 +602,13 @@ async function fetchPersonalizedListings() {
         personalizedListings.value = response.data;
         return;
       } catch (fallbackError) {
+        listingsLoadFailed.value = true;
+        personalizedListings.value = [];
         console.error("Failed to load fallback listings", fallbackError);
       }
     } else {
+      listingsLoadFailed.value = true;
+      personalizedListings.value = [];
       console.error("Failed to load personalized listings", e);
     }
   } finally {
@@ -446,28 +617,22 @@ async function fetchPersonalizedListings() {
   }
 }
 
-function visibleCount() {
-  if (window.innerWidth <= 576) return 1;
-  if (window.innerWidth <= 1000) return 2;
+function getVisibleCount() {
+  if (window.innerWidth <= 640) return 1;
+  if (window.innerWidth <= 1080) return 2;
   return 3;
 }
 
 function updateCardWidth() {
   const containerWidth = trackRef.value?.parentElement?.offsetWidth || 900;
-  const count = visibleCount();
-  cardWidth.value = (containerWidth - gap * (count - 1)) / count;
+  const count = getVisibleCount();
+  visibleCards.value = count;
+  cardWidth.value = Math.max(0, (containerWidth - gap * (count - 1)) / count);
 
   if (carouselIndex.value > maxIndex.value) {
     carouselIndex.value = maxIndex.value;
   }
 }
-
-const maxIndex = computed(() =>
-  Math.max(0, personalizedListings.value.length - visibleCount()),
-);
-const carouselOffset = computed(
-  () => carouselIndex.value * (cardWidth.value + gap),
-);
 
 function prevSlide() {
   if (carouselIndex.value > 0) carouselIndex.value--;
