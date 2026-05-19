@@ -5,7 +5,6 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.modules.availability.service import (
@@ -14,6 +13,7 @@ from app.modules.availability.service import (
     is_available as availability_is_available,
 )
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
+from app.modules.businesses.models import BusinessType
 from app.modules.discounts.models import Discount
 from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.listings.models import Listing
@@ -21,6 +21,19 @@ from app.modules.pricing.service import calculate_display_price
 from app.modules.services.models import Service, StatusTypes
 
 from .models import Booking, BookingStatus
+
+
+def _is_hotel_service(db: Session, service: Service) -> bool:
+    """Check if a service belongs to a hotel business type."""
+    if not service.listing_id:
+        return False
+    listing = db.get(Listing, service.listing_id)
+    if not listing or not listing.business_type:
+        return False
+    business_type = db.get(BusinessType, listing.business_type)
+    if not business_type:
+        return False
+    return business_type.name.lower() == "hotel"
 
 
 def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
@@ -151,6 +164,7 @@ def price_booking_from_itinerary_item(
     itinerary_item_id: UUID,
     user_id: UUID,
     service: Service,
+    amount_of_people: int,
 ) -> dict:
     # 1. Get ItineraryItem by ID
     itinerary_item = db.get(ItineraryItem, itinerary_item_id)
@@ -167,6 +181,11 @@ def price_booking_from_itinerary_item(
     # 3. Get pricing via PricingService using the selected service
     price_info = calculate_display_price(db, service.listing_id, service.service_id)
     base_price = float(price_info.get("base_price", 0.0))
+
+    # Apply per-person pricing for non-hotel services
+    if not _is_hotel_service(db, service):
+        base_price = base_price * amount_of_people
+
     service_fee_percent = float(price_info.get("service_fee_percent", 0.0))
     service_fee_amount = base_price * service_fee_percent
     display_price = base_price + service_fee_amount
@@ -217,7 +236,10 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
 
     # If tied to an itinerary item, use itinerary-based pricing
     if booking.itinerary_item_id is not None:
-        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id, service)
+        # Use stored amount_of_people if available, otherwise default to 1
+        # (for existing bookings, base_price is already multiplied)
+        people = getattr(booking, 'amount_of_people', None) or 1
+        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id, service, people)
 
     # Use stored base_price if available, otherwise recalculate
     if booking.base_price is not None:
@@ -276,6 +298,7 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
             booking_record.itinerary_item_id,
             user_id,
             service,
+            booking.amount_of_people or 1,
         )
         # Populate price fields on the Booking object
         booking_record.base_price = price_breakdown.get("base_price")

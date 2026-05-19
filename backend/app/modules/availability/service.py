@@ -1,5 +1,7 @@
 """Service layer for availability module - CRUD and business logic."""
 
+from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime, time, date
 from uuid import UUID
 
@@ -313,7 +315,15 @@ def get_service_availability(
     # 1. Fetch Service to get listing_id
     service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
     if not service:
-        raise HTTPException(404, "Service not found")
+        # Return empty availability instead of 404 - treats deleted service as "unavailable"
+        return ServiceAvailableResponse(
+            service_id=service_id,
+            date=date.isoformat(),
+            is_available=False,
+            is_open=False,
+            slots=[],
+            closed_reason="service_not_found",
+        )
 
     # 2. Determine if hotel via is_hotel_service()
     is_hotel = is_hotel_service(db, service_id)
@@ -330,16 +340,39 @@ def get_service_availability(
         .where(ServiceSlots.day_of_week == db_day_of_week)
     ).scalars().all()
 
-    # 5. If no slots found, return is_open: False
+    # 5. If no slots found, try falling back to listing hours
     if not slots:
-        return ServiceAvailableResponse(
-            service_id=service_id,
-            date=date.isoformat(),
-            is_available=False,
-            is_open=False,
-            slots=[],
-            closed_reason="no_listing_hours",
-        )
+        # Get listing hours for this day
+        listing_hours = get_listing_hours(db, service.listing_id, db_day_of_week)
+        if listing_hours:
+            # Create virtual slot from listing hours using namedtuple
+            VirtualSlot = namedtuple('VirtualSlot', ['id', 'service_id', 'day_of_week', 'start_time', 'end_time', 'capacity', 'is_virtual'])
+            slots = [
+                VirtualSlot(
+                    id=-1,  # Virtual slot ID
+                    service_id=service_id,
+                    day_of_week=db_day_of_week,
+                    start_time=listing_hours.open_time,
+                    end_time=listing_hours.close_time,
+                    capacity=999,  # High capacity for listing-hour-based slots
+                    is_virtual=True,  # Mark as virtual slot
+                )
+            ]
+        else:
+            # No slots and no listing hours - service is available anytime (24h)
+            from datetime import time as time_class
+            VirtualSlot = namedtuple('VirtualSlot', ['id', 'service_id', 'day_of_week', 'start_time', 'end_time', 'capacity', 'is_virtual'])
+            slots = [
+                VirtualSlot(
+                    id=-1,  # Virtual slot ID
+                    service_id=service_id,
+                    day_of_week=db_day_of_week,
+                    start_time=time_class(0, 0, 0),  # 00:00:00
+                    end_time=time_class(23, 59, 59),  # 23:59:59
+                    capacity=999,  # High capacity for anytime slots
+                    is_virtual=True,
+                )
+            ]
 
     # 6. For each slot, call get_slot_remaining_capacity()
     slot_availabilities = []
@@ -347,7 +380,12 @@ def get_service_availability(
 
     for slot in slots:
         slot_date = datetime.combine(date, slot.start_time)
-        remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
+
+        # For virtual slots (from listing hours fallback), use slot capacity directly
+        if getattr(slot, 'is_virtual', False):
+            remaining = slot.capacity  # Use high capacity (999) for listing-hour-based slots
+        else:
+            remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
 
         # 7. Set is_available: for hotels remaining >= 1, for non-hotels remaining >= people
         required = 1 if is_hotel else people

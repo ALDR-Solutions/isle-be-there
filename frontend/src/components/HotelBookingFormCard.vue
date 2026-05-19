@@ -151,6 +151,10 @@ const props = defineProps({
   availability: {
     type: Object,
     default: null
+  },
+  isSelected: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -290,7 +294,7 @@ function isServiceDisabled(service) {
   return availabilityData.value.slots.every(slot => !slot.is_available)
 }
 
-// Validate the form
+// Validate the form - only require fields if item is selected
 function validate() {
   errors.service_id = ''
   errors.bookers_name = ''
@@ -299,7 +303,8 @@ function validate() {
 
   let isValid = true
 
-  if (!formData.value.service_id) {
+  // Only require service_id if item is selected for booking
+  if (props.isSelected && !formData.value.service_id) {
     errors.service_id = props.services.length === 0
       ? 'No active services are available for this hotel.'
       : 'Please choose a room or service.'

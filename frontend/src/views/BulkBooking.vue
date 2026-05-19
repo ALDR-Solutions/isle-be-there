@@ -152,6 +152,7 @@
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
               :availability="serviceAvailability[item._key]"
+              :is-selected="isItemSelected(item._key)"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
             <BookingFormCard
@@ -213,9 +214,16 @@
               <div v-for="item in selectedItems" :key="item._key" class="flex justify-between text-sm">
                 <div class="flex-1">
                   <p class="font-medium text-slate-900">{{ item.title || item.name }}</p>
-                  <p class="text-slate-500">{{ item.start_at ? new Date(item.start_at).toLocaleDateString() : (item.day_date || 'N/A') }}</p>
+                  <p class="text-slate-500">
+                    <template v-if="isHotelItem(item)">
+                      1 room × ${{ (item.estimated_cost || 0).toFixed(2) }}
+                    </template>
+                    <template v-else>
+                      ${{ (item.estimated_cost || 0).toFixed(2) }} × {{ formDataMap[item._key]?.amount_of_people || 1 }} people = ${{ ((item.estimated_cost || 0) * (formDataMap[item._key]?.amount_of_people || 1)).toFixed(2) }}
+                    </template>
+                  </p>
                 </div>
-                <p class="font-medium text-slate-900">${{ (item.estimated_cost || 0).toFixed(2) }}</p>
+                <p class="font-medium text-slate-900">${{ ((item.estimated_cost || 0) * (formDataMap[item._key]?.amount_of_people || (isHotelItem(item) ? 1 : 1))).toFixed(2) }}</p>
               </div>
             </div>
 
@@ -367,7 +375,11 @@ const selectedItems = computed(() => {
 
 // Receipt computeds
 const receiptSubtotal = computed(() => {
-  return selectedItems.value.map(i => i.estimated_cost).reduce((a, b) => a + b, 0);
+  return selectedItems.value.reduce((total, item) => {
+    const formData = formDataMap.value[item._key];
+    const people = formData?.amount_of_people || 1;
+    return total + (item.estimated_cost || 0) * people;
+  }, 0);
 });
 
 const isDiscountEligible = computed(() => {
@@ -661,10 +673,9 @@ async function openReceiptModal() {
     return;
   }
 
-  // Validate all cards first
-  const cardRefs = formCardRefs.value;
-  for (const key in cardRefs) {
-    const card = cardRefs[key];
+  // Validate only cards for selected items
+  for (const item of selectedItems.value) {
+    const card = formCardRefs.value[item._key];
     if (card && typeof card.validate === 'function') {
       if (!card.validate()) {
         toastStore.show('Please fix validation errors in the forms.', 'error');

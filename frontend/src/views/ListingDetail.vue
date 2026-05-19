@@ -468,6 +468,66 @@
       </div>
     </Teleport>
 
+    <!-- Receipt Modal - shown after validate, before API call -->
+    <Teleport to="body">
+      <div v-if="showReceiptModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+        <div class="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+          <!-- Header -->
+          <div class="rounded-t-3xl border-b border-slate-100 bg-slate-50 px-6 py-5">
+            <h2 class="text-xl font-bold text-slate-900">Booking Receipt</h2>
+          </div>
+
+          <!-- Body -->
+          <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
+            <!-- Service name -->
+            <p class="text-base font-semibold text-slate-900">{{ selectedService?.name }}</p>
+
+            <!-- Per-person or flat fee breakdown -->
+            <div class="mt-2 text-sm text-slate-500">
+              <template v-if="isHotelService">
+                <p>1 room × ${{ (selectedService?.price || 0).toFixed(2) }}</p>
+              </template>
+              <template v-else>
+                <p>${{ (selectedService?.price || 0).toFixed(2) }} × {{ bookingForm.amount_of_people || 1 }} people</p>
+              </template>
+            </div>
+
+            <!-- Final Total -->
+            <div class="mt-4 border-t border-slate-200 pt-4">
+              <div class="flex justify-between">
+                <p class="text-base font-semibold text-slate-900">Final Total</p>
+                <p class="text-xl font-bold text-cyan-600">${{ receiptSubtotal.toFixed(2) }}</p>
+              </div>
+            </div>
+
+            <!-- Error message -->
+            <div v-if="receiptError" class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">
+              {{ receiptError }}
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <button
+              type="button"
+              @click="handleBackToForm"
+              class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              @click="confirmBookingFromReceipt"
+              :disabled="confirming"
+              class="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+            >
+              {{ confirming ? 'Confirming...' : 'Confirm Booking' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -510,6 +570,11 @@ const bookingForm = reactive({
   special_requests: '',
   _selectedSlotId: '',  // internal tracking for slot selection
 });
+
+const showReceiptModal = ref(false);
+const pendingBookingData = ref(null);
+const confirming = ref(false);
+const receiptError = ref('');
 
 const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
@@ -594,6 +659,29 @@ const images = computed(() => {
 const currentImage = computed(() => {
   return images.value[currentImageIndex.value] ?? images.value[0] ?? null;
 
+});
+
+const selectedService = computed(() => {
+  if (!bookingForm.service_id) return null;
+  return bookingServices.value.find(s => String(s.service_id) === String(bookingForm.service_id)) || null;
+});
+
+const isHotelService = computed(() => {
+  if (!selectedService.value) return false;
+  const svc = selectedService.value;
+  if (svc.item_type?.toLowerCase() === 'hotel') return true;
+  if (svc.extra_metadata?.business_type_name?.toLowerCase() === 'hotel') return true;
+  return false;
+});
+
+const receiptSubtotal = computed(() => {
+  if (!selectedService.value) return 0;
+  const price = Number(selectedService.value.price) || 0;
+  const people = bookingForm.amount_of_people || 1;
+  if (isHotelService.value) {
+    return price; // flat fee per room
+  }
+  return price * people;
 });
 
 const nextImage = () => {
@@ -834,25 +922,46 @@ async function submitBooking() {
     return;
   }
 
-  bookingSubmitting.value = true;
+  // Capture booking data and show receipt modal instead of calling API
+  pendingBookingData.value = {
+    service_id: bookingForm.service_id,
+    bookers_name: bookingForm.bookers_name.trim(),
+    amount_of_people: bookingForm.amount_of_people || 1,
+    booking_from_time: bookingForm.booking_from_time,
+    booking_to_time: bookingForm.booking_to_time,
+    special_requests: bookingForm.special_requests.trim() || null,
+  };
+
+  receiptError.value = '';
+  showReceiptModal.value = true;
+}
+
+async function confirmBookingFromReceipt() {
+  if (!pendingBookingData.value) {
+    receiptError.value = 'No booking data. Please start again.';
+    return;
+  }
+
+  confirming.value = true;
+  receiptError.value = '';
   try {
-    await bookingsAPI.create({
-      service_id: bookingForm.service_id,
-      bookers_name: bookingForm.bookers_name.trim(),
-      amount_of_people: bookingForm.amount_of_people || 1,
-      booking_from_time: bookingForm.booking_from_time,
-      booking_to_time: bookingForm.booking_to_time,
-      special_requests: bookingForm.special_requests.trim() || null,
-    });
+    await bookingsAPI.create(pendingBookingData.value);
     toastStore.show('Booking created successfully.', 'success');
+    showReceiptModal.value = false;
+    pendingBookingData.value = null;
     handleCloseBooking();
     router.push({ name: 'Bookings' });
   } catch (err) {
-    bookingError.value = err.response?.data?.detail || 'Failed to create booking.';
+    receiptError.value = err.response?.data?.detail || 'Failed to confirm booking. Please try again.';
     toastStore.show('Failed to create booking.', 'error');
   } finally {
-    bookingSubmitting.value = false;
+    confirming.value = false;
   }
+}
+
+function handleBackToForm() {
+  showReceiptModal.value = false;
+  receiptError.value = '';
 }
 
 const fetchListings = async () => {
