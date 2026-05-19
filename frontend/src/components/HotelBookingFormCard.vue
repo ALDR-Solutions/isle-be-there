@@ -42,6 +42,7 @@
             v-for="service in services"
             :key="service.service_id"
             :value="service.service_id"
+            :disabled="isServiceDisabled(service)"
           >
             {{ serviceOptionLabel(service) }}
           </option>
@@ -127,7 +128,8 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { availabilityAPI } from '../services/api'
 
 const props = defineProps({
   item: {
@@ -145,6 +147,10 @@ const props = defineProps({
   servicesLoading: {
     type: Boolean,
     default: false
+  },
+  availability: {
+    type: Object,
+    default: null
   }
 })
 
@@ -157,7 +163,55 @@ const errors = reactive({
   check_out_date: ''
 })
 
+const availabilityData = ref(null)
+const disabledCheckInDates = ref([])
+
+// Selected service computed from services array
+const selectedService = computed(() => {
+  if (!formData.value.service_id) return null
+  return props.services.find(s => s.service_id === formData.value.service_id) || null
+})
+
 const formData = computed(() => props.modelValue)
+
+// Fetch availability internally when no external availability provided
+async function fetchAvailability(date) {
+  if (!date || !selectedService.value?.service_id) {
+    availabilityData.value = null
+    disabledCheckInDates.value = []
+    return
+  }
+
+  try {
+    const response = await availabilityAPI.getServiceAvailability(selectedService.value.service_id, date, 1)
+    availabilityData.value = response.data
+    disabledCheckInDates.value = response.data?.is_open ? [] : [date]
+  } catch (err) {
+    console.error('Failed to fetch availability:', err)
+    availabilityData.value = null
+    disabledCheckInDates.value = []
+  }
+}
+
+// Watch check-in date and availability prop
+watch([() => formData.value.booking_from_time, () => props.availability], ([newCheckIn, externalAvailability]) => {
+  // Use external availability from parent if provided
+  if (externalAvailability) {
+    availabilityData.value = externalAvailability
+    const checkInDate = newCheckIn?.slice(0, 10)
+    disabledCheckInDates.value = externalAvailability.is_open ? [] : [checkInDate]
+    return
+  }
+
+  if (!newCheckIn) {
+    availabilityData.value = null
+    disabledCheckInDates.value = []
+    return
+  }
+
+  const date = newCheckIn.slice(0, 10)
+  fetchAvailability(date)
+}, { immediate: true })
 
 // Format check-in date for display
 const formattedCheckIn = computed(() => {
@@ -178,6 +232,11 @@ const checkInDateValue = computed(() => {
   const datetime = formData.value.booking_from_time
   if (!datetime) return ''
   return datetime.slice(0, 10) // YYYY-MM-DD
+})
+
+// Check if selected check-in date is disabled
+const isCheckInDateDisabled = computed(() => {
+  return disabledCheckInDates.value.includes(checkInDateValue.value)
 })
 
 // Extract date part from check-out datetime string
@@ -222,6 +281,13 @@ function serviceOptionLabel(service) {
     }
   }
   return service?.name || 'Unnamed service'
+}
+
+function isServiceDisabled(service) {
+  if (!availabilityData.value?.slots) return false
+  // For hotels, the service IS the hotel service - remaining_capacity comes from the slots
+  // If no slots are available, the service is disabled
+  return availabilityData.value.slots.every(slot => !slot.is_available)
 }
 
 // Validate the form

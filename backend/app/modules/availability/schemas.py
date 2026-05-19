@@ -5,6 +5,28 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 
+class SlotAvailability(BaseModel):
+    """Individual slot availability with remaining capacity."""
+    slot_id: int
+    day_of_week: int
+    start_time: time
+    end_time: time
+    capacity: int
+    remaining_capacity: int
+    is_available: bool
+
+
+class ServiceAvailableResponse(BaseModel):
+    """Response for service availability query."""
+    service_id: UUID
+    date: str  # ISO format date
+    day_of_week: int
+    is_available: bool
+    is_open: bool
+    slots: list[SlotAvailability]
+    closed_reason: Optional[str] = None
+
+
 class ListingHoursBase(BaseModel):
     day_of_week: int = Field(ge=0, le=6, description="0=Sunday, 6=Saturday")
     open_time: time

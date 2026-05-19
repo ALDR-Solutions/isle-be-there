@@ -82,14 +82,46 @@
         />
       </label>
 
-      <!-- Time Start / End -->
+      <!-- Availability Loading/Error -->
+      <div v-if="loadingAvailability" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+        Loading availability...
+      </div>
+      <div v-else-if="availabilityError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">
+        {{ availabilityError }}
+      </div>
+
+      <!-- Slot Selector -->
+      <label v-if="availableSlots.length > 0" class="block">
+        <span class="text-sm font-semibold text-slate-700">Time slot</span>
+        <select
+          :value="selectedSlotValue"
+          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+          @change="selectSlot($event.target.value)"
+        >
+          <option value="">-- Select a time slot --</option>
+          <option
+            v-for="slot in availableSlots"
+            :key="slot.slot_id"
+            :value="slot.slot_id"
+            :disabled="slot.remaining_capacity < people"
+          >
+            {{ formatSlotTime(slot.start_time) }} - {{ formatSlotTime(slot.end_time) }}
+            <span v-if="slot.remaining_capacity < people">({{ slot.remaining_capacity }} left - not enough for {{ people }} people)</span>
+            <span v-else>({{ slot.remaining_capacity }} spots left)</span>
+          </option>
+        </select>
+      </label>
+
+      <!-- Time Start / End (driven by selected slot) -->
       <div class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="text-sm font-semibold text-slate-700">Time start</span>
           <input
             :value="timeStartValue"
             type="time"
+            :readonly="!!selectedSlotValue"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+            :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotValue }"
             @input="updateTimeStartField($event.target.value)"
           />
         </label>
@@ -98,7 +130,9 @@
           <input
             :value="timeEndValue"
             type="time"
+            :readonly="!!selectedSlotValue"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+            :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotValue }"
             @input="updateTimeEndField($event.target.value)"
           />
         </label>
@@ -132,7 +166,8 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { availabilityAPI } from '../services/api'
 
 const props = defineProps({
   item: {
@@ -150,6 +185,10 @@ const props = defineProps({
   servicesLoading: {
     type: Boolean,
     default: false
+  },
+  availability: {
+    type: Object,
+    default: null
   }
 })
 
@@ -160,7 +199,93 @@ const errors = reactive({
   bookers_name: ''
 })
 
+// Availability state
+const availabilityData = ref(null)
+const availableSlots = ref([])
+const disabledDates = ref([])
+const loadingAvailability = ref(false)
+const availabilityError = ref(null)
+
+// Must be declared BEFORE computed properties that use it (TDZ-safe)
 const formData = computed(() => props.modelValue)
+
+// Selected service computed from services array
+const selectedService = computed(() => {
+  if (!formData.value.service_id) return null
+  return props.services.find(s => s.service_id === formData.value.service_id) || null
+})
+
+// Selected date from booking_from_time
+const selectedDate = computed(() => {
+  const datetime = formData.value.booking_from_time
+  if (!datetime) return ''
+  return datetime.slice(0, 10) // YYYY-MM-DD
+})
+
+// Number of people
+const people = computed(() => formData.value.amount_of_people || 1)
+
+// Watch selectedDate and availability prop
+watch([selectedDate, () => props.availability], async ([newDate, externalAvailability]) => {
+  // Use external availability from parent if provided
+  if (externalAvailability) {
+    availabilityData.value = externalAvailability
+    if (externalAvailability?.slots) {
+      availableSlots.value = externalAvailability.slots.filter(slot => slot.is_available)
+    } else {
+      availableSlots.value = []
+    }
+    if (externalAvailability?.disabled_dates) {
+      disabledDates.value = externalAvailability.disabled_dates
+    } else {
+      disabledDates.value = []
+    }
+    loadingAvailability.value = false
+    availabilityError.value = null
+    return
+  }
+
+  // Fall back to internal fetching
+  if (!selectedService.value || !newDate) {
+    availabilityData.value = null
+    availableSlots.value = []
+    disabledDates.value = []
+    return
+  }
+
+  loadingAvailability.value = true
+  availabilityError.value = null
+
+  try {
+    const response = await availabilityAPI.getServiceAvailability(
+      selectedService.value.service_id,
+      newDate,
+      people.value
+    )
+    availabilityData.value = response.data
+
+    // Extract available slots from response
+    if (response.data?.slots) {
+      availableSlots.value = response.data.slots.filter(slot => slot.is_available)
+    } else {
+      availableSlots.value = []
+    }
+
+    // Extract disabled dates if provided
+    if (response.data?.disabled_dates) {
+      disabledDates.value = response.data.disabled_dates
+    } else {
+      disabledDates.value = []
+    }
+  } catch (err) {
+    availabilityError.value = 'Unable to load availability. Please try again.'
+    availabilityData.value = null
+    availableSlots.value = []
+    disabledDates.value = []
+  } finally {
+    loadingAvailability.value = false
+  }
+}, { immediate: true })
 
 // Extract date part from datetime string
 const dateValue = computed(() => {
@@ -169,18 +294,35 @@ const dateValue = computed(() => {
   return datetime.slice(0, 10) // YYYY-MM-DD
 })
 
+// Shared helper to extract HH:MM from time or datetime string
+// Handles both "09:00:00" (Python time object) and "2026-05-18T09:00:00" (full datetime)
+function extractTime(timeStr) {
+  if (!timeStr) return ''
+  return timeStr.length > 5 ? timeStr.slice(11, 16) : timeStr.slice(0, 5)
+}
+
 // Extract time part from datetime string for start time
+// Priority: selected slot's start_time > formData booking_from_time
 const timeStartValue = computed(() => {
-  const datetime = formData.value.booking_from_time
-  if (!datetime) return ''
-  return datetime.slice(11, 16) // HH:MM
+  // If a slot is selected, use the slot's start time
+  const slot = availableSlots.value.find(s => s.slot_id === selectedSlotValue.value)
+  if (slot?.start_time) {
+    return extractTime(slot.start_time)
+  }
+  // Fall back to formData
+  return extractTime(formData.value.booking_from_time)
 })
 
 // Extract time part from datetime string for end time
+// Priority: selected slot's end_time > formData booking_to_time
 const timeEndValue = computed(() => {
-  const datetime = formData.value.booking_to_time
-  if (!datetime) return ''
-  return datetime.slice(11, 16) // HH:MM
+  // If a slot is selected, use the slot's end time
+  const slot = availableSlots.value.find(s => s.slot_id === selectedSlotValue.value)
+  if (slot?.end_time) {
+    return extractTime(slot.end_time)
+  }
+  // Fall back to formData
+  return extractTime(formData.value.booking_to_time)
 })
 
 // Business type badge classes
@@ -233,6 +375,32 @@ function updateTimeEndField(time) {
     booking_to_time: currentDate && time ? `${currentDate}T${time}:00` : null
   })
 }
+
+function formatSlotTime(time) {
+  if (!time) return ''
+  // Handle datetime or time string
+  return time.length > 5 ? time.slice(11, 16) : time // HH:MM from datetime or time
+}
+
+function selectSlot(slotId) {
+  const slot = availableSlots.value.find(s => s.slot_id === slotId)
+  if (!slot) return
+  const date = dateValue.value
+  emit('update:modelValue', {
+    ...formData.value,
+    booking_from_time: date ? `${date}T${formatSlotTime(slot.start_time)}:00` : null,
+    booking_to_time: date ? `${date}T${formatSlotTime(slot.end_time)}:00` : null
+  })
+}
+
+const selectedSlotValue = computed(() => {
+  const from = formData.value.booking_from_time
+  if (!from) return ''
+  // Find matching slot based on time
+  const startTime = from.slice(11, 16)
+  const slot = availableSlots.value.find(s => s.start_time?.slice(11, 16) === startTime)
+  return slot?.slot_id || ''
+})
 
 function serviceOptionLabel(service) {
   if (service?.price !== null && service?.price !== undefined) {

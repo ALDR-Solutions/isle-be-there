@@ -239,6 +239,9 @@ export const availabilityAPI = {
   getServiceSlots: (serviceId) => api.get(`/api/availability/services/${serviceId}/slots`),
   createServiceSlot: (serviceId, data) => api.post(`/api/availability/services/${serviceId}/slots`, data),
   deleteServiceSlot: (serviceId, slotId) => api.delete(`/api/availability/services/${serviceId}/slots/${slotId}`),
+  // Service Availability
+  getServiceAvailability: (serviceId, date, people = 1) =>
+    api.get(`/api/availability/services/${serviceId}/available`, { params: { date_param: date, people } }),
 };
 
 export default api;

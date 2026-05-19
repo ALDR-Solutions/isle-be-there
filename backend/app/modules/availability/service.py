@@ -1,6 +1,6 @@
 """Service layer for availability module - CRUD and business logic."""
 
-from datetime import datetime, time
+from datetime import datetime, time, date
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -15,8 +15,11 @@ from app.modules.availability.schemas import (
     ServiceSlotsCreate,
     ServiceSlotsUpdate,
     ServiceSlotsResponse,
+    ServiceAvailableResponse,
+    SlotAvailability,
 )
 from app.modules.bookings.models import Booking, BookingStatus
+from app.modules.businesses.models import BusinessType
 from app.modules.listings.models import Listing
 from app.modules.services.models import Service
 
@@ -263,3 +266,116 @@ def is_available(
 ) -> bool:
     """Check if service is available for requested quantity."""
     return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity
+
+
+# ============================================================================
+# Hotel Service Detection
+# ============================================================================
+
+
+def is_hotel_service(db: Session, service_id: UUID) -> bool:
+    """
+    Traverse Service → Listing → BusinessType to determine if this is a hotel service.
+    Returns True if BusinessType.name contains 'hotel' (case-insensitive).
+    """
+    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    if not service or not service.listing_id:
+        return False
+
+    listing = db.exec(select(Listing).where(Listing.id == service.listing_id)).scalars().first()
+    if not listing or not listing.business_type:
+        return False
+
+    business_type = db.exec(select(BusinessType).where(BusinessType.id == listing.business_type)).scalars().first()
+    if not business_type or not business_type.name:
+        return False
+
+    return "hotel" in business_type.name.lower()
+
+
+# ============================================================================
+# Service Availability Query
+# ============================================================================
+
+
+def get_service_availability(
+    db: Session,
+    service_id: UUID,
+    date: date,
+    people: int,
+) -> ServiceAvailableResponse:
+    """
+    Get availability for a service on a specific date for a party size.
+    Returns is_open=False with closed_reason='no_listing_hours' if no slots found.
+    For hotels, checks remaining >= 1; for non-hotels, checks remaining >= people.
+    If all slots are unavailable, sets closed_reason='fully_booked'.
+    """
+    # 1. Fetch Service to get listing_id
+    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    if not service:
+        raise HTTPException(404, "Service not found")
+
+    # 2. Determine if hotel via is_hotel_service()
+    is_hotel = is_hotel_service(db, service_id)
+
+    # 3. Get day-of-week from date (Python: 0=Monday, 6=Sunday; DB: 0=Sunday, 6=Saturday)
+    # Convert: Python weekday() returns 0=Monday, DB wants 0=Sunday
+    python_weekday = date.weekday()
+    db_day_of_week = (python_weekday + 1) % 7  # Convert Monday-based to Sunday-based
+
+    # 4. Fetch ServiceSlots for that service + day-of-week
+    slots = db.exec(
+        select(ServiceSlots)
+        .where(ServiceSlots.service_id == service_id)
+        .where(ServiceSlots.day_of_week == db_day_of_week)
+    ).scalars().all()
+
+    # 5. If no slots found, return is_open: False
+    if not slots:
+        return ServiceAvailableResponse(
+            service_id=service_id,
+            date=date.isoformat(),
+            is_available=False,
+            is_open=False,
+            slots=[],
+            closed_reason="no_listing_hours",
+        )
+
+    # 6. For each slot, call get_slot_remaining_capacity()
+    slot_availabilities = []
+    all_unavailable = True
+
+    for slot in slots:
+        slot_date = datetime.combine(date, slot.start_time)
+        remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
+
+        # 7. Set is_available: for hotels remaining >= 1, for non-hotels remaining >= people
+        required = 1 if is_hotel else people
+        is_available = remaining >= required
+
+        if is_available:
+            all_unavailable = False
+
+        slot_availabilities.append(SlotAvailability(
+            slot_id=slot.id,
+            day_of_week=db_day_of_week,
+            start_time=slot.start_time,
+            end_time=slot.end_time,
+            capacity=slot.capacity,
+            remaining_capacity=remaining,
+            is_available=is_available,
+        ))
+
+    # 8. If ALL slots have is_available: false, set closed_reason: 'fully_booked'
+    closed_reason = "fully_booked" if all_unavailable else None
+
+    # 9. Return ServiceAvailableResponse
+    return ServiceAvailableResponse(
+        service_id=service_id,
+        date=date.isoformat(),
+        day_of_week=db_day_of_week,
+        is_available=not all_unavailable,
+        is_open=not all_unavailable,
+        slots=slot_availabilities,
+        closed_reason=closed_reason,
+    )

@@ -151,6 +151,7 @@
               :modelValue="formDataMap[item._key]"
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
+              :availability="serviceAvailability[item._key]"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
             <BookingFormCard
@@ -160,6 +161,7 @@
               :modelValue="formDataMap[item._key]"
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
+              :availability="serviceAvailability[item._key]"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
           </div>
@@ -287,7 +289,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI } from '../services/api';
+import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI, availabilityAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import BookingFormCard from '../components/BookingFormCard.vue';
@@ -312,6 +314,7 @@ const receiptDiscountLoading = ref(false);
 const selectedItemsIds = ref(new Set());
 const servicesByListing = ref({});
 const servicesLoadingByListing = ref({});
+const serviceAvailability = ref({});
 
 // Selection helpers
 function isItemSelected(key) {
@@ -772,6 +775,41 @@ async function handleConfirmBooking() {
 function goBack() {
   router.back();
 }
+
+// Fetch availability when service or date changes for an item
+async function fetchAvailabilityForItem(itemKey, serviceId, date, people) {
+  if (!serviceId || !date) {
+    serviceAvailability.value[itemKey] = null;
+    return;
+  }
+
+  try {
+    const response = await availabilityAPI.getServiceAvailability(serviceId, date, people);
+    serviceAvailability.value[itemKey] = response.data;
+  } catch (err) {
+    console.error(`Failed to fetch availability for ${itemKey}:`, err);
+    serviceAvailability.value[itemKey] = null;
+  }
+}
+
+// Watch for service_id and date changes to fetch availability
+watch(
+  formDataMap,
+  (newMap) => {
+    for (const [itemKey, formData] of Object.entries(newMap)) {
+      const item = bookableItems.value.find(i => i._key === itemKey);
+      if (!item) continue;
+
+      const serviceId = formData?.service_id;
+      const date = formData?.booking_from_time?.slice(0, 10);
+      const people = formData?.amount_of_people || 1;
+
+      // Debounce or immediate fetch - use a timeout to avoid duplicate fetches
+      fetchAvailabilityForItem(itemKey, serviceId, date, people);
+    }
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   fetchItinerary();

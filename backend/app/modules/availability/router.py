@@ -1,8 +1,9 @@
 """Router for availability module."""
 
+from datetime import date as date_class
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from app.infrastructure.database.session import get_db
@@ -11,11 +12,13 @@ from .schemas import (
     ListingHoursCreate,
     ListingHoursResponse,
     ListingHoursUpdate,
+    ServiceAvailableResponse,
     ServiceSlotsCreate,
     ServiceSlotsResponse,
     ServiceSlotsUpdate,
 )
 from . import service as availability_service
+from .service import get_service_availability
 
 router = APIRouter(prefix="/api/availability", tags=["availability"])
 
@@ -101,3 +104,26 @@ def delete_service_slot(
 ):
     """Delete a service slot."""
     availability_service.delete_service_slot(db, slot_id)
+
+
+# ============================================================================
+# Service Availability Endpoint
+# ============================================================================
+
+
+@router.get("/services/{service_id}/available", response_model=ServiceAvailableResponse)
+def get_service_availability_endpoint(
+    service_id: UUID,
+    date_param: date_class = Query(..., description="Date in YYYY-MM-DD format"),
+    people: int = Query(1, ge=1, description="Number of people"),
+    db: Session = Depends(get_db),
+):
+    """Get service availability for a specific date and party size."""
+    if date_param < date_class.today():
+        raise HTTPException(400, "Date cannot be in the past")
+    try:
+        return get_service_availability(db, service_id, date_param, people)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(404, "Service not found")
