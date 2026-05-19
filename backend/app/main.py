@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,6 +24,7 @@ from app.modules.pricing.router import router as pricing_router
 from app.modules.discounts.router import router as discounts_router
 from app.modules.itineraries.router import router as itineraries_router
 from app.modules.bookings.router import router as bookings_router
+from app.modules.bookings.scheduler import init_scheduler
 from app.modules.businesses.router import router as businesses_router
 from app.modules.users.models import User
 from app.modules.favourites.router import router as favourites_router
@@ -41,10 +43,23 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup/shutdown events."""
+    # Startup: initialize scheduler
+    init_scheduler()
+    yield
+    # Shutdown: shut down scheduler gracefully
+    from app.modules.bookings.scheduler import scheduler
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+
+
 app = FastAPI(
     title="Isle Be There API",
     description="Travel platform API with AI recommendations",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 

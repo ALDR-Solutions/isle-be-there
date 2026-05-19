@@ -372,3 +372,42 @@ def is_available(
     requested_quantity: int = 1,
 ) -> bool:
     return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity
+
+
+def update_expired_bookings(db: Session) -> dict:
+    """
+    Update booking statuses based on booking_to_time expiration.
+
+    - approved -> completed when booking_to_time < now()
+    - pending -> cancelled when booking_to_time < now()
+    - Skips bookings with NULL booking_to_time
+    """
+    now = datetime.utcnow()
+
+    # Update approved bookings to completed
+    expired_approved = db.exec(
+        select(Booking)
+        .where(Booking.status == BookingStatus.approved)
+        .where(Booking.booking_to_time.isnot(None))
+        .where(Booking.booking_to_time < now)
+    ).all()
+    for booking in expired_approved:
+        booking.status = BookingStatus.completed
+    if expired_approved:
+        db.commit()
+    approved_count = len(expired_approved)
+
+    # Update pending bookings to cancelled
+    expired_pending = db.exec(
+        select(Booking)
+        .where(Booking.status == BookingStatus.pending)
+        .where(Booking.booking_to_time.isnot(None))
+        .where(Booking.booking_to_time < now)
+    ).all()
+    for booking in expired_pending:
+        booking.status = BookingStatus.cancelled
+    if expired_pending:
+        db.commit()
+    pending_count = len(expired_pending)
+
+    return {"completed": approved_count, "cancelled": pending_count}
