@@ -362,28 +362,78 @@
               </label>
             </div>
 
-            <div v-else class="grid gap-5 md:grid-cols-2">
+            <div v-else>
+              <!-- Date picker -->
               <label class="block">
-                <span class="text-sm font-semibold text-slate-700">
-                  Booking start <span class="text-red-500">*</span>
-                </span>
+                <span class="text-sm font-semibold text-slate-700">Date</span>
                 <input
-                  v-model="bookingForm.booking_from_time"
-                  type="datetime-local"
+                  :value="bookingDateValue"
+                  type="date"
                   class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  @input="updateBookingDate($event.target.value)"
                 />
               </label>
 
-              <label class="block">
-                <span class="text-sm font-semibold text-slate-700">
-                  Booking end <span class="text-red-500">*</span>
-                </span>
-                <input
-                  v-model="bookingForm.booking_to_time"
-                  type="datetime-local"
+              <!-- Availability loading/error -->
+              <div v-if="bookingLoadingAvailability" class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Loading availability...
+              </div>
+              <div v-else-if="bookingAvailabilityError" class="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">
+                {{ bookingAvailabilityError }}
+              </div>
+
+              <!-- Slot Selector -->
+              <label v-if="bookingAvailableSlots.length > 0" class="block mt-3">
+                <span class="text-sm font-semibold text-slate-700">Time slot</span>
+                <select
+                  :value="selectedSlotIdValue"
                   class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                />
+                  @change="selectBookingSlot($event.target.value)"
+                >
+                  <option value="">-- Select a time slot --</option>
+                  <option
+                    v-for="slot in bookingAvailableSlots"
+                    :key="slot.slot_id"
+                    :value="String(slot.slot_id)"
+                    :disabled="slot.remaining_capacity < (bookingForm.amount_of_people || 1)"
+                  >
+                    {{ formatSlotTime(slot.start_time) }} - {{ formatSlotTime(slot.end_time) }}
+                    <span v-if="slot.remaining_capacity < (bookingForm.amount_of_people || 1)">
+                      ({{ slot.remaining_capacity }} left - not enough for {{ bookingForm.amount_of_people || 1 }} people)
+                    </span>
+                    <span v-else>
+                      ({{ slot.remaining_capacity }} spots left)
+                    </span>
+                  </option>
+                </select>
               </label>
+
+              <!-- Booking start / end driven by slot -->
+              <div class="grid gap-5 md:grid-cols-2 mt-3">
+                <label class="block">
+                  <span class="text-sm font-semibold text-slate-700">Booking start</span>
+                  <input
+                    :value="bookingFromTimeDisplay"
+                    type="datetime-local"
+                    :readonly="!!selectedSlotIdValue"
+                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotIdValue }"
+                    @input="bookingForm.booking_from_time = $event.target.value; bookingForm._selectedSlotId = ''"
+                  />
+                </label>
+
+                <label class="block">
+                  <span class="text-sm font-semibold text-slate-700">Booking end</span>
+                  <input
+                    :value="bookingToTimeDisplay"
+                    type="datetime-local"
+                    :readonly="!!selectedSlotIdValue"
+                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotIdValue }"
+                    @input="bookingForm.booking_to_time = $event.target.value; bookingForm._selectedSlotId = ''"
+                  />
+                </label>
+              </div>
             </div>
 
             <label class="block">
@@ -422,9 +472,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue';
+import { ref, computed, onMounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI } from '../services/api';
+import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
@@ -444,6 +494,10 @@ const bookingServices = ref([]);
 const bookingServicesLoading = ref(false);
 const bookingSubmitting = ref(false);
 const bookingError = ref('');
+const bookingAvailability = ref(null);
+const bookingAvailableSlots = ref([]);
+const bookingLoadingAvailability = ref(false);
+const bookingAvailabilityError = ref('');
 const currentImageIndex = ref(0);
 const brokenImages = ref(new Set());
 let heroInterval = null;
@@ -454,6 +508,7 @@ const bookingForm = reactive({
   booking_from_time: '',
   booking_to_time: '',
   special_requests: '',
+  _selectedSlotId: '',  // internal tracking for slot selection
 });
 
 const detailsComponent = computed(() => {
@@ -468,7 +523,37 @@ const detailsComponent = computed(() => {
 
 const isHotelType = computed(() => listing.value?.business_type_name === 'Hotel')
 const hotelCheckInDate = computed(() => bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : '')
+
+const selectedSlot = computed(() => {
+  if (!bookingForm._selectedSlotId) return null
+  return bookingAvailableSlots.value.find(s => String(s.slot_id) === String(bookingForm._selectedSlotId)) || null
+})
+
+const bookingFromTimeDisplay = computed(() => {
+  if (selectedSlot.value?.start_time) {
+    const date = bookingForm.booking_from_time?.slice(0, 10) || ''
+    const time = String(selectedSlot.value.start_time).slice(0, 5) // "09:00"
+    return date && time ? buildLocalDateTime(date, time) : ''
+  }
+  return bookingForm.booking_from_time
+})
+
+const bookingToTimeDisplay = computed(() => {
+  if (selectedSlot.value?.end_time) {
+    const date = bookingForm.booking_to_time?.slice(0, 10) || ''
+    const time = String(selectedSlot.value.end_time).slice(0, 5) // "10:00"
+    return date && time ? buildLocalDateTime(date, time) : ''
+  }
+  return bookingForm.booking_to_time
+})
+
 const hotelCheckOutDate = computed(() => bookingForm.booking_to_time ? bookingForm.booking_to_time.slice(0, 10) : '')
+
+const bookingDateValue = computed(() => {
+  return bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : ''
+})
+
+const selectedSlotIdValue = computed(() => bookingForm._selectedSlotId || '')
 
 const mapCoordinates = computed(() => {
   const lat = Number(listing.value?.location?.lat)
@@ -565,7 +650,11 @@ function resetBookingForm() {
   bookingForm.booking_from_time = '';
   bookingForm.booking_to_time = '';
   bookingForm.special_requests = '';
+  bookingForm._selectedSlotId = '';
   bookingError.value = '';
+  bookingAvailability.value = null;
+  bookingAvailableSlots.value = [];
+  bookingAvailabilityError.value = '';
 }
 
 function applySingleServiceDefault() {
@@ -637,6 +726,74 @@ function bookingServiceLabel(service) {
   return service?.name || 'Unnamed service';
 }
 
+function buildLocalDateTime(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return ''
+  // timeStr is "HH:MM" or "HH:MM:SS"
+  const timeOnly = timeStr.length > 5 ? timeStr.slice(0, 5) : timeStr
+  // Parse as local time by constructing YYYY-MM-DDTHH:MM explicitly as local
+  // This avoids the browser interpreting "T09:00" as UTC
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hour, minute] = timeOnly.split(':').map(Number)
+  const d = new Date(year, month - 1, day, hour, minute, 0, 0)
+  // Format as YYYY-MM-DDTHH:MM using local timezone
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function formatSlotTime(time) {
+  if (!time) return ''
+  // time is a string like "09:00:00" (Python time object serialized) or "2026-05-18T09:00:00"
+  // Find the first ':' to locate the time portion
+  const firstColon = time.indexOf(':')
+  if (firstColon === -1) return ''
+  // e.g. "09:00:00" → firstColon=2, extract slice(0,5) = "09:00"
+  // e.g. "2026-05-18T09:00:00" → firstColon=11, extract slice(11,16) = "09:00"
+  return time.slice(Math.max(0, firstColon - 2), firstColon + 3)
+}
+
+function selectBookingSlot(slotId) {
+  bookingForm._selectedSlotId = slotId
+  const slot = bookingAvailableSlots.value.find(s => String(s.slot_id) === String(slotId))
+  if (!slot) return
+  const date = bookingDateValue.value
+  // slot.start_time / slot.end_time are Python time objects serialized as "HH:MM:SS" strings
+  // e.g. "09:00:00" → extract HH:MM = "09:00"
+  const start = slot.start_time ? String(slot.start_time).slice(0, 5) : ''
+  const end = slot.end_time ? String(slot.end_time).slice(0, 5) : ''
+  bookingForm.booking_from_time = date && start ? buildLocalDateTime(date, start) : bookingForm.booking_from_time
+  bookingForm.booking_to_time = date && end ? buildLocalDateTime(date, end) : bookingForm.booking_to_time
+}
+
+function updateBookingDate(date) {
+  bookingForm.booking_from_time = date ? `${date}T09:00:00` : ''
+  bookingForm.booking_to_time = date ? `${date}T10:00:00` : ''
+  bookingForm._selectedSlotId = ''
+  bookingAvailableSlots.value = []
+}
+
+async function fetchBookingAvailability() {
+  const serviceId = bookingForm.service_id
+  const date = bookingDateValue.value
+  const people = bookingForm.amount_of_people || 1
+  if (!serviceId || !date || isHotelType.value) {
+    bookingAvailability.value = null
+    bookingAvailableSlots.value = []
+    return
+  }
+  bookingLoadingAvailability.value = true
+  bookingAvailabilityError.value = ''
+  try {
+    const response = await availabilityAPI.getServiceAvailability(serviceId, date, people)
+    bookingAvailability.value = response.data
+    bookingAvailableSlots.value = (response.data?.slots || []).filter(s => s.is_available)
+  } catch (err) {
+    bookingAvailabilityError.value = 'Unable to load availability. Please try again.'
+    bookingAvailableSlots.value = []
+  } finally {
+    bookingLoadingAvailability.value = false
+  }
+}
+
 function validateListingBooking() {
   bookingError.value = '';
 
@@ -683,8 +840,8 @@ async function submitBooking() {
       service_id: bookingForm.service_id,
       bookers_name: bookingForm.bookers_name.trim(),
       amount_of_people: bookingForm.amount_of_people || 1,
-      booking_from_time: new Date(bookingForm.booking_from_time).toISOString(),
-      booking_to_time: new Date(bookingForm.booking_to_time).toISOString(),
+      booking_from_time: bookingForm.booking_from_time,
+      booking_to_time: bookingForm.booking_to_time,
       special_requests: bookingForm.special_requests.trim() || null,
     });
     toastStore.show('Booking created successfully.', 'success');
@@ -725,6 +882,15 @@ const handleImageError = (event) => {
 
 const reviewAuthorLabel = () => 'Guest';
 const reviewAuthorInitial = () => 'G';
+
+watch(
+  [() => bookingForm.service_id, () => bookingForm.booking_from_time, () => bookingForm.amount_of_people],
+  () => {
+    if (!isHotelType.value) {
+      fetchBookingAvailability()
+    }
+  }
+);
 
 onMounted(() => {
   fetchListings();

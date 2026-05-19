@@ -8,6 +8,11 @@ from fastapi import HTTPException
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
+from app.modules.availability.service import (
+    get_available_slots as availability_get_available_slots,
+    get_booked_count as availability_get_booked_count,
+    is_available as availability_is_available,
+)
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
 from app.modules.discounts.models import Discount
 from app.modules.itineraries.models import Itinerary, ItineraryItem
@@ -337,19 +342,7 @@ def get_booked_count(
     end_dt: datetime,
 ) -> int:
     """Count confirmed bookings that overlap the requested window."""
-    result = db.exec(
-        select(func.coalesce(func.sum(Booking.amount_of_people), 0))
-        .where(Booking.service_id == service_id)
-        .where(col(Booking.status).notin_([
-            BookingStatus.cancelled,
-            BookingStatus.pending,
-        ]))
-        # Overlap condition: existing booking starts before our end
-        # AND ends after our start
-        .where(Booking.booking_from_time < end_dt)
-        .where(Booking.booking_to_time > start_dt)
-    ).one()
-    return int(result or 0)
+    return availability_get_booked_count(db, service_id, start_dt, end_dt)
 
 
 def get_available_slots(
@@ -359,8 +352,8 @@ def get_available_slots(
     start_dt: datetime,
     end_dt: datetime,
 ) -> int:
-    booked = get_booked_count(db, service_id, start_dt, end_dt)
-    return max(0, capacity - booked)
+    """Calculate available slots (capacity minus booked)."""
+    return availability_get_available_slots(db, service_id, capacity, start_dt, end_dt)
 
 
 def is_available(
@@ -371,7 +364,8 @@ def is_available(
     end_dt: datetime,
     requested_quantity: int = 1,
 ) -> bool:
-    return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity
+    """Check if service is available for requested quantity."""
+    return availability_is_available(db, service_id, capacity, start_dt, end_dt, requested_quantity)
 
 
 def update_expired_bookings(db: Session) -> dict:
