@@ -5,7 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, select, update
 
 from app.modules.availability.service import (
     get_available_slots as availability_get_available_slots,
@@ -397,34 +397,32 @@ def update_expired_bookings(db: Session) -> dict:
 
     - approved -> completed when booking_to_time < now()
     - pending -> cancelled when booking_to_time < now()
-    - Skips bookings with NULL booking_to_time
+    - Uses bulk SQL UPDATE for efficiency (no Python loops)
     """
     now = datetime.utcnow()
 
-    # Update approved bookings to completed
-    expired_approved = db.exec(
-        select(Booking)
+    # Bulk update approved bookings to completed
+    approved_result = db.exec(
+        update(Booking)
         .where(Booking.status == BookingStatus.approved)
         .where(Booking.booking_to_time.isnot(None))
         .where(Booking.booking_to_time < now)
-    ).all()
-    for booking in expired_approved:
-        booking.status = BookingStatus.completed
-    if expired_approved:
-        db.commit()
-    approved_count = len(expired_approved)
+        .values(status=BookingStatus.completed)
+    )
+    approved_count = approved_result.rowcount
 
-    # Update pending bookings to cancelled
-    expired_pending = db.exec(
-        select(Booking)
+    # Bulk update pending bookings to cancelled
+    pending_result = db.exec(
+        update(Booking)
         .where(Booking.status == BookingStatus.pending)
         .where(Booking.booking_to_time.isnot(None))
         .where(Booking.booking_to_time < now)
-    ).all()
-    for booking in expired_pending:
-        booking.status = BookingStatus.cancelled
-    if expired_pending:
+        .values(status=BookingStatus.cancelled)
+    )
+    pending_count = pending_result.rowcount
+
+    # Single commit for both bulk updates
+    if approved_count or pending_count:
         db.commit()
-    pending_count = len(expired_pending)
 
     return {"completed": approved_count, "cancelled": pending_count}
