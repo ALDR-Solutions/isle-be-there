@@ -114,6 +114,7 @@ export const bookingsAPI = {
   createBulk: (data) => api.post("/api/bookings/bulk", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
+  delete: (id) => api.delete(`/api/bookings/${id}`),
 };
 
 export const itinerariesAPI = {

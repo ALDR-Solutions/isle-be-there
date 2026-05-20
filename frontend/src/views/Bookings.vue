@@ -179,6 +179,33 @@
           >
             Cancel
           </button>
+          <template v-else-if="normalizedStatus(booking.status) === 'cancelled'">
+            <template v-if="confirmingDelete === booking.id">
+              <span class="flex items-center gap-2 text-sm text-slate-500">
+                Delete?
+                <button
+                  @click="deleteBooking(booking.id)"
+                  :disabled="deleting"
+                  class="font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                >
+                  Yes
+                </button>
+                <button
+                  @click="confirmingDelete = null"
+                  class="font-semibold text-slate-600 hover:text-slate-800"
+                >
+                  No
+                </button>
+              </span>
+            </template>
+            <button
+              v-else
+              @click="confirmingDelete = booking.id"
+              class="shrink-0 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              Delete
+            </button>
+          </template>
         </div>
       </article>
     </div>
@@ -250,6 +277,8 @@ const bookings = ref([]);
 const loading = ref(true);
 const cancelling = ref(false);
 const bookingToCancel = ref(null);
+const confirmingDelete = ref(null);
+const deleting = ref(false);
 const error = ref("");
 
 async function fetchBookings() {
@@ -283,6 +312,21 @@ async function confirmCancelBooking() {
     toastStore.show("Failed to cancel booking.", "error");
   } finally {
     cancelling.value = false;
+  }
+}
+
+async function deleteBooking(id) {
+  deleting.value = true;
+  confirmingDelete.value = null;
+
+  try {
+    await bookingsAPI.delete(id);
+    bookings.value = bookings.value.filter((b) => b.id !== id);
+    toastStore.show("Booking deleted successfully.", "success");
+  } catch (err) {
+    toastStore.show("Failed to delete booking.", "error");
+  } finally {
+    deleting.value = false;
   }
 }
 

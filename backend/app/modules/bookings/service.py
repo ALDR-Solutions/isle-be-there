@@ -279,6 +279,16 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         booking.itinerary_item_id,
         user_id,
     )
+
+    # Conflict detection - only approved bookings block new bookings
+    if service.id is not None and check_booking_conflict(
+        db, service.id, booking.booking_from_time, booking.booking_to_time
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Booking conflict: overlapping booking exists for service",
+        )
+
     _validate_service_capacity(
         db,
         service,
@@ -339,9 +349,50 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
 
 
 def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
-    next_from_time = update_data.get("booking_from_time", booking.booking_from_time)
-    next_to_time = update_data.get("booking_to_time", booking.booking_to_time)
-    _validate_booking_window(next_from_time, next_to_time)
+    # Check if time fields are being changed
+    new_from_time = update_data.get("booking_from_time", booking.booking_from_time)
+    new_to_time = update_data.get("booking_to_time", booking.booking_to_time)
+    time_changed = (
+        new_from_time != booking.booking_from_time or
+        new_to_time != booking.booking_to_time
+    )
+
+    if time_changed:
+        _validate_booking_window(new_from_time, new_to_time)
+
+        # Conflict check - only approved bookings block
+        if booking.service_id is not None and check_booking_conflict(
+            db, booking.service_id, new_from_time, new_to_time, exclude_booking_id=booking.id
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Booking conflict: overlapping booking exists for service",
+            )
+
+        # Capacity check - count approved bookings overlapping with new time, excluding self
+        if booking.service_id is not None and booking.service is not None:
+            from sqlalchemy import func
+            booked_count = db.exec(
+                select(func.coalesce(func.sum(Booking.amount_of_people), 0))
+                .where(Booking.service_id == booking.service_id)
+                .where(Booking.status == BookingStatus.approved)
+                .where(Booking.id != booking.id)
+                .where(Booking.booking_from_time < new_to_time)
+                .where(Booking.booking_to_time > new_from_time)
+            ).scalar_one()
+
+            if booking.service.capacity is not None:
+                available = booking.service.capacity - int(booked_count)
+                if available < (booking.amount_of_people or 1):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Not enough capacity for requested time",
+                    )
+    else:
+        _validate_booking_window(
+            update_data.get("booking_from_time", booking.booking_from_time),
+            update_data.get("booking_to_time", booking.booking_to_time),
+        )
 
     for key, value in update_data.items():
         setattr(booking, key, value)
@@ -357,7 +408,19 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
     db.commit()
     db.refresh(booking)
     return booking
-    
+
+
+def delete_booking(db: Session, booking: Booking) -> None:
+    """Delete a cancelled booking. Only cancelled bookings can be deleted."""
+    if booking.status != BookingStatus.cancelled:
+        raise HTTPException(
+            status_code=400,
+            detail="Only cancelled bookings can be deleted",
+        )
+    db.delete(booking)
+    db.commit()
+
+
 def get_booked_count(
     db: Session,
     service_id: UUID,
@@ -389,6 +452,39 @@ def is_available(
 ) -> bool:
     """Check if service is available for requested quantity."""
     return availability_is_available(db, service_id, capacity, start_dt, end_dt, requested_quantity)
+
+
+def check_booking_conflict(
+    db: Session,
+    service_id: UUID,
+    from_time: datetime,
+    to_time: datetime,
+    exclude_booking_id: UUID | None = None,
+) -> bool:
+    """
+    Check if there are any approved bookings that overlap with the requested time window.
+
+    Only `approved` bookings block - `completed` does NOT block because the booking
+    period has passed. `cancelled` and `pending` also do not block.
+
+    Overlap formula: (booking_from_time < to_time) AND (booking_to_time > from_time)
+    Back-to-back bookings (A ends at 11:00, B starts at 11:00) do NOT conflict.
+
+    Returns True if conflict exists, False otherwise.
+    """
+    query = (
+        select(Booking)
+        .where(Booking.service_id == service_id)
+        .where(Booking.status == BookingStatus.approved)
+        .where(Booking.booking_from_time < to_time)
+        .where(Booking.booking_to_time > from_time)
+    )
+
+    if exclude_booking_id is not None:
+        query = query.where(Booking.id != exclude_booking_id)
+
+    result = db.exec(query).first()
+    return result is not None
 
 
 def update_expired_bookings(db: Session) -> dict:

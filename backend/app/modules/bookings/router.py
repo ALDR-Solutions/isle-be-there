@@ -13,6 +13,7 @@ from .service import (
     cancel_booking,
     create_booking,
     create_bulk_bookings,
+    delete_booking,
     get_booking_by_id,
     list_bookings,
     update_booking,
@@ -84,6 +85,16 @@ def cancel_booking_endpoint(
 
     cancel_booking(db, booking)
     return Response(status_code=204)
+
+
+@router.delete("/{booking_id}", status_code=204)
+def delete_booking_endpoint(
+    booking: Booking = Depends(require_booking_owner),
+    db: Session = Depends(get_db),
+):
+    delete_booking(db, booking)
+    return Response(status_code=204)
+
 
 @router.get("/{booking_id}/price", response_model=BookingPriceResponse)
 def get_booking_price_endpoint(
