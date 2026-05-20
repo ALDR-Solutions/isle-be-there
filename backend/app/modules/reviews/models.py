@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import (
@@ -26,7 +27,10 @@ class Review(SQLModel, table=True):
 
     id: UUID = Field(
         sa_column=Column(
-            PGUUID(as_uuid=True), primary_key=True, nullable=False, default=None
+            PGUUID(as_uuid=True),
+            primary_key=True,
+            nullable=False,
+            server_default=text("gen_random_uuid()"),
         )
     )
     listing_id: UUID = Field(
@@ -44,12 +48,30 @@ class Review(SQLModel, table=True):
         )
     )
     rating: int = Field(sa_column=Column(Integer, nullable=False))
-    comment: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
-    classification_labels: str | None = Field(
-        default=None, sa_column=Column(Text, nullable=True)
-    )
+    comment: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True), nullable=False, server_default=text("now()")
         )
+    )
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+    classification_labels: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    classified_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+    detected_language: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    translated_comment: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    censored_comment: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
     )

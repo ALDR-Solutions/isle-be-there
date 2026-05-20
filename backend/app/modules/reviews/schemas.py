@@ -22,9 +22,6 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: str | None = None
     classification_labels: str | None = None
-    main_label: str | None = None
-    second_label: str | None = None
-    third_label: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -37,9 +34,6 @@ class ReviewSubmitResponse(BaseModel):
     rating: int
     comment: str | None = None
     classification_labels: str | None = None
-    main_label: str | None = None
-    second_label: str | None = None
-    third_label: str | None = None
     created_at: datetime
     detail: str | None = None
 

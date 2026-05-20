@@ -1,23 +1,54 @@
-import json
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, desc, select
 
+from app.modules.listings.models import Listing, Statuses
 from .models import Review
-from .schemas import ReviewCreate
+from .schemas import ReviewCreate, ReviewUpdate
 
 
-def get_reviews_for_listing(db: Session, listing_id: UUID) -> list[Review]:
-    """Get all reviews for a listing."""
-    reviews = db.exec(select(Review).where(Review.listing_id == listing_id)).all()
-    return reviews
+def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
+    listing_status = db.exec(
+        select(Listing.status).where(Listing.id == listing_id)
+    ).first()
+
+    if listing_status is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if listing_status != Statuses.active:
+        raise HTTPException(status_code=400, detail="Listing is not active")
+
+    reviews = db.exec(
+        select(Review)
+        .where(Review.listing_id == listing_id)
+        .order_by(desc(Review.created_at))
+    ).all()
+
+    return [
+        {
+            "id": r.id,
+            "listing_id": r.listing_id,
+            "user_id": r.user_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "classification_labels": r.classification_labels,
+            "created_at": r.created_at,
+        }
+        for r in reviews
+    ]
 
 
 def create_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> dict:
-    """Create a new review."""
-    # Check if user already reviewed this listing
+    listing_status = db.exec(
+        select(Listing.status).where(Listing.id == review_request.listing_id)
+    ).first()
+
+    if listing_status is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if listing_status != Statuses.active:
+        raise HTTPException(status_code=400, detail="Listing is not active")
+
     existing = db.exec(
         select(Review)
         .where(Review.listing_id == review_request.listing_id)
@@ -31,7 +62,6 @@ def create_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         user_id=user_id,
         rating=review_request.rating,
         comment=review_request.comment,
-        classification_labels=json.dumps(["(none)", "(none)", "(none)"]),
     )
 
     try:
@@ -42,11 +72,6 @@ def create_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         db.rollback()
         raise HTTPException(status_code=409, detail="You already reviewed this listing")
 
-    # Parse classification labels for response
-    labels = json.loads(
-        review.classification_labels or '["(none)", "(none)", "(none)"]'
-    )
-
     return {
         "id": review.id,
         "listing_id": review.listing_id,
@@ -54,15 +79,11 @@ def create_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         "rating": review.rating,
         "comment": review.comment,
         "classification_labels": review.classification_labels,
-        "main_label": labels[0] if len(labels) > 0 else "(none)",
-        "second_label": labels[1] if len(labels) > 1 else "(none)",
-        "third_label": labels[2] if len(labels) > 2 else "(none)",
         "created_at": review.created_at,
         "detail": "Review submitted successfully",
     }
 
 
 def delete_review(db: Session, review: Review) -> None:
-    """Delete a review."""
     db.delete(review)
     db.commit()
