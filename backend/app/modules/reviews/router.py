@@ -8,8 +8,8 @@ from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_roles
 
 from .models import Review
-from .schemas import ReviewCreate, ReviewResponse, ReviewSubmitResponse
-from .service import create_review, delete_review, list_reviews
+from .schemas import ReviewCreate, ReviewResponse, ReviewSubmitResponse, ReviewUpdate
+from .service import submit_review, delete_review, list_reviews, update_review
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
     response_model=list[ReviewResponse],
     responses={
         200: {
-            "description": "Reviews for Sunset Eats (listing_id: ff62dcdf-5ce0-42af-a5fd-4785b586636c, rating: 1-5)"},
+            "description": "Reviews for Sunset Eats (listing_id: ff62dcdf-5ce0-42af-a5fd-4785b586636c)"
+        },
         400: {"description": "Listing is not active"},
         404: {"description": "Listing not found"},
     },
@@ -39,7 +40,7 @@ def get_reviews_for_listing_route(
     status_code=201,
     responses={
         201: {
-            "description": "Review submitted successfully",
+            "description": "Review submitted and classified",
             "content": {
                 "application/json": {
                     "example": {
@@ -48,9 +49,14 @@ def get_reviews_for_listing_route(
                         "user_id": "f9826077-3237-406b-9857-847564313890",
                         "rating": 4,
                         "comment": "Great food and atmosphere!",
-                        "classification_labels": None,
+                        "detected_language": "en",
+                        "classification_labels": '["food_quality", "service_quality", "ambiance"]',
+                        "main_label": "food_quality",
+                        "second_label": "service_quality",
+                        "third_label": "ambiance",
+                        "classification_method": "ml",
                         "created_at": "2026-05-19T10:30:00Z",
-                        "detail": "Review submitted successfully",
+                        "detail": "Review submitted and classified",
                     }
                 }
             },
@@ -59,6 +65,7 @@ def get_reviews_for_listing_route(
         401: {"description": "Not authorized"},
         404: {"description": "Listing not found"},
         409: {"description": "You already reviewed this listing"},
+        500: {"description": "Review could not be classified"},
     },
 )
 def submit_review_route(
@@ -74,7 +81,7 @@ def submit_review_route(
         rating=rating,
         comment=comment,
     )
-    return create_review(
+    return submit_review(
         db=db,
         user_id=current_user.id,
         review_request=review_create,
@@ -83,9 +90,30 @@ def submit_review_route(
 
 @router.put(
     "/{review_id}",
-    response_model=dict,
+    response_model=ReviewSubmitResponse,
     responses={
-        200: {"description": "Review updated"},
+        200: {
+            "description": "Review updated with re-classification",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "d3b16653-8629-4af0-b621-7b17e8373195",
+                        "listing_id": "ff62dcdf-5ce0-42af-a5fd-4785b586636c",
+                        "user_id": "f9826077-3237-406b-9857-847564313890",
+                        "rating": 4,
+                        "comment": "Good atmosphere but bad service",
+                        "detected_language": "en",
+                        "classification_labels": '["ambiance", "service_quality", "(none)"]',
+                        "main_label": "ambiance",
+                        "second_label": "service_quality",
+                        "third_label": "(none)",
+                        "classification_method": "keyword",
+                        "created_at": "2026-05-21T01:25:06.342237Z",
+                        "detail": "Review updated",
+                    }
+                }
+            },
+        },
         401: {"description": "Not authorized to update this review"},
         404: {"description": "Review not found"},
         422: {"description": "Validation error"},
@@ -98,7 +126,7 @@ def update_review_route(
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    """Update an existing review (owner only)."""
+    """Update an existing review (owner only). Re-classifies if comment changes."""
     review = db.exec(select(Review).where(Review.id == review_id)).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
@@ -110,16 +138,8 @@ def update_review_route(
             status_code=401, detail="Not authorized to update this review"
         )
 
-    if rating is not None:
-        review.rating = rating
-    if comment is not None:
-        review.comment = comment
-
-    db.add(review)
-    db.commit()
-    db.refresh(review)
-
-    return {"detail": "Review updated"}
+    review_update = ReviewUpdate(rating=rating, comment=comment)
+    return update_review(db, review, review_update)
 
 
 @router.delete(
