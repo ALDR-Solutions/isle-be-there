@@ -86,3 +86,7 @@ class BulkBookingCreateRequest(BaseModel):
 
 class BulkBookingCreateResponse(BaseModel):
     bookings: List[BookingCreateResponse]
+
+
+class PaymentIntentResponse(BaseModel):
+    client_secret: str

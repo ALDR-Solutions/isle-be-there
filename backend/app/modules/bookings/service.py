@@ -20,7 +20,9 @@ from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
 from app.modules.services.models import Service, StatusTypes
 
-from .models import Booking, BookingStatus
+import stripe
+
+from .models import Booking, BookingStatus, PaymentEvent
 
 
 def _is_hotel_service(db: Session, service: Service) -> bool:
@@ -280,22 +282,24 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         user_id,
     )
 
-    # Conflict detection - only approved bookings block new bookings
-    if service.id is not None and check_booking_conflict(
-        db, service.id, booking.booking_from_time, booking.booking_to_time
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Booking conflict: overlapping booking exists for service",
+    # Capacity check - calculate total booked people vs service capacity
+    if service.service_id is not None and service.capacity is not None:
+        from app.modules.availability.service import get_booked_count
+        booked_count = get_booked_count(
+            db,
+            service.service_id,
+            booking.booking_from_time,
+            booking.booking_to_time,
         )
-
-    _validate_service_capacity(
-        db,
-        service,
-        booking.booking_from_time,
-        booking.booking_to_time,
-        booking.amount_of_people or 1,
-    )
+        available_slots = service.capacity - booked_count
+        if available_slots < (booking.amount_of_people or 1):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Service is not available for the selected time. "
+                    f"Requested {booking.amount_of_people or 1} slot(s), but only {available_slots} remain."
+                ),
+            )
 
     booking_record = Booking(**booking.model_dump())
     booking_record.user_id = user_id
@@ -379,7 +383,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
                 .where(Booking.id != booking.id)
                 .where(Booking.booking_from_time < new_to_time)
                 .where(Booking.booking_to_time > new_from_time)
-            ).scalar_one()
+).scalar_one_or_none()
 
             if booking.service.capacity is not None:
                 available = booking.service.capacity - int(booked_count)
@@ -408,6 +412,79 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
     db.commit()
     db.refresh(booking)
     return booking
+
+
+def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
+    """
+    Create a Stripe Payment Intent for a booking.
+
+    Returns dict with client_secret on success.
+    Raises HTTPException if booking not found, not owned by user, not pending,
+    or final_price < 0.50.
+    """
+    import os
+
+    # Retrieve booking
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Verify user owns the booking
+    if booking.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to pay for this booking")
+
+    # Verify booking is pending
+    if booking.status != BookingStatus.pending:
+        raise HTTPException(status_code=400, detail="Booking is not in pending status")
+
+    # Verify final_price >= 0.50 (calculate if None)
+    if booking.final_price is None:
+        # Calculate final_price from components
+        base = float(booking.base_price or 0)
+        fee = float(booking.service_fee_amount or 0)
+        discount = float(booking.discount_amount or 0)
+        calculated_final = base + fee - discount
+        if calculated_final < 0.50:
+            raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
+        booking.final_price = calculated_final
+        db.add(booking)
+        db.commit()
+    elif booking.final_price < 0.50:
+        raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
+
+    # Get Stripe key
+    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_secret_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured")
+
+    # Create Stripe Payment Intent
+    stripe.api_key = stripe_secret_key
+    amount_cents = int(booking.final_price * 100)
+
+    payment_intent = stripe.PaymentIntent.create(
+        amount=amount_cents,
+        currency="usd",
+        metadata={"booking_id": str(booking_id)},
+        automatic_payment_methods={"enabled": True},
+    )
+
+    # Store payment intent ID on booking
+    booking.stripe_payment_intent_id = payment_intent.id
+    db.add(booking)
+
+    # Create PaymentEvent record
+    payment_event = PaymentEvent(
+        booking_id=booking_id,
+        event_type="payment_intent.created",
+        stripe_payment_intent_id=payment_intent.id,
+        amount_cents=amount_cents,
+    )
+    db.add(payment_event)
+
+    db.commit()
+    db.refresh(booking)
+
+    return {"client_secret": payment_intent.client_secret}
 
 
 def delete_booking(db: Session, booking: Booking) -> None:

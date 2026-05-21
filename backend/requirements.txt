@@ -32,3 +32,6 @@ pytest==7.0.1
 
 # Database migrations
 alembic==1.14.0
+
+# Stripe payment integration
+stripe>=7.0.0
