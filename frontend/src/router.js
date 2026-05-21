@@ -95,6 +95,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/bookings/:id',
+    name: 'BookingDetail',
+    component: () => import('./views/BookingDetail.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/calendar',
     name: 'Calendar',
     component: () => import('./views/Calendar.vue'),

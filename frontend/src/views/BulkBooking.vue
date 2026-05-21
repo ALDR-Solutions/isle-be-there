@@ -503,8 +503,10 @@ async function handleConfirmBooking() {
   if (!validateSelectedItems()) return;
 
   confirming.value = true;
+  let createdBookings = [];
   try {
-    await Promise.all(selectedItems.value.map(item => {
+    // Create all bookings and collect their IDs
+    const results = await Promise.all(selectedItems.value.map(item => {
       const formData = formDataMap.value[item._key];
       return bookingsAPI.create({
         service_id: formData.service_id,
@@ -514,12 +516,20 @@ async function handleConfirmBooking() {
         bookers_name: formData.bookers_name,
         amount_of_people: formData.amount_of_people || 1,
         special_requests: formData.special_requests || null,
-      });
+      }).then(response => response.data);
     }));
 
-    toastStore.show(`Confirmed ${selectedItems.value.length} bookings!`, 'success');
+    createdBookings = results;
+    toastStore.show(`Confirmed ${createdBookings.length} bookings!`, 'success');
     showReceiptModal.value = false;
-    router.back();
+
+    // Redirect to payment page for the first booking
+    if (createdBookings.length > 0) {
+      const firstBookingId = createdBookings[0].booking_id || createdBookings[0].id;
+      router.push(`/bookings/${firstBookingId}`);
+    } else {
+      router.back();
+    }
   } catch (err) {
     console.error('Booking failed', err);
     const detail = err.response?.data?.detail;

@@ -172,6 +172,12 @@
                   : "Your booking status is up to date."
             }}
           </p>
+          <router-link
+              :to="'/bookings/' + booking.id"
+              class="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              {{ normalizedStatus(booking.status) === 'pending' ? 'Pay Now' : 'View Details' }}
+            </router-link>
           <button
             v-if="normalizedStatus(booking.status) === 'pending' || normalizedStatus(booking.status) === 'approved'"
             @click="bookingToCancel = booking"
