@@ -56,6 +56,7 @@ class BookingResponse(BaseModel):
     discount_amount: Optional[float] = None
     display_price: Optional[float] = None
     final_price: Optional[float] = None
+    paid_at: Optional[datetime] = None  # Populated from payment_events for approved bookings
     model_config = {"from_attributes": True}
 
 

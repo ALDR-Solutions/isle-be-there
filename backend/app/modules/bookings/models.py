@@ -135,7 +135,7 @@ class Booking(SQLModel, table=True):
     itinerary_item: Optional["ItineraryItem"] = Relationship(back_populates="booking_rel")
     stripe_payment_intent_id: Optional[str] = Field(
         default=None,
-        sa_column=Column(Text, nullable=True),
+        sa_column=Column(Text, nullable=True, unique=True),
     )
 
 
@@ -162,7 +162,11 @@ class PaymentEvent(SQLModel, table=True):
     )
     stripe_payment_intent_id: Optional[str] = Field(
         default=None,
-        sa_column=Column(Text, nullable=True),
+        sa_column=Column(
+            Text,
+            ForeignKey("bookings.stripe_payment_intent_id", onupdate="CASCADE", ondelete="SET NULL"),
+            nullable=True,
+        ),
     )
     amount_cents: Optional[int] = Field(
         default=None,

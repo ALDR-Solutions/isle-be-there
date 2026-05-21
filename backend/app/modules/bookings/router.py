@@ -24,6 +24,8 @@ from .service import (
     update_booking,
     price_booking_by_id,
 )
+from app.modules.availability.service import is_available as check_availability
+from app.modules.services.models import Service
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
 
@@ -135,6 +137,24 @@ def confirm_payment_endpoint(
             status_code=400,
             detail="Payment not yet completed or failed"
         )
+
+    # Verify slot availability before confirming (dates may have been taken since payment intent created)
+    if booking.service_id and booking.booking_from_time and booking.booking_to_time:
+        service = db.get(Service, booking.service_id)
+        if service and service.capacity:
+            still_available = check_availability(
+                db,
+                booking.service_id,
+                service.capacity,
+                booking.booking_from_time,
+                booking.booking_to_time,
+                booking.amount_of_people or 1,
+            )
+            if not still_available:
+                raise HTTPException(
+                    status_code=409,
+                    detail="The selected time slot is no longer available. Please choose a different time."
+                )
 
     # Update booking status to approved
     booking.status = BookingStatus.approved

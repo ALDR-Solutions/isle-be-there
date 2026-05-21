@@ -25,6 +25,28 @@
       {{ error }}
     </div>
 
+    <!-- Status Tabs -->
+    <div v-if="!loading && bookings.length > 0" class="mb-6 border-b border-slate-200">
+      <nav class="flex gap-6">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          @click="activeTab = tab.value"
+          :class="[
+            'pb-3 text-sm font-medium transition-colors',
+            activeTab === tab.value
+              ? 'border-b-2 border-cyan-600 text-cyan-600'
+              : 'text-slate-500 hover:text-slate-700'
+          ]"
+        >
+          {{ tab.label }}
+          <span class="ml-2 rounded-full px-2 py-0.5 text-xs" :class="tab.count > 0 ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-400'">
+            {{ tab.count }}
+          </span>
+        </button>
+      </nav>
+    </div>
+
     <div v-if="loading" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       <div
         v-for="n in 6"
@@ -42,7 +64,7 @@
     </div>
 
     <div
-      v-else-if="bookings.length === 0"
+      v-else-if="filteredBookings.length === 0"
       class="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm"
     >
       <div
@@ -63,21 +85,24 @@
           />
         </svg>
       </div>
-      <h2 class="mt-5 text-lg font-bold text-slate-900">No bookings yet</h2>
-      <p class="mt-2 text-sm text-slate-500">
-        When you book a listing, it will appear here for easy reference.
-      </p>
-      <router-link
-        to="/listings"
-        class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-      >
-        Browse Listings
-      </router-link>
+      <h2 class="mt-5 text-lg font-bold text-slate-900">
+                {{ activeTab === 'all' ? 'No bookings yet' : `No ${activeTab} bookings` }}
+              </h2>
+              <p class="mt-2 text-sm text-slate-500">
+                {{ activeTab === 'all' ? 'When you book a listing, it will appear here for easy reference.' : `You have no ${activeTab} bookings at the moment.` }}
+              </p>
+              <router-link
+                v-if="activeTab === 'all'"
+                to="/listings"
+                class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Browse Listings
+              </router-link>
     </div>
 
     <div v-else class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       <article
-        v-for="booking in bookings"
+        v-for="booking in filteredBookings"
         :key="booking.id"
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
       >
@@ -273,7 +298,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { bookingsAPI } from "../services/api";
 import { useToastStore } from "../stores/toast";
 
@@ -286,6 +311,20 @@ const bookingToCancel = ref(null);
 const confirmingDelete = ref(null);
 const deleting = ref(false);
 const error = ref("");
+const activeTab = ref("all");
+
+const statusTabs = computed(() => [
+  { label: "All", value: "all", count: bookings.value.length },
+  { label: "Pending", value: "pending", count: bookings.value.filter(b => normalizedStatus(b.status) === "pending").length },
+  { label: "Approved", value: "approved", count: bookings.value.filter(b => normalizedStatus(b.status) === "approved").length },
+  { label: "Completed", value: "completed", count: bookings.value.filter(b => normalizedStatus(b.status) === "completed").length },
+  { label: "Cancelled", value: "cancelled", count: bookings.value.filter(b => normalizedStatus(b.status) === "cancelled").length },
+]);
+
+const filteredBookings = computed(() => {
+  if (activeTab.value === "all") return bookings.value;
+  return bookings.value.filter(b => normalizedStatus(b.status) === activeTab.value);
+});
 
 async function fetchBookings() {
   loading.value = true;

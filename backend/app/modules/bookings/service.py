@@ -22,7 +22,7 @@ from app.modules.services.models import Service, StatusTypes
 
 import stripe
 
-from .models import Booking, BookingStatus, PaymentEvent
+from .models import Booking, BookingStatus, PaymentEvent, PaymentEvent
 
 
 def _is_hotel_service(db: Session, service: Service) -> bool:
@@ -43,9 +43,15 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
         select(
             Booking,
             Service.name.label("service_name"),
-            Listing.title.label("listing_name"))
+            Listing.title.label("listing_name"),
+            PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(
+            PaymentEvent,
+            (PaymentEvent.booking_id == Booking.id) &
+            (PaymentEvent.event_type == "payment_intent.confirmed")
+        )
         .where(Booking.user_id == user_id)
     )
     results = db.exec(query).all()
@@ -55,8 +61,9 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             **booking.model_dump(),
             service_name=service_name,
             listing_name=listing_name,
+            paid_at=paid_at,
         )
-        for booking, service_name, listing_name in results
+        for booking, service_name, listing_name, paid_at in results
     ]
 
 
@@ -65,10 +72,15 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
         select(
             Booking,
             Service.name.label("service_name"),
-            Listing.title.label("listing_name")
-        )
+            Listing.title.label("listing_name"),
+            PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(
+            PaymentEvent,
+            (PaymentEvent.booking_id == Booking.id) &
+            (PaymentEvent.event_type == "payment_intent.confirmed")
+        )
         .where(
             Booking.id == booking_id,
             Booking.user_id == user_id
@@ -80,12 +92,13 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
     if not result:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    booking, service_name, listing_name = result
+    booking, service_name, listing_name, paid_at = result
 
     return BookingResponse(
         **booking.model_dump(),
         service_name=service_name,
         listing_name=listing_name,
+        paid_at=paid_at,
     )
 
 
@@ -325,13 +338,27 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
     else:
         # Standalone booking: price via PricingService with no discount
         price_breakdown = calculate_display_price(db, service.listing_id, service.service_id)
-        booking_record.base_price = price_breakdown.get("base_price")
-        booking_record.service_fee_percent = price_breakdown.get("service_fee_percent")
-        booking_record.service_fee_amount = price_breakdown.get("service_fee_amount")
+        # Determine if this is a hotel service for per-person pricing
+        is_hotel = _is_hotel_service(db, service)
+        people = booking.amount_of_people or 1
+
+        # base_price from pricing service is per-person (or per-room for hotels)
+        # Multiply by people to get total for this booking
+        per_person_base = float(price_breakdown.get("base_price", 0))
+        total_base = per_person_base * people if not is_hotel else per_person_base
+
+        service_fee_percent = float(price_breakdown.get("service_fee_percent", 0.10))
+        service_fee_amount = total_base * service_fee_percent
+        display_price = total_base + service_fee_amount
+        final_price = display_price  # no discount for standalone
+
+        booking_record.base_price = total_base
+        booking_record.service_fee_percent = service_fee_percent
+        booking_record.service_fee_amount = service_fee_amount
         booking_record.discount_percent = 0
         booking_record.discount_amount = 0
-        booking_record.display_price = price_breakdown.get("display_price")
-        booking_record.final_price = price_breakdown.get("final_price")
+        booking_record.display_price = display_price
+        booking_record.final_price = final_price
 
     db.add(booking_record)
     db.commit()

@@ -112,10 +112,28 @@
                 <div class="space-y-4">
                   <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Booked On
+                    </p>
+                    <p class="mt-1 text-sm font-medium text-slate-700">
+                      {{ formatDate(booking.created_at) }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                       Name On Booking
                     </p>
                     <p class="mt-1 text-sm font-medium text-slate-700">
                       {{ booking.bookers_name }}
+                    </p>
+                  </div>
+
+                  <div v-if="booking.status === 'approved' || booking.status === 'completed'">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Paid On
+                    </p>
+                    <p class="mt-1 text-sm font-medium text-slate-700">
+                      {{ formatDate(booking.paid_at) }}
                     </p>
                   </div>
 
