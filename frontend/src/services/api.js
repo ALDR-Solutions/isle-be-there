@@ -122,6 +122,8 @@ export const itinerariesAPI = {
   getAll: () => api.get('/api/itineraries'),
   getById: (id) => api.get(`/api/itineraries/${id}`),
   save: (data) => api.post('/api/itineraries', data),
+  sendEmail: (id, data = {}) => api.post(`/api/itineraries/${id}/email`, data),
+  sendUnsavedEmail: (data) => api.post('/api/itineraries/email', data),
   delete: (id) => api.delete(`/api/itineraries/${id}`),
 };
 

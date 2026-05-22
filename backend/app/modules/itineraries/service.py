@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+import logging
 from math import atan2, cos, radians, sin, sqrt
 from typing import Optional
 from uuid import UUID
@@ -11,6 +12,8 @@ from sqlalchemy import desc
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from app.core.config import settings
+from app.core.email import send_itinerary_email
 from app.modules.bookings.schemas import BookingCreate
 from app.modules.bookings.service import create_booking as booking_service_create
 from app.modules.discounts.service import (
@@ -21,6 +24,7 @@ from app.modules.listings.models import Listing, Statuses
 from app.modules.listings.schemas import ListingLocation
 from app.modules.listings.service import filter_by_availability, extract_lat_lng
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
+from app.modules.users.models import User
 
 from .models import (
     Itinerary,
@@ -36,6 +40,7 @@ from .schemas import (
     ItinerarySaveRequest,
     ItineraryStatus as ItinerarySchemaStatus,
     ItineraryStop,
+    ItineraryUnsavedEmailRequest,
     PaceLevel,
     SavedItineraryResponse,
     SavedItinerarySummaryResponse,
@@ -51,6 +56,8 @@ ANCHOR_TYPES = {"hotel"}
 REPEATABLE_TYPES = {"restaurant"}
 HOTEL_CHECKIN_DURATION_HOURS = 1.0
 HOTEL_STAY_DURATION_HOURS = 0.0
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -302,6 +309,90 @@ def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> No
     except Exception:
         db.rollback()
         raise
+
+
+def send_saved_itinerary_email(
+    db: Session,
+    user_id: UUID,
+    itinerary_id: UUID,
+    recipient_email: Optional[str] = None,
+) -> str:
+    user = db.exec(select(User).where(User.id == user_id)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    saved_itinerary = get_saved_itinerary(db, user_id, itinerary_id)
+    itinerary_preview = saved_itinerary_to_plan_response(saved_itinerary)
+    resolved_email = recipient_email or user.email
+    if not resolved_email:
+        raise HTTPException(status_code=400, detail="Recipient email is required")
+
+    view_url = f"{settings.FRONTEND_URL}/itinerary/{saved_itinerary.id}"
+
+    try:
+        send_itinerary_email(
+            resolved_email,
+            saved_itinerary.title,
+            itinerary_preview,
+            country=saved_itinerary.country,
+            interests=saved_itinerary.interests,
+            view_url=view_url,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to send itinerary %s to %s",
+            saved_itinerary.id,
+            resolved_email,
+        )
+        raise HTTPException(status_code=502, detail="Failed to send itinerary email")
+
+    return resolved_email
+
+
+def send_unsaved_itinerary_email(
+    db: Session,
+    user_id: Optional[UUID],
+    payload: ItineraryUnsavedEmailRequest,
+) -> str:
+    user = None
+    if user_id:
+        user = db.exec(select(User).where(User.id == user_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+    resolved_email = payload.email or (user.email if user else None)
+    if not resolved_email:
+        raise HTTPException(status_code=400, detail="Recipient email is required")
+
+    itinerary_preview = payload.plan_response or plan_itinerary(
+        db,
+        payload.plan_request,
+        user_id,
+    )
+    if itinerary_preview.trip_days != payload.plan_request.resolved_trip_days:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsaved itinerary does not match requested trip length",
+        )
+
+    itinerary_title = resolved_unsaved_title(payload)
+
+    try:
+        send_itinerary_email(
+            resolved_email,
+            itinerary_title,
+            itinerary_preview,
+            country=payload.plan_request.country,
+            interests=payload.plan_request.interests,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to send unsaved itinerary to %s",
+            resolved_email,
+        )
+        raise HTTPException(status_code=502, detail="Failed to send itinerary email")
+
+    return resolved_email
 
 
 # ---------------------------------------------------------------------------
@@ -649,6 +740,14 @@ def resolved_title(payload: ItinerarySaveRequest) -> str:
     return f"{location} itinerary"
 
 
+def resolved_unsaved_title(payload: ItineraryUnsavedEmailRequest) -> str:
+    if payload.title and payload.title.strip():
+        return payload.title.strip()
+
+    location = payload.plan_request.country or "Trip"
+    return f"{location} itinerary"
+
+
 def build_items_for_saved_itinerary(
     itinerary_id: UUID,
     planned: ItineraryPlanResponse,
@@ -731,6 +830,99 @@ def serialize_saved_itinerary(
             for item in items
         ],
     )
+
+
+def saved_itinerary_to_plan_response(
+    saved_itinerary: SavedItineraryResponse,
+) -> ItineraryPlanResponse:
+    grouped_days: dict[date, dict] = {}
+
+    for item in saved_itinerary.items or []:
+        day_date = _item_value(item, "day_date")
+        if day_date is None:
+            continue
+
+        grouped_day = grouped_days.setdefault(
+            day_date,
+            {
+                "date": day_date,
+                "total_estimated_cost": 0.0,
+                "total_duration_hours": 0.0,
+                "stops": [],
+            },
+        )
+
+        estimated_cost = float(_item_value(item, "estimated_cost", 0.0) or 0.0)
+        extra_metadata = _item_value(item, "extra_metadata", {}) or {}
+        estimated_duration = float(
+            _dict_or_attr_value(extra_metadata, "estimated_duration_hours", 0.0) or 0.0
+        )
+        grouped_day["stops"].append(
+            ItineraryStop(
+                listing_id=_item_value(item, "listing_id") or _item_value(item, "id"),
+                title=_item_value(item, "title", ""),
+                description=_item_value(item, "description"),
+                business_type_name=_dict_or_attr_value(
+                    extra_metadata,
+                    "business_type_name",
+                    _item_value(item, "item_type", "stop"),
+                ),
+                address=_item_value(item, "address_snapshot", {}) or {},
+                estimated_cost=estimated_cost,
+                estimated_duration_hours=estimated_duration,
+                start_time=_format_datetime_time(_item_value(item, "start_at")),
+                end_time=_format_datetime_time(_item_value(item, "end_at")),
+                score=float(_dict_or_attr_value(extra_metadata, "score", 0.0) or 0.0),
+                reason_tags=list(_item_value(item, "reason_tags", []) or []),
+            )
+        )
+        grouped_day["total_estimated_cost"] += estimated_cost
+        grouped_day["total_duration_hours"] += estimated_duration
+
+    days = [
+        ItineraryDay(
+            date=day["date"],
+            total_estimated_cost=round(day["total_estimated_cost"], 2),
+            total_duration_hours=round(day["total_duration_hours"], 2),
+            stops=day["stops"],
+        )
+        for _, day in sorted(grouped_days.items(), key=lambda row: row[0])
+    ]
+
+    total_estimated_cost = float(saved_itinerary.total_estimated_cost or 0.0)
+    daily_target_budget = (
+        round(total_estimated_cost / len(days), 2) if days else 0.0
+    )
+
+    return ItineraryPlanResponse(
+        trip_days=len(days),
+        budget_level=saved_itinerary.budget_level,
+        pace=saved_itinerary.pace,
+        total_estimated_cost=round(total_estimated_cost, 2),
+        target_total_budget=saved_itinerary.total_budget,
+        daily_target_budget=daily_target_budget,
+        days=days,
+    )
+
+
+def _item_value(item, key: str, default=None):
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
+
+def _dict_or_attr_value(value, key: str, default=None):
+    if isinstance(value, dict):
+        return value.get(key, default)
+    return getattr(value, key, default)
+
+
+def _format_datetime_time(value) -> str:
+    if isinstance(value, datetime):
+        return value.strftime("%H:%M")
+    if isinstance(value, str) and len(value) >= 16:
+        return value[11:16]
+    return ""
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

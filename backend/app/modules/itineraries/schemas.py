@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional, List, Dict
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class BudgetLevel(str, Enum):
@@ -215,4 +215,15 @@ class ItineraryPriceResponse(BaseModel):
     service_fee: float
     discount: float
     total: float
+
+
+class ItineraryEmailRequest(BaseModel):
+    email: Optional[EmailStr] = None
+
+
+class ItineraryUnsavedEmailRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    title: Optional[str] = Field(default=None, max_length=255)
+    plan_request: ItineraryPlanRequest
+    plan_response: Optional[ItineraryPlanResponse] = None
 

@@ -527,26 +527,46 @@
             </p>
           </div>
 
-          <div v-if="!savedItinerary" class="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              @click="generatedItinerary = null"
-            >
-              Adjust answers
-            </button>
-
-            <button
-              type="button"
-              class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isSaving"
-              @click="handleSaveItinerary"
-            >
-              {{ isSaving ? "Saving..." : "Save itinerary" }}
-            </button>
+          <div
+            class="flex w-full flex-col gap-3 lg:ml-auto lg:max-w-3xl lg:items-end"
+          >
+            <div class="flex w-full flex-col gap-3 sm:flex-row lg:justify-end">
+              <input
+                v-model="itineraryEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="Email itinerary to you@example.com"
+                class="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 lg:max-w-sm"
+              />
+              <button
+                type="button"
+                class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSendingEmail"
+                @click="handleEmailItinerary"
+              >
+                {{ isSendingEmail ? "Sending..." : "Send itinerary" }}
+              </button>
+              <button
+                v-if="!savedItinerary"
+                type="button"
+                class="shrink-0 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="generatedItinerary = null"
+              >
+                Adjust answers
+              </button>
+              <button
+                v-if="!savedItinerary"
+                type="button"
+                class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSaving"
+                @click="handleSaveItinerary"
+              >
+                {{ isSaving ? "Saving..." : "Save itinerary" }}
+              </button>
+            </div>
           </div>
 
-          <div v-else>
+          <div v-if="savedItinerary">
             <RouterLink
               to="/profile"
               class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -668,6 +688,9 @@ const pace = ref("balanced");
 const generatedItinerary = ref(null);
 const isGenerating = ref(false);
 const isSaving = ref(false);
+const isSendingEmail = ref(false);
+const itineraryEmail = ref("");
+const lastAutofilledEmail = ref("");
 const errorMessage = ref("");
 const slideDirection = ref("slide-left");
 
@@ -862,6 +885,12 @@ const selectedInterestNamesLabel = computed(() =>
     : "None",
 );
 
+const canManageSavedItineraries = computed(
+  () => authStore.isAuthenticated && ["user", "admin"].includes(authStore.role),
+);
+
+const canEmailItinerary = computed(() => !!generatedItinerary.value);
+
 const tripLength = computed(() => {
   if (!startDate.value || !endDate.value || endDate.value < startDate.value)
     return 0;
@@ -897,6 +926,17 @@ watch(steps, () => {
     currentStepIndex.value = Math.max(0, steps.value.length - 1);
   }
 });
+
+watch(
+  () => authStore.user?.email?.trim() || "",
+  (email) => {
+    if (!itineraryEmail.value || itineraryEmail.value === lastAutofilledEmail.value) {
+      itineraryEmail.value = email;
+    }
+    lastAutofilledEmail.value = email;
+  },
+  { immediate: true },
+);
 
 function toggleCategory(category) {
   errorMessage.value = "";
@@ -1102,43 +1142,138 @@ function mapSavedItineraryToPreview(saved) {
   };
 }
 
-async function handleSaveItinerary() {
+function redirectToLogin() {
+  router.push({ name: "Login", query: { redirect: route.fullPath } });
+}
+
+async function persistGeneratedItinerary({ redirectToCalendar = false } = {}) {
   if (!authStore.isAuthenticated) {
     toastStore.show("Sign in to save your itinerary.", "info");
-    router.push({ name: "Login", query: { redirect: "/itinerary" } });
-    return;
+    redirectToLogin();
+    return null;
   }
 
-  if (!["user", "admin"].includes(authStore.role)) {
+  if (!canManageSavedItineraries.value) {
     toastStore.show(
       "Saved itineraries are only available for traveler accounts right now.",
       "info",
     );
-    return;
+    return null;
+  }
+
+  if (savedItinerary.value) {
+    return savedItinerary.value;
   }
 
   if (!generatedItinerary.value || isSaving.value) {
-    return;
+    return null;
   }
 
   isSaving.value = true;
 
   try {
-    await itinerariesAPI.save({
+    const response = await itinerariesAPI.save({
       plan_request: buildPayload(),
       plan_response: generatedItinerary.value,
     });
-    toastStore.show("Itinerary saved to your account.", "success");
-    router.push({ name: "Calendar" });
+    savedItinerary.value = response.data;
+    generatedItinerary.value = mapSavedItineraryToPreview(response.data);
+
+    if (redirectToCalendar) {
+      toastStore.show("Itinerary saved to your account.", "success");
+      router.push({ name: "Calendar" });
+    } else {
+      router.replace({
+        name: "SavedItinerary",
+        params: { id: response.data.id },
+      });
+    }
+
+    return response.data;
   } catch (error) {
     console.error("Failed to save itinerary", error);
     toastStore.show(
       extractApiError(error, "Could not save itinerary right now."),
       "error",
     );
+    return null;
   } finally {
     isSaving.value = false;
   }
+}
+
+async function handleSaveItinerary() {
+  await persistGeneratedItinerary({ redirectToCalendar: true });
+}
+
+async function handleEmailItinerary() {
+  if (savedItinerary.value?.id && !authStore.isAuthenticated) {
+    toastStore.show("Sign in to email your saved itinerary.", "info");
+    redirectToLogin();
+    return;
+  }
+
+  if (savedItinerary.value?.id && !canManageSavedItineraries.value) {
+    toastStore.show(
+      "Email delivery is only available for traveler accounts right now.",
+      "info",
+    );
+    return;
+  }
+
+  const recipientEmail = itineraryEmail.value.trim();
+  if (!recipientEmail) {
+    toastStore.show("Enter an email address before sending.", "error");
+    return;
+  }
+
+  if (!isValidEmail(recipientEmail)) {
+    toastStore.show("Enter a valid email address before sending.", "error");
+    return;
+  }
+
+  if (!generatedItinerary.value) {
+    toastStore.show("Generate an itinerary before sending it.", "error");
+    return;
+  }
+
+  if (isSendingEmail.value) {
+    return;
+  }
+
+  isSendingEmail.value = true;
+
+  try {
+    if (savedItinerary.value?.id) {
+      await itinerariesAPI.sendEmail(savedItinerary.value.id, {
+        email: recipientEmail,
+      });
+    } else {
+      await itinerariesAPI.sendUnsavedEmail({
+        email: recipientEmail,
+        plan_request: buildPayload(),
+        plan_response: generatedItinerary.value,
+      });
+    }
+    toastStore.show(`Itinerary sent to ${recipientEmail}.`, "success");
+  } catch (error) {
+    console.error("Failed to send itinerary email", error);
+    toastStore.show(
+      extractApiError(error, "Could not send itinerary email right now."),
+      "error",
+    );
+  } finally {
+    isSendingEmail.value = false;
+  }
+}
+
+function handleEmailSignIn() {
+  toastStore.show("Sign in to email your itinerary.", "info");
+  redirectToLogin();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function formatDisplayDate(value) {

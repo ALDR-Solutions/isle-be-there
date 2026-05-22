@@ -5,6 +5,8 @@ from app.infrastructure.database import get_db
 from sqlalchemy.orm import selectinload
 from typing import List
 from .schemas import (
+    ItineraryEmailRequest,
+    ItineraryUnsavedEmailRequest,
     ItineraryPlanRequest,
     ItineraryPlanResponse,
     ItineraryItemResponse,
@@ -23,6 +25,8 @@ from .service import (
     convert_itinerary_to_bookings,
     get_saved_itinerary,
     list_saved_itineraries,
+    send_saved_itinerary_email,
+    send_unsaved_itinerary_email,
     save_itinerary,
 )
 from .models import Itinerary
@@ -59,6 +63,35 @@ def get_itinerary_endpoint(
     db: Session = Depends(get_db),
 ):
     return get_saved_itinerary(db, current_user.id, itinerary_id)
+
+
+@router.post("/{itinerary_id}/email")
+def email_itinerary_endpoint(
+    itinerary_id: uuid.UUID,
+    payload: ItineraryEmailRequest | None = None,
+    current_user: User = Depends(require_roles("regular", "admin")),
+    db: Session = Depends(get_db),
+):
+    recipient = send_saved_itinerary_email(
+        db,
+        current_user.id,
+        itinerary_id,
+        payload.email if payload else None,
+    )
+    return {"detail": f"Itinerary sent to {recipient}."}
+
+@router.post("/email")
+def email_unsaved_itinerary_endpoint(
+    payload: ItineraryUnsavedEmailRequest,
+    current_user: User | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    recipient = send_unsaved_itinerary_email(
+        db,
+        current_user.id if current_user else None,
+        payload,
+    )
+    return {"detail": f"Itinerary sent to {recipient}."}
 
 
 @router.get("/{itinerary_id}/price", response_model=ItineraryPriceResponse)
