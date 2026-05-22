@@ -25,6 +25,28 @@
       {{ error }}
     </div>
 
+    <!-- Status Tabs -->
+    <div v-if="!loading && bookings.length > 0" class="mb-6 border-b border-slate-200">
+      <nav class="flex gap-6">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          @click="activeTab = tab.value"
+          :class="[
+            'pb-3 text-sm font-medium transition-colors',
+            activeTab === tab.value
+              ? 'border-b-2 border-cyan-600 text-cyan-600'
+              : 'text-slate-500 hover:text-slate-700'
+          ]"
+        >
+          {{ tab.label }}
+          <span class="ml-2 rounded-full px-2 py-0.5 text-xs" :class="tab.count > 0 ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-400'">
+            {{ tab.count }}
+          </span>
+        </button>
+      </nav>
+    </div>
+
     <div v-if="loading" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       <div
         v-for="n in 6"
@@ -42,7 +64,7 @@
     </div>
 
     <div
-      v-else-if="bookings.length === 0"
+      v-else-if="filteredBookings.length === 0"
       class="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm"
     >
       <div
@@ -63,21 +85,24 @@
           />
         </svg>
       </div>
-      <h2 class="mt-5 text-lg font-bold text-slate-900">No bookings yet</h2>
-      <p class="mt-2 text-sm text-slate-500">
-        When you book a listing, it will appear here for easy reference.
-      </p>
-      <router-link
-        to="/listings"
-        class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-      >
-        Browse Listings
-      </router-link>
+      <h2 class="mt-5 text-lg font-bold text-slate-900">
+                {{ activeTab === 'all' ? 'No bookings yet' : `No ${activeTab} bookings` }}
+              </h2>
+              <p class="mt-2 text-sm text-slate-500">
+                {{ activeTab === 'all' ? 'When you book a listing, it will appear here for easy reference.' : `You have no ${activeTab} bookings at the moment.` }}
+              </p>
+              <router-link
+                v-if="activeTab === 'all'"
+                to="/listings"
+                class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Browse Listings
+              </router-link>
     </div>
 
     <div v-else class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       <article
-        v-for="booking in bookings"
+        v-for="booking in filteredBookings"
         :key="booking.id"
         class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
       >
@@ -94,9 +119,9 @@
           </div>
           <span
             class="rounded-full px-3 py-1 text-xs font-semibold"
-            :class="statusClasses(booking.status)"
+            :class="statusClasses(booking.status, booking.has_refund)"
           >
-            {{ statusLabel(booking.status) }}
+            {{ statusLabel(booking.status, booking.has_refund) }}
           </span>
         </div>
 
@@ -162,16 +187,24 @@
           </div>
         </div>
 
-        <div class="mt-6 flex items-center justify-between gap-3">
+<div class="mt-6 flex items-center justify-between gap-3">
             <p class="text-sm text-slate-500">
               {{
               normalizedStatus(booking.status) === "pending"
                 ? "This booking is still awaiting confirmation."
                 : normalizedStatus(booking.status) === "cancelled"
-                  ? "This booking has been cancelled."
+                  ? booking.has_refund
+                    ? "This booking was cancelled and refunded."
+                    : "This booking has been cancelled."
                   : "Your booking status is up to date."
-            }}
-          </p>
+              }}
+            </p>
+            <router-link
+              :to="'/bookings/' + booking.id"
+              class="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              {{ normalizedStatus(booking.status) === 'pending' ? 'Pay Now' : 'View Details' }}
+            </router-link>
           <button
             v-if="normalizedStatus(booking.status) === 'pending' || normalizedStatus(booking.status) === 'approved'"
             @click="bookingToCancel = booking"
@@ -179,7 +212,7 @@
           >
             Cancel
           </button>
-          <template v-else-if="normalizedStatus(booking.status) === 'cancelled'">
+          <template v-else-if="normalizedStatus(booking.status) === 'cancelled' && !booking.has_refund">
             <template v-if="confirmingDelete === booking.id">
               <span class="flex items-center gap-2 text-sm text-slate-500">
                 Delete?
@@ -205,6 +238,9 @@
             >
               Delete
             </button>
+          </template>
+          <template v-else-if="normalizedStatus(booking.status) === 'cancelled' && booking.has_refund">
+            <span class="text-sm text-slate-400">Non-deletable</span>
           </template>
         </div>
       </article>
@@ -241,7 +277,7 @@
           <div>
             <h3 class="text-lg font-bold text-slate-900">Cancel booking?</h3>
             <p class="mt-2 text-sm leading-6 text-slate-600">
-              Booking #{{ bookingToCancel.id }} will be cancelled immediately.
+              Booking #{{ bookingToCancel.id }} will be cancelled. A full refund will be issued to your original payment method.
             </p>
           </div>
         </div>
@@ -267,7 +303,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { bookingsAPI } from "../services/api";
 import { useToastStore } from "../stores/toast";
 
@@ -280,6 +316,27 @@ const bookingToCancel = ref(null);
 const confirmingDelete = ref(null);
 const deleting = ref(false);
 const error = ref("");
+const activeTab = ref("all");
+
+const statusTabs = computed(() => [
+  { label: "All", value: "all", count: bookings.value.length },
+  { label: "Pending", value: "pending", count: bookings.value.filter(b => normalizedStatus(b.status) === "pending").length },
+  { label: "Approved", value: "approved", count: bookings.value.filter(b => normalizedStatus(b.status) === "approved").length },
+  { label: "Completed", value: "completed", count: bookings.value.filter(b => normalizedStatus(b.status) === "completed").length },
+  { label: "Cancelled", value: "cancelled", count: bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && !b.has_refund).length },
+  { label: "Refunded", value: "refunded", count: bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && b.has_refund).length },
+]);
+
+const filteredBookings = computed(() => {
+  if (activeTab.value === "all") return bookings.value;
+  if (activeTab.value === "cancelled") {
+    return bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && !b.has_refund);
+  }
+  if (activeTab.value === "refunded") {
+    return bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && b.has_refund);
+  }
+  return bookings.value.filter(b => normalizedStatus(b.status) === activeTab.value);
+});
 
 async function fetchBookings() {
   loading.value = true;
@@ -324,7 +381,8 @@ async function deleteBooking(id) {
     bookings.value = bookings.value.filter((b) => b.id !== id);
     toastStore.show("Booking deleted successfully.", "success");
   } catch (err) {
-    toastStore.show("Failed to delete booking.", "error");
+    const message = err.response?.data?.detail || "Failed to delete booking.";
+    toastStore.show(message, "error");
   } finally {
     deleting.value = false;
   }
@@ -334,20 +392,26 @@ function formatDate(date) {
   return new Date(date).toLocaleString();
 }
 
-function statusLabel(status) {
+function statusLabel(status, hasRefund = false) {
   const value = normalizedStatus(status);
   if (value === "pending") return "Pending";
   if (value === "approved") return "Approved";
-  if (value === "cancelled") return "Cancelled";
+  if (value === "cancelled") {
+    if (hasRefund) return "Refunded";
+    return "Cancelled";
+  }
   if (value === "completed") return "Completed";
   return value || "Unknown";
 }
 
-function statusClasses(status) {
+function statusClasses(status, hasRefund = false) {
   const value = normalizedStatus(status);
   if (value === "pending") return "bg-amber-100 text-amber-800";
   if (value === "approved") return "bg-emerald-100 text-emerald-800";
-  if (value === "cancelled") return "bg-red-100 text-red-800";
+  if (value === "cancelled") {
+    if (hasRefund) return "bg-green-100 text-green-800";
+    return "bg-red-100 text-red-800";
+  }
   if (value === "completed") return "bg-cyan-100 text-cyan-800";
   return "bg-slate-100 text-slate-700";
 }

@@ -492,11 +492,29 @@
               </template>
             </div>
 
+            <!-- Subtotal -->
+            <div class="mt-4 flex justify-between text-sm">
+              <span class="text-slate-600">Subtotal</span>
+              <span class="font-medium text-slate-900">${{ receiptSubtotal.toFixed(2) }}</span>
+            </div>
+
+            <!-- Service Fee -->
+            <div class="mt-2 flex justify-between text-sm">
+              <span class="text-slate-600">Service Fee</span>
+              <span class="font-medium text-slate-900">${{ receiptServiceFee.toFixed(2) }}</span>
+            </div>
+
+            <!-- Discount -->
+            <div v-if="receiptDiscountAmount > 0" class="mt-2 flex justify-between text-sm">
+              <span class="text-slate-600">Discount</span>
+              <span class="font-medium text-emerald-600">-${{ receiptDiscountAmount.toFixed(2) }}</span>
+            </div>
+
             <!-- Final Total -->
             <div class="mt-4 border-t border-slate-200 pt-4">
               <div class="flex justify-between">
                 <p class="text-base font-semibold text-slate-900">Final Total</p>
-                <p class="text-xl font-bold text-cyan-600">${{ receiptSubtotal.toFixed(2) }}</p>
+                <p class="text-xl font-bold text-cyan-600">${{ receiptFinalTotal.toFixed(2) }}</p>
               </div>
             </div>
 
@@ -674,6 +692,8 @@ const isHotelService = computed(() => {
   return false;
 });
 
+const SERVICE_FEE_PERCENT = 0.10;
+
 const receiptSubtotal = computed(() => {
   if (!selectedService.value) return 0;
   const price = Number(selectedService.value.price) || 0;
@@ -682,6 +702,17 @@ const receiptSubtotal = computed(() => {
     return price; // flat fee per room
   }
   return price * people;
+});
+
+const receiptServiceFee = computed(() => receiptSubtotal.value * SERVICE_FEE_PERCENT);
+
+const receiptDiscountAmount = computed(() => {
+  // For now, no discount for direct listing bookings
+  return 0;
+});
+
+const receiptFinalTotal = computed(() => {
+  return receiptSubtotal.value + receiptServiceFee.value - receiptDiscountAmount.value;
 });
 
 const nextImage = () => {
@@ -945,12 +976,14 @@ async function confirmBookingFromReceipt() {
   confirming.value = true;
   receiptError.value = '';
   try {
-    await bookingsAPI.create(pendingBookingData.value);
+    const response = await bookingsAPI.create(pendingBookingData.value);
+    const createdBooking = response.data;
+    const bookingId = createdBooking.booking_id || createdBooking.id;
     toastStore.show('Booking created successfully.', 'success');
     showReceiptModal.value = false;
     pendingBookingData.value = null;
     handleCloseBooking();
-    router.push({ name: 'Bookings' });
+    router.push(`/bookings/${bookingId}`);
   } catch (err) {
     receiptError.value = err.response?.data?.detail || 'Failed to confirm booking. Please try again.';
     toastStore.show('Failed to create booking.', 'error');

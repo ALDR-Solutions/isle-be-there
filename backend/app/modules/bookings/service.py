@@ -20,6 +20,10 @@ from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
 from app.modules.services.models import Service, StatusTypes
 
+import stripe
+
+from app.modules.stripe_payment.service import create_payment_intent
+from app.modules.stripe_payment.models import PaymentEvent
 from .models import Booking, BookingStatus
 
 
@@ -41,9 +45,15 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
         select(
             Booking,
             Service.name.label("service_name"),
-            Listing.title.label("listing_name"))
+            Listing.title.label("listing_name"),
+            PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(
+            PaymentEvent,
+            (PaymentEvent.booking_id == Booking.id) &
+            (PaymentEvent.event_type == "payment_intent.confirmed")
+        )
         .where(Booking.user_id == user_id)
     )
     results = db.exec(query).all()
@@ -53,9 +63,23 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             **booking.model_dump(),
             service_name=service_name,
             listing_name=listing_name,
+            paid_at=paid_at,
+            has_refund=_booking_has_refund(db, booking.id),
+            refund_date=_get_refund_date(db, booking.id),
         )
-        for booking, service_name, listing_name in results
+        for booking, service_name, listing_name, paid_at in results
     ]
+
+
+def _booking_has_refund(db: Session, booking_id: UUID) -> bool:
+    """Check if booking has any refund.* PaymentEvent."""
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking_id,
+            PaymentEvent.event_type.like("refund.%")
+        )
+    ).first()
+    return refund_event is not None
 
 
 def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingResponse:
@@ -63,10 +87,15 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
         select(
             Booking,
             Service.name.label("service_name"),
-            Listing.title.label("listing_name")
-        )
+            Listing.title.label("listing_name"),
+            PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(
+            PaymentEvent,
+            (PaymentEvent.booking_id == Booking.id) &
+            (PaymentEvent.event_type == "payment_intent.confirmed")
+        )
         .where(
             Booking.id == booking_id,
             Booking.user_id == user_id
@@ -78,13 +107,27 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
     if not result:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    booking, service_name, listing_name = result
+    booking, service_name, listing_name, paid_at = result
 
     return BookingResponse(
         **booking.model_dump(),
         service_name=service_name,
         listing_name=listing_name,
+        paid_at=paid_at,
+        has_refund=_booking_has_refund(db, booking.id),
+        refund_date=_get_refund_date(db, booking.id),
     )
+
+
+def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
+    """Get the date of the first refund.* PaymentEvent for a booking."""
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking_id,
+            PaymentEvent.event_type.like("refund.%")
+        ).order_by(PaymentEvent.created_at)
+    ).first()
+    return refund_event.created_at if refund_event else None
 
 
 def _get_service_or_404(db: Session, service_id: UUID) -> Service:
@@ -280,22 +323,24 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         user_id,
     )
 
-    # Conflict detection - only approved bookings block new bookings
-    if service.id is not None and check_booking_conflict(
-        db, service.id, booking.booking_from_time, booking.booking_to_time
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Booking conflict: overlapping booking exists for service",
+    # Capacity check - calculate total booked people vs service capacity
+    if service.service_id is not None and service.capacity is not None:
+        from app.modules.availability.service import get_booked_count
+        booked_count = get_booked_count(
+            db,
+            service.service_id,
+            booking.booking_from_time,
+            booking.booking_to_time,
         )
-
-    _validate_service_capacity(
-        db,
-        service,
-        booking.booking_from_time,
-        booking.booking_to_time,
-        booking.amount_of_people or 1,
-    )
+        available_slots = service.capacity - booked_count
+        if available_slots < (booking.amount_of_people or 1):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Service is not available for the selected time. "
+                    f"Requested {booking.amount_of_people or 1} slot(s), but only {available_slots} remain."
+                ),
+            )
 
     booking_record = Booking(**booking.model_dump())
     booking_record.user_id = user_id
@@ -321,13 +366,27 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
     else:
         # Standalone booking: price via PricingService with no discount
         price_breakdown = calculate_display_price(db, service.listing_id, service.service_id)
-        booking_record.base_price = price_breakdown.get("base_price")
-        booking_record.service_fee_percent = price_breakdown.get("service_fee_percent")
-        booking_record.service_fee_amount = price_breakdown.get("service_fee_amount")
+        # Determine if this is a hotel service for per-person pricing
+        is_hotel = _is_hotel_service(db, service)
+        people = booking.amount_of_people or 1
+
+        # base_price from pricing service is per-person (or per-room for hotels)
+        # Multiply by people to get total for this booking
+        per_person_base = float(price_breakdown.get("base_price", 0))
+        total_base = per_person_base * people if not is_hotel else per_person_base
+
+        service_fee_percent = float(price_breakdown.get("service_fee_percent", 0.10))
+        service_fee_amount = total_base * service_fee_percent
+        display_price = total_base + service_fee_amount
+        final_price = display_price  # no discount for standalone
+
+        booking_record.base_price = total_base
+        booking_record.service_fee_percent = service_fee_percent
+        booking_record.service_fee_amount = service_fee_amount
         booking_record.discount_percent = 0
         booking_record.discount_amount = 0
-        booking_record.display_price = price_breakdown.get("display_price")
-        booking_record.final_price = price_breakdown.get("final_price")
+        booking_record.display_price = display_price
+        booking_record.final_price = final_price
 
     db.add(booking_record)
     db.commit()
@@ -379,7 +438,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
                 .where(Booking.id != booking.id)
                 .where(Booking.booking_from_time < new_to_time)
                 .where(Booking.booking_to_time > new_from_time)
-            ).scalar_one()
+).scalar_one_or_none()
 
             if booking.service.capacity is not None:
                 available = booking.service.capacity - int(booked_count)
@@ -403,6 +462,25 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
 
 
 def cancel_booking(db: Session, booking: Booking) -> Booking:
+    """
+    Cancel a booking. If booking is approved and has payment, process refund first.
+    If refund fails, booking stays approved and HTTPException is raised.
+    """
+    # If booking is approved AND has stripe_payment_intent_id, process refund first
+    if booking.status == BookingStatus.approved and booking.stripe_payment_intent_id:
+        # Import process_refund from stripe_payment
+        from app.modules.stripe_payment.service import process_refund
+
+        # Call process_refund - if it fails, raise error and DO NOT cancel
+        refund_result = process_refund(db, booking)
+
+        if not refund_result.get("success"):
+            error_msg = refund_result.get("error", "Refund failed")
+            raise HTTPException(status_code=400, detail=f"Cannot cancel: {error_msg}")
+
+        # Refund succeeded - now cancel the booking
+
+    # Update booking status to cancelled
     booking.status = BookingStatus.cancelled
 
     db.commit()
@@ -410,12 +488,31 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
     return booking
 
 
+def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
+    """Delegate to stripe_payment service (imported from there)."""
+    from app.modules.stripe_payment.service import create_payment_intent as _create_payment_intent
+    return _create_payment_intent(db, booking_id, user_id)
+
+
 def delete_booking(db: Session, booking: Booking) -> None:
-    """Delete a cancelled booking. Only cancelled bookings can be deleted."""
+    """Delete a cancelled booking. Refunded bookings cannot be deleted."""
     if booking.status != BookingStatus.cancelled:
         raise HTTPException(
             status_code=400,
             detail="Only cancelled bookings can be deleted",
+        )
+    # Check if booking has a refund via PaymentEvent
+    from app.modules.stripe_payment.models import PaymentEvent
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking.id,
+            PaymentEvent.event_type.like("refund.%")
+        )
+    ).first()
+    if refund_event:
+        raise HTTPException(
+            status_code=400,
+            detail="Refunded bookings cannot be deleted",
         )
     db.delete(booking)
     db.commit()

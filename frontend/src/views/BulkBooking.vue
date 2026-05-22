@@ -145,13 +145,13 @@
             <div class="mb-6 space-y-3">
               <div v-for="item in selectedItems" :key="item._key" class="flex justify-between text-sm">
                 <div class="flex-1">
-                  <p class="font-medium text-slate-900">{{ item.title || item.name }}</p>
+                  <p class="font-medium text-slate-900">{{ formatServiceName(getServicesForItem(item), formDataMap[item._key]?.service_id) || (item.title || item.name) }}</p>
                   <p class="text-slate-500">
-                    <template v-if="isHotelItem(item)">1 room × ${{ (item.estimated_cost || 0).toFixed(2) }}</template>
-                    <template v-else>${{ (item.estimated_cost || 0).toFixed(2) }} × {{ formDataMap[item._key]?.amount_of_people || 1 }} people = ${{ ((item.estimated_cost || 0) * (formDataMap[item._key]?.amount_of_people || 1)).toFixed(2) }}</template>
+                    <template v-if="isHotelItem(item)">1 room</template>
+                    <template v-else>{{ formDataMap[item._key]?.amount_of_people || 1 }} person{{ (formDataMap[item._key]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
                   </p>
                 </div>
-                <p class="font-medium text-slate-900">${{ ((item.estimated_cost || 0) * (formDataMap[item._key]?.amount_of_people || (isHotelItem(item) ? 1 : 1))).toFixed(2) }}</p>
+                <p class="font-medium text-slate-900">${{ calculateItemTotal(item).toFixed(2) }}</p>
               </div>
             </div>
 
@@ -160,6 +160,14 @@
               <div class="flex justify-between text-sm">
                 <p class="text-slate-600">Subtotal</p>
                 <p class="font-medium text-slate-900">${{ receiptSubtotal.toFixed(2) }}</p>
+              </div>
+            </div>
+
+            <!-- Service Fee Section -->
+            <div class="mt-4 border-t border-slate-100 pt-4">
+              <div class="flex justify-between text-sm">
+                <p class="text-slate-600">Service Fee</p>
+                <p class="font-medium text-slate-900">${{ receiptServiceFee.toFixed(2) }}</p>
               </div>
             </div>
 
@@ -341,14 +349,41 @@ const filteredItems = computed(() => {
 
 // --- Receipt Computeds ---
 const receiptSubtotal = computed(() => selectedItems.value.reduce((total, item) => {
-  const people = formDataMap.value[item._key]?.amount_of_people || 1;
-  return total + (item.estimated_cost || 0) * people;
+  return total + calculateItemTotal(item);
 }, 0));
 
 const isDiscountEligible = computed(() => selectedItemsIds.value.size >= bookableItems.value.length * 0.5);
 const selectedDiscount = computed(() => availableDiscounts.value.find(d => d.id === selectedDiscountId.value));
 const receiptDiscountAmount = computed(() => isDiscountEligible.value ? receiptSubtotal.value * (selectedDiscount.value?.discount_percent || 0) : 0);
-const receiptFinalTotal = computed(() => receiptSubtotal.value - receiptDiscountAmount.value);
+const receiptServiceFee = computed(() => receiptSubtotal.value * 0.10);  // 10% service fee
+const receiptFinalTotal = computed(() => receiptSubtotal.value + receiptServiceFee.value - receiptDiscountAmount.value);
+
+const formatServiceName = (services, serviceId) => {
+  if (!services || !serviceId) return '';
+  const service = services.find(s => s.service_id === serviceId);
+  return service ? service.name || 'Service' : '';
+};
+
+const calculateItemTotal = (item) => {
+  const formData = formDataMap.value[item._key];
+  const services = getServicesForItem(item);
+  const people = formData?.amount_of_people || 1;
+  const serviceId = formData?.service_id;
+
+  // Use the selected service's price if available, otherwise use item.estimated_cost
+  if (services.length > 0 && serviceId) {
+    const service = services.find(s => s.service_id === serviceId);
+    if (service?.price) {
+      return service.price * (isHotelItem(item) ? 1 : people);
+    }
+  }
+
+  if (isHotelItem(item)) {
+    return item.estimated_cost || 0;
+  }
+
+  return (item.estimated_cost || 0) * people;
+};
 
 // --- Watchers ---
 watch(itinerary, (newItinerary) => {
@@ -503,8 +538,10 @@ async function handleConfirmBooking() {
   if (!validateSelectedItems()) return;
 
   confirming.value = true;
+  let createdBookings = [];
   try {
-    await Promise.all(selectedItems.value.map(item => {
+    // Create all bookings and collect their IDs
+    const results = await Promise.all(selectedItems.value.map(item => {
       const formData = formDataMap.value[item._key];
       return bookingsAPI.create({
         service_id: formData.service_id,
@@ -514,12 +551,20 @@ async function handleConfirmBooking() {
         bookers_name: formData.bookers_name,
         amount_of_people: formData.amount_of_people || 1,
         special_requests: formData.special_requests || null,
-      });
+      }).then(response => response.data);
     }));
 
-    toastStore.show(`Confirmed ${selectedItems.value.length} bookings!`, 'success');
+    createdBookings = results;
+    toastStore.show(`Confirmed ${createdBookings.length} bookings!`, 'success');
     showReceiptModal.value = false;
-    router.back();
+
+    // Redirect to payment page for the first booking
+    if (createdBookings.length > 0) {
+      const firstBookingId = createdBookings[0].booking_id || createdBookings[0].id;
+      router.push(`/bookings/${firstBookingId}`);
+    } else {
+      router.back();
+    }
   } catch (err) {
     console.error('Booking failed', err);
     const detail = err.response?.data?.detail;

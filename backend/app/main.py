@@ -37,6 +37,7 @@ from app.modules.users.router import router as profile_router
 from app.modules.employees.router import router as employees_router
 from app.modules.services.router import router as services_router
 from app.modules.availability.router import router as availability_router
+from app.modules.stripe_payment.router import router as stripe_payment_router
 from app.shared.dependencies.permissions import get_current_user
 
 # Paths
@@ -112,6 +113,7 @@ app.include_router(services_router)
 app.include_router(pricing_router)
 app.include_router(discounts_router)
 app.include_router(availability_router)
+app.include_router(stripe_payment_router)
 
 
 @app.get("/health")

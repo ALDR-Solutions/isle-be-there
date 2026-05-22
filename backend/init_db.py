@@ -11,7 +11,7 @@ from app.modules.listings.models import Listing
 from app.modules.reviews.models import Review
 from app.modules.users.models import User
 from app.modules.employees.models import Business_Employee
-from app.modules.itineraries.model import Itinerary, ItineraryItem
+from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.pricing.models import PlatformPricingConfig
 from app.modules.discounts.models import Discount, DiscountType
 from datetime import datetime
