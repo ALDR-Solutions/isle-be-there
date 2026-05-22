@@ -22,7 +22,9 @@ from app.modules.services.models import Service, StatusTypes
 
 import stripe
 
-from .models import Booking, BookingStatus, PaymentEvent, PaymentEvent
+from app.modules.stripe_payment.service import create_payment_intent
+from app.modules.stripe_payment.models import PaymentEvent
+from .models import Booking, BookingStatus
 
 
 def _is_hotel_service(db: Session, service: Service) -> bool:
@@ -62,9 +64,22 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             service_name=service_name,
             listing_name=listing_name,
             paid_at=paid_at,
+            has_refund=_booking_has_refund(db, booking.id),
+            refund_date=_get_refund_date(db, booking.id),
         )
         for booking, service_name, listing_name, paid_at in results
     ]
+
+
+def _booking_has_refund(db: Session, booking_id: UUID) -> bool:
+    """Check if booking has any refund.* PaymentEvent."""
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking_id,
+            PaymentEvent.event_type.like("refund.%")
+        )
+    ).first()
+    return refund_event is not None
 
 
 def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingResponse:
@@ -99,7 +114,20 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
         service_name=service_name,
         listing_name=listing_name,
         paid_at=paid_at,
+        has_refund=_booking_has_refund(db, booking.id),
+        refund_date=_get_refund_date(db, booking.id),
     )
+
+
+def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
+    """Get the date of the first refund.* PaymentEvent for a booking."""
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking_id,
+            PaymentEvent.event_type.like("refund.%")
+        ).order_by(PaymentEvent.created_at)
+    ).first()
+    return refund_event.created_at if refund_event else None
 
 
 def _get_service_or_404(db: Session, service_id: UUID) -> Service:
@@ -434,6 +462,25 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
 
 
 def cancel_booking(db: Session, booking: Booking) -> Booking:
+    """
+    Cancel a booking. If booking is approved and has payment, process refund first.
+    If refund fails, booking stays approved and HTTPException is raised.
+    """
+    # If booking is approved AND has stripe_payment_intent_id, process refund first
+    if booking.status == BookingStatus.approved and booking.stripe_payment_intent_id:
+        # Import process_refund from stripe_payment
+        from app.modules.stripe_payment.service import process_refund
+
+        # Call process_refund - if it fails, raise error and DO NOT cancel
+        refund_result = process_refund(db, booking)
+
+        if not refund_result.get("success"):
+            error_msg = refund_result.get("error", "Refund failed")
+            raise HTTPException(status_code=400, detail=f"Cannot cancel: {error_msg}")
+
+        # Refund succeeded - now cancel the booking
+
+    # Update booking status to cancelled
     booking.status = BookingStatus.cancelled
 
     db.commit()
@@ -442,102 +489,30 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
 
 
 def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
-    """
-    Create a Stripe Payment Intent for a booking.
-
-    Returns dict with client_secret on success.
-    Raises HTTPException if booking not found, not owned by user, not pending,
-    or final_price < 0.50.
-    """
-    import os
-
-    # Retrieve booking
-    booking = db.get(Booking, booking_id)
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    # Verify user owns the booking
-    if booking.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to pay for this booking")
-
-    # Verify booking is pending
-    if booking.status != BookingStatus.pending:
-        raise HTTPException(status_code=400, detail="Booking is not in pending status")
-
-    # Verify slot availability BEFORE creating payment intent
-    if booking.service_id and booking.booking_from_time and booking.booking_to_time:
-        service = db.get(Service, booking.service_id)
-        if service and service.capacity:
-            still_available = availability_is_available(
-                db,
-                booking.service_id,
-                service.capacity,
-                booking.booking_from_time,
-                booking.booking_to_time,
-                booking.amount_of_people or 1,
-            )
-            if not still_available:
-                raise HTTPException(
-                    status_code=409,
-                    detail="The selected time slot is no longer available. Please choose a different time."
-                )
-
-    # Verify final_price >= 0.50 (calculate if None)
-    if booking.final_price is None:
-        # Calculate final_price from components
-        base = float(booking.base_price or 0)
-        fee = float(booking.service_fee_amount or 0)
-        discount = float(booking.discount_amount or 0)
-        calculated_final = base + fee - discount
-        if calculated_final < 0.50:
-            raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
-        booking.final_price = calculated_final
-        db.add(booking)
-        db.commit()
-    elif booking.final_price < 0.50:
-        raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
-
-    # Get Stripe key
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
-
-    # Create Stripe Payment Intent
-    stripe.api_key = stripe_secret_key
-    amount_cents = int(booking.final_price * 100)
-
-    payment_intent = stripe.PaymentIntent.create(
-        amount=amount_cents,
-        currency="usd",
-        metadata={"booking_id": str(booking_id)},
-        automatic_payment_methods={"enabled": True},
-    )
-
-    # Store payment intent ID on booking
-    booking.stripe_payment_intent_id = payment_intent.id
-    db.add(booking)
-
-    # Create PaymentEvent record
-    payment_event = PaymentEvent(
-        booking_id=booking_id,
-        event_type="payment_intent.created",
-        stripe_payment_intent_id=payment_intent.id,
-        amount_cents=amount_cents,
-    )
-    db.add(payment_event)
-
-    db.commit()
-    db.refresh(booking)
-
-    return {"client_secret": payment_intent.client_secret}
+    """Delegate to stripe_payment service (imported from there)."""
+    from app.modules.stripe_payment.service import create_payment_intent as _create_payment_intent
+    return _create_payment_intent(db, booking_id, user_id)
 
 
 def delete_booking(db: Session, booking: Booking) -> None:
-    """Delete a cancelled booking. Only cancelled bookings can be deleted."""
+    """Delete a cancelled booking. Refunded bookings cannot be deleted."""
     if booking.status != BookingStatus.cancelled:
         raise HTTPException(
             status_code=400,
             detail="Only cancelled bookings can be deleted",
+        )
+    # Check if booking has a refund via PaymentEvent
+    from app.modules.stripe_payment.models import PaymentEvent
+    refund_event = db.exec(
+        select(PaymentEvent).where(
+            PaymentEvent.booking_id == booking.id,
+            PaymentEvent.event_type.like("refund.%")
+        )
+    ).first()
+    if refund_event:
+        raise HTTPException(
+            status_code=400,
+            detail="Refunded bookings cannot be deleted",
         )
     db.delete(booking)
     db.commit()

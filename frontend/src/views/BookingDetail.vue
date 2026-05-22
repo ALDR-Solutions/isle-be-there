@@ -216,6 +216,16 @@
                   <span class="font-medium text-emerald-600">-${{ Number(booking.discount_amount).toFixed(2) }}</span>
                 </div>
 
+                <div v-if="booking.status === 'cancelled' && booking.has_refund" class="flex justify-between text-sm">
+                  <div>
+                    <span class="text-emerald-600">Refunded</span>
+                    <span v-if="booking.refund_date" class="ml-2 text-xs text-slate-400">
+                      {{ new Date(booking.refund_date).toLocaleDateString() }}
+                    </span>
+                  </div>
+                  <span class="font-medium text-emerald-700">-${{ Number(booking.final_price ?? 0).toFixed(2) }}</span>
+                </div>
+
                 <div class="border-t border-slate-200 pt-4">
                   <div class="flex justify-between">
                     <span class="font-semibold text-slate-900">Total</span>
@@ -293,7 +303,10 @@ function statusLabel(status) {
   const value = normalizedStatus(status)
   if (value === 'pending') return 'Pending'
   if (value === 'approved') return 'Approved'
-  if (value === 'cancelled') return 'Cancelled'
+  if (value === 'cancelled') {
+    if (booking.value?.has_refund) return 'Refunded'
+    return 'Cancelled'
+  }
   if (value === 'completed') return 'Completed'
   return value || 'Unknown'
 }
@@ -302,7 +315,10 @@ function statusClasses(status) {
   const value = normalizedStatus(status)
   if (value === 'pending') return 'bg-amber-100 text-amber-800'
   if (value === 'approved') return 'bg-emerald-100 text-emerald-800'
-  if (value === 'cancelled') return 'bg-red-100 text-red-800'
+  if (value === 'cancelled') {
+    if (booking.value?.has_refund) return 'bg-green-100 text-green-800'
+    return 'bg-red-100 text-red-800'
+  }
   if (value === 'completed') return 'bg-cyan-100 text-cyan-800'
   return 'bg-slate-100 text-slate-700'
 }
