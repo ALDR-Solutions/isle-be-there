@@ -56,7 +56,7 @@ def send_itinerary_email(
     *,
     country: Optional[str] = None,
     interests: Optional[list[str]] = None,
-    view_url: Optional[str] = None,
+    #   view_url: Optional[str] = None,
 ) -> None:
     subject_location = country or itinerary_title or "your trip"
     subject = f"Your Isle Be There itinerary for {subject_location}"
@@ -65,7 +65,7 @@ def send_itinerary_email(
         itinerary=itinerary,
         country=country,
         interests=interests or [],
-        view_url=view_url,
+        # view_url=view_url,
     )
     send_html_email(email, subject, html)
 
@@ -76,7 +76,7 @@ def build_itinerary_email_html(
     itinerary: ItineraryPlanResponse,
     country: Optional[str],
     interests: list[str],
-    view_url: Optional[str],
+    # view_url: Optional[str],
 ) -> str:
     title = escape(itinerary_title or "Your itinerary")
     location = escape(country or "Caribbean")
@@ -89,20 +89,20 @@ def build_itinerary_email_html(
         for interest in interests
     )
     day_sections = "".join(_render_day_section(day, index) for index, day in enumerate(itinerary.days))
-    cta_html = (
-        f"""
-        <div style="margin-top: 24px;">
-          <a
-            href="{escape(view_url)}"
-            style="display:inline-block;background:#0891b2;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;"
-          >
-            View itinerary in app
-          </a>
-        </div>
-        """
-        if view_url
-        else ""
-    )
+    # cta_html = (
+    #     f"""
+    #     <div style="margin-top: 24px;">
+    #       <a
+    #         href="{escape(view_url)}"
+    #         style="display:inline-block;background:#0891b2;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;"
+    #       >
+    #         View itinerary in app
+    #       </a>
+    #     </div>
+    #     """
+    #     if view_url
+    #     else ""
+    # )
 
     return f"""
     <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
@@ -117,7 +117,7 @@ def build_itinerary_email_html(
           <p style="margin:16px 0 0;max-width:620px;font-size:16px;line-height:1.7;color:#cbd5e1;">
             Your Caribbean trip plan is ready. Here is the current day-by-day outline based on your destination, interests, budget, and pace.
           </p>
-          {cta_html}
+          
         </div>
 
         <div style="padding:24px 24px 8px;background:#ffffff;">
