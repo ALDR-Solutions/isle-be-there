@@ -254,7 +254,7 @@
 
           <div
             class="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>Swipe on mobile or use the arrows to move through the list.</p>
+            
             <router-link
               :to="{ name: 'Listings' }"
               class="font-semibold text-cyan-700 transition hover:text-cyan-800">
@@ -514,7 +514,7 @@ const discoveryTitle = computed(() =>
 
 const discoveryBody = computed(() =>
   authStore.isAuthenticated
-    ? "These suggestions use your account context so the page gets you to better options faster."
+    ? "These suggestions use your interest so the page gets you to better options faster."
     : "Start with a small set of places to stay and things to do, then open the ones that feel right for your trip.",
 );
 

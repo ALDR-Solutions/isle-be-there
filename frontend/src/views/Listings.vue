@@ -56,7 +56,7 @@
                         type="button"
                         class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
                         @click="clearAllFilters">
-                        Clear all
+                        Clear 
                       </button>
                     </div>
 
@@ -204,7 +204,7 @@
       </TransitionRoot>
 
       <div
-        class="z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:sticky lg:top-20">
+        class="relative z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:sticky lg:top-20">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div
             class="flex flex-col gap-4 py-4 lg:min-h-[5.5rem] lg:flex-row lg:items-center lg:justify-between">
@@ -248,7 +248,7 @@
                   leave-from-class="transform opacity-100 scale-100"
                   leave-to-class="transform opacity-0 scale-95">
                   <MenuItems
-                    class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden">
+                    class="absolute left-0 sm:left-auto sm:right-0 z-50 mt-2 w-48 origin-top-right rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden">
                     <div class="py-1">
                       <MenuItem
                         v-for="option in sortOptions"
@@ -274,7 +274,7 @@
 
               <button
                 type="button"
-                class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-gray-400 shadow-sm transition hover:border-slate-300 hover:text-gray-500"
+                class="hidden sm:inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-gray-400 shadow-sm transition hover:border-slate-300 hover:text-gray-500"
                 @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'">
                 <span class="sr-only">Toggle view</span>
                 <Squares2X2Icon
@@ -314,7 +314,7 @@
                 type="button"
                 class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
                 @click="clearAllFilters">
-                Clear all
+                Clear 
               </button>
             </div>
 
@@ -370,7 +370,7 @@
                     type="button"
                     class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
                     @click="clearAllFilters">
-                    Clear all
+                    Clear 
                   </button>
                 </div>
                 <div class="border-b border-gray-200 pb-6">
