@@ -512,11 +512,9 @@
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-600">
-                    Employee Services
+                    Services
                   </p>
-                  <p class="mt-1 text-sm text-slate-500">
-                    Read-only service data entered by the business owner or employees.
-                  </p>
+                  
                 </div>
                 <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                   {{ visibleServices.length }} {{ visibleServices.length === 1 ? 'service' : 'services' }}
