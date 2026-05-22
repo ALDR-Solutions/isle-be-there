@@ -78,20 +78,35 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="tab in filterTabs"
-            :key="tab.value"
-            @click="filterTab = tab.value"
-            class="rounded-2xl px-5 py-2 text-sm font-semibold transition"
-            :class="
-              filterTab === tab.value
-                ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
-            "
-          >
-            {{ tab.label }}
-          </button>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex flex-1 flex-wrap gap-2">
+            <button
+              v-for="tab in filterTabs"
+              :key="tab.value"
+              @click="filterTab = tab.value"
+              class="rounded-2xl px-5 py-2 text-sm font-semibold transition"
+              :class="
+                filterTab === tab.value
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+              "
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+
+          <div class="w-full lg:w-72 lg:flex-none">
+            <label for="admin-listing-search" class="sr-only">Search listings</label>
+            <div class="relative">
+              <input
+                id="admin-listing-search"
+                v-model="searchQuery"
+                type="search"
+                placeholder="Search listings"
+                class="w-full rounded-2xl border border-slate-200 bg-white py-2.5 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-cyan-400"
+              />
+            </div>
+          </div>
         </div>
 
         <div
@@ -113,7 +128,9 @@
             />
           </svg>
           <p class="mt-4 text-base font-medium text-slate-500">No listings found.</p>
-          <p class="mt-1 text-sm text-slate-400">No moderated listings match this filter yet.</p>
+          <p class="mt-1 text-sm text-slate-400">
+            No moderated listings match the current filters or search.
+          </p>
         </div>
 
         <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -749,6 +766,7 @@ const loadError = ref('')
 const decisionSubmitting = ref(false)
 const listings = ref([])
 const filterTab = ref('all')
+const searchQuery = ref('')
 
 const showConfirmModal = ref(false)
 const confirmAction = ref('')
@@ -772,8 +790,17 @@ const filterTabs = [
 ]
 
 const filteredListings = computed(() => {
-  if (filterTab.value === 'all') return listings.value
-  return listings.value.filter((listing) => listing.status === filterTab.value)
+  const normalizedQuery = normalizeSearchText(searchQuery.value)
+  const statusFilteredListings =
+    filterTab.value === 'all'
+      ? listings.value
+      : listings.value.filter((listing) => listing.status === filterTab.value)
+
+  if (!normalizedQuery) return statusFilteredListings
+
+  return statusFilteredListings.filter((listing) =>
+    buildListingSearchHaystack(listing).includes(normalizedQuery),
+  )
 })
 
 const stats = computed(() => ({
@@ -883,6 +910,22 @@ function formatCurrency(value) {
 function formatLocation(address) {
   const location = [address?.city, address?.country].filter(Boolean).join(', ')
   return location || 'No location set'
+}
+
+function normalizeSearchText(value) {
+  return String(value ?? '').trim().toLowerCase()
+}
+
+function buildListingSearchHaystack(listing) {
+  return [
+    listing?.title,
+    listing?.business_name,
+    listing?.business_type_name,
+    formatLocation(listing?.address),
+  ]
+    .map((value) => normalizeSearchText(value))
+    .filter(Boolean)
+    .join(' ')
 }
 
 function formatFullAddress(address) {
