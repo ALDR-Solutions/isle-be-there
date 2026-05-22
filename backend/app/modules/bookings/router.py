@@ -111,8 +111,6 @@ def confirm_payment_endpoint(
     db: Session = Depends(get_db),
 ):
     """Confirm payment was successful via Stripe API and update booking status."""
-    import os
-
     # Check if payment intent was created for this booking
     if not booking.stripe_payment_intent_id:
         raise HTTPException(
@@ -124,8 +122,6 @@ def confirm_payment_endpoint(
     stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
     if not stripe_secret_key:
         raise HTTPException(status_code=500, detail="Stripe is not configured")
-
-    stripe.api_key = stripe_secret_key
 
     try:
         payment_intent = stripe.PaymentIntent.retrieve(booking.stripe_payment_intent_id)

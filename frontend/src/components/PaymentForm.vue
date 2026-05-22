@@ -88,8 +88,6 @@ async function initializeStripe() {
     // Load Stripe with publishable key
     const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 
-    console.log('Stripe key present:', !!STRIPE_PUBLISHABLE_KEY, STRIPE_PUBLISHABLE_KEY ? STRIPE_PUBLISHABLE_KEY.substring(0, 10) + '...' : 'none')
-
     if (!STRIPE_PUBLISHABLE_KEY || STRIPE_PUBLISHABLE_KEY === 'pk_test_your_stripe_publishable_key_here') {
       errorMessage.value = 'Stripe key not configured. Please set VITE_STRIPE_PUBLISHABLE_KEY in .env'
       stripeReady.value = false
@@ -111,7 +109,8 @@ async function initializeStripe() {
         const intentData = await createPaymentIntent(props.bookingId)
         secret = intentData.client_secret
       } catch (err) {
-        errorMessage.value = 'Failed to create payment: ' + (err.message || 'Unknown error')
+        const detail = err.response?.data?.detail;
+        errorMessage.value = 'Failed to create payment: ' + (typeof detail === 'string' ? detail : err.message || 'Unknown error')
         stripeReady.value = false
         return
       }

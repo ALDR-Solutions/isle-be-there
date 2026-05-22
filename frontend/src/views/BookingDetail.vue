@@ -253,7 +253,6 @@ async function loadPaymentFormComponent() {
     const module = await import('../components/PaymentForm.vue')
     PaymentFormComponent.value = module.default
   } catch (e) {
-    console.warn('PaymentForm component not available:', e.message)
     PaymentFormComponent.value = null
   }
 }

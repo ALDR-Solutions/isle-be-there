@@ -464,6 +464,24 @@ def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if booking.status != BookingStatus.pending:
         raise HTTPException(status_code=400, detail="Booking is not in pending status")
 
+    # Verify slot availability BEFORE creating payment intent
+    if booking.service_id and booking.booking_from_time and booking.booking_to_time:
+        service = db.get(Service, booking.service_id)
+        if service and service.capacity:
+            still_available = availability_is_available(
+                db,
+                booking.service_id,
+                service.capacity,
+                booking.booking_from_time,
+                booking.booking_to_time,
+                booking.amount_of_people or 1,
+            )
+            if not still_available:
+                raise HTTPException(
+                    status_code=409,
+                    detail="The selected time slot is no longer available. Please choose a different time."
+                )
+
     # Verify final_price >= 0.50 (calculate if None)
     if booking.final_price is None:
         # Calculate final_price from components
