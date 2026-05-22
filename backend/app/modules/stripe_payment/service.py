@@ -143,3 +143,66 @@ def process_refund(db: Session, booking: Booking) -> dict:
     db.commit()
 
     return {"success": True, "refund_id": refund.id, "amount_cents": refund.amount}
+
+
+def confirm_payment(db: Session, booking: "Booking") -> dict:
+    """
+    Confirm payment was successful via Stripe API and update booking status.
+    Used by bookings router to delegate payment confirmation to stripe_payment module.
+    """
+    import os
+    import stripe as stripe_lib
+    from app.modules.bookings.models import BookingStatus
+    from app.modules.stripe_payment.models import PaymentEvent
+
+    # Check if payment intent was created for this booking
+    if not booking.stripe_payment_intent_id:
+        return {"success": False, "error": "No payment initiated for this booking. Call /payment-intent first."}
+
+    # Get Stripe key and verify payment intent status
+    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_secret_key:
+        return {"success": False, "error": "Stripe is not configured"}
+
+    try:
+        stripe_lib.api_key = stripe_secret_key
+        payment_intent = stripe_lib.PaymentIntent.retrieve(booking.stripe_payment_intent_id)
+    except stripe_lib.error.InvalidRequestError:
+        return {"success": False, "error": "Payment intent not found"}
+
+    if payment_intent.status != "succeeded":
+        return {"success": False, "error": "Payment not yet completed or failed"}
+
+    # Verify slot availability before confirming (dates may have been taken since payment intent created)
+    from app.modules.services.models import Service
+    if booking.service_id and booking.booking_from_time and booking.booking_to_time:
+        service = db.get(Service, booking.service_id)
+        if service and service.capacity:
+            from app.modules.availability.service import is_available as check_availability
+            still_available = check_availability(
+                db,
+                booking.service_id,
+                service.capacity,
+                booking.booking_from_time,
+                booking.booking_to_time,
+                booking.amount_of_people or 1,
+            )
+            if not still_available:
+                return {"success": False, "error": "The selected time slot is no longer available. Please choose a different time."}
+
+    # Update booking status to approved
+    booking.status = BookingStatus.approved
+    db.add(booking)
+
+    # Create PaymentEvent record
+    payment_event = PaymentEvent(
+        booking_id=booking.id,
+        event_type="payment_intent.confirmed",
+        stripe_payment_intent_id=payment_intent.id,
+        amount_cents=payment_intent.amount,
+    )
+    db.add(payment_event)
+    db.commit()
+    db.refresh(booking)
+
+    return {"success": True, "status": "approved", "message": "Payment successful"}

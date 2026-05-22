@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.infrastructure.database import get_db
-from app.modules.bookings.models import Booking, PaymentEvent
+from app.modules.bookings.models import Booking, BookingStatus, PaymentEvent
 from app.modules.users.models import User
 from app.modules.stripe_payment.service import process_refund
 from app.shared.dependencies.permissions import require_roles
@@ -37,8 +37,48 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(400, "Invalid signature")
 
+    # Handle payment_intent.succeeded
+    if event.type == "payment_intent.succeeded":
+        booking_id = event.data.object["metadata"].get("booking_id")
+        if booking_id:
+            # Idempotency check
+            existing = db.exec(
+                select(PaymentEvent).where(
+                    PaymentEvent.stripe_payment_intent_id == event.data.object["id"]
+                )
+            ).first()
+            if existing:
+                return {"received": True}
+
+            booking = db.get(Booking, UUID(booking_id))
+            if booking:
+                booking.status = BookingStatus.approved
+                db.add(booking)
+
+                payment_event = PaymentEvent(
+                    booking_id=booking.id,
+                    event_type="payment_intent.succeeded",
+                    stripe_payment_intent_id=event.data.object["id"],
+                    amount_cents=event.data.object["amount"],
+                )
+                db.add(payment_event)
+                db.commit()
+
+    # Handle payment_intent.payment_failed
+    elif event.type == "payment_intent.payment_failed":
+        booking_id = event.data.object["metadata"].get("booking_id")
+        if booking_id:
+            payment_event = PaymentEvent(
+                booking_id=UUID(booking_id),
+                event_type="payment_intent.payment_failed",
+                stripe_payment_intent_id=event.data.object["id"],
+                amount_cents=event.data.object["amount"],
+            )
+            db.add(payment_event)
+            db.commit()
+
     # Handle charge.refunded
-    if event.type == "charge.refunded":
+    elif event.type == "charge.refunded":
         payment_intent_id = event.data.object.get("payment_intent")
         if payment_intent_id:
             # Idempotency check - look for existing refund.completed for this payment intent

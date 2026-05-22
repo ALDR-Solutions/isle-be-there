@@ -1,5 +1,4 @@
 from typing import List
-import os
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -28,7 +27,6 @@ from app.modules.availability.service import is_available as check_availability
 from app.modules.services.models import Service
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
-
 
 
 
@@ -111,63 +109,12 @@ def confirm_payment_endpoint(
     db: Session = Depends(get_db),
 ):
     """Confirm payment was successful via Stripe API and update booking status."""
-    # Check if payment intent was created for this booking
-    if not booking.stripe_payment_intent_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No payment initiated for this booking. Call /payment-intent first."
-        )
-
-    # Get Stripe key and verify payment intent status
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
-
-    try:
-        payment_intent = stripe.PaymentIntent.retrieve(booking.stripe_payment_intent_id)
-    except stripe.error.InvalidRequestError:
-        raise HTTPException(status_code=404, detail="Payment intent not found")
-
-    if payment_intent.status != "succeeded":
-        raise HTTPException(
-            status_code=400,
-            detail="Payment not yet completed or failed"
-        )
-
-    # Verify slot availability before confirming (dates may have been taken since payment intent created)
-    if booking.service_id and booking.booking_from_time and booking.booking_to_time:
-        service = db.get(Service, booking.service_id)
-        if service and service.capacity:
-            still_available = check_availability(
-                db,
-                booking.service_id,
-                service.capacity,
-                booking.booking_from_time,
-                booking.booking_to_time,
-                booking.amount_of_people or 1,
-            )
-            if not still_available:
-                raise HTTPException(
-                    status_code=409,
-                    detail="The selected time slot is no longer available. Please choose a different time."
-                )
-
-    # Update booking status to approved
-    booking.status = BookingStatus.approved
-    db.add(booking)
-
-    # Create PaymentEvent record
-    payment_event = PaymentEvent(
-        booking_id=booking.id,
-        event_type="payment_intent.confirmed",
-        stripe_payment_intent_id=payment_intent.id,
-        amount_cents=payment_intent.amount,
-    )
-    db.add(payment_event)
-    db.commit()
-    db.refresh(booking)
-
-    return {"status": "approved", "message": "Payment successful"}
+    # Delegate to stripe_payment service
+    from app.modules.stripe_payment.service import confirm_payment as stripe_confirm_payment
+    result = stripe_confirm_payment(db, booking)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
 
 
 @router.delete("/{booking_id}", status_code=204)
@@ -187,64 +134,3 @@ def get_booking_price_endpoint(
 ):
     price = price_booking_by_id(db, booking.id, current_user.id)
     return BookingPriceResponse(**price)
-
-
-@router.post("/payments/webhook", include_in_schema=False)
-async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    """Handle Stripe webhook events."""
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    if not webhook_secret:
-        raise HTTPException(500, "Webhook secret not configured")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, webhook_secret
-        )
-    except ValueError:
-        raise HTTPException(400, "Invalid payload")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(400, "Invalid signature")
-
-    # Check if already processed (idempotency)
-    existing = db.exec(
-        select(PaymentEvent).where(
-            PaymentEvent.stripe_payment_intent_id == event.data.object["id"]
-        )
-    ).first()
-    if existing:
-        return {"received": True}
-
-    if event.type == "payment_intent.succeeded":
-        booking_id = event.data.object["metadata"].get("booking_id")
-        if booking_id:
-            booking = db.get(Booking, UUID(booking_id))
-            if booking:
-                booking.status = BookingStatus.approved
-                db.add(booking)
-
-                payment_event = PaymentEvent.model_validate({
-                    "booking_id": booking.id,
-                    "event_type": "payment_intent.succeeded",
-                    "stripe_payment_intent_id": event.data.object["id"],
-                    "amount_cents": event.data.object["amount"],
-                })
-                db.add(payment_event)
-                db.commit()
-
-    elif event.type == "payment_intent.payment_failed":
-        # Log but booking stays pending
-        booking_id = event.data.object["metadata"].get("booking_id")
-        if booking_id:
-            payment_event = PaymentEvent.model_validate({
-                "booking_id": UUID(booking_id),
-                "event_type": "payment_intent.payment_failed",
-                "stripe_payment_intent_id": event.data.object["id"],
-                "amount_cents": event.data.object["amount"],
-            })
-            db.add(payment_event)
-            db.commit()
-
-    return {"received": True}
