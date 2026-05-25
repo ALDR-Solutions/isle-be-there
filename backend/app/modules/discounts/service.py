@@ -44,7 +44,7 @@ def get_active_discounts(db: Session, discount_type: Optional[str | DiscountType
     if hasattr(Discount, "is_active"):
         stmt = stmt.where(Discount.is_active == True)
 
-    results = db.exec(stmt).scalars().all()
+    results = db.exec(stmt).all()
     return results
 
 

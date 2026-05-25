@@ -553,6 +553,13 @@
             >
               Back to profile
             </RouterLink>
+            <RouterLink
+              v-if="savedItinerary"
+              :to="`/bulk-booking/${savedItinerary.id}`"
+              class="ml-3 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Book All
+            </RouterLink>
           </div>
         </div>
 

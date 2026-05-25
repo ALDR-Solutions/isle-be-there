@@ -312,7 +312,21 @@ def get_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> Saved
         .order_by(ItineraryItem.day_date, ItineraryItem.sort_order, ItineraryItem.start_at)
     ).all()
 
-    return _serialize_saved_itinerary(itinerary, items)
+    # Get service_ids for each listing
+    listing_ids = [item.listing_id for item in items if item.listing_id]
+    services_map = {}
+    if listing_ids:
+        services = db.exec(
+            select(Service)
+            .where(Service.listing_id.in_(listing_ids))
+            .where(Service.status == ServiceStatusTypes.active)
+        ).all()
+        # Map listing_id to service_id (use first active service per listing)
+        for svc in services:
+            if svc.listing_id not in services_map:
+                services_map[svc.listing_id] = svc.service_id
+
+    return _serialize_saved_itinerary(itinerary, items, services_map)
 
 
 def save_itinerary(
@@ -643,7 +657,10 @@ def _status_value(status) -> str:
 def _serialize_saved_itinerary(
     itinerary: Itinerary,
     items: list[ItineraryItem],
+    services_map: dict = None,
 ) -> SavedItineraryResponse:
+    if services_map is None:
+        services_map = {}
     return SavedItineraryResponse(
         id=itinerary.id,
         user_id=itinerary.user_id,
@@ -679,6 +696,7 @@ def _serialize_saved_itinerary(
                 "address_snapshot": item.address_snapshot,
                 "reason_tags": list(item.reason_tags or []),
                 "extra_metadata": item.extra_metadata,
+                "service_id": services_map.get(item.listing_id) if item.listing_id else None,
             }
             for item in items
         ],
@@ -788,9 +806,20 @@ def convert_itinerary_to_bookings(
         if item.linked_booking_id is not None:
             continue
 
+        service = db.exec(
+            select(Service)
+            .where(Service.listing_id == item.listing_id)
+            .where(Service.status == ServiceStatusTypes.active)
+            .order_by(Service.created_at)
+        ).first()
+        if not service:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot convert itinerary item to booking without an active service",
+            )
+
         booking_data = BookingCreate(
-            listing_id=item.listing_id,
-            itinerary_id=itinerary_id,
+            service_id=service.service_id,
             itinerary_item_id=item.id,
             booking_from_time=item.start_at,
             booking_to_time=item.end_at,

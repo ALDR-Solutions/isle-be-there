@@ -91,6 +91,7 @@ class Listing(SQLModel, table=True):
     end_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
     itinerary_items: list["ItineraryItem"] = Relationship(back_populates="listing_rel")
+    listing_hours: list["ListingHours"] = Relationship(back_populates="listing_rel")
 
 
 

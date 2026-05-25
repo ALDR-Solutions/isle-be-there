@@ -112,9 +112,12 @@ export const listingsAPI = {
 export const bookingsAPI = {
   getAll: (params) => api.get("/api/bookings", { params }),
   getById: (id) => api.get(`/api/bookings/${id}`),
+  getPrice: (id) => api.get(`/api/bookings/${id}/price`),
   create: (data) => api.post("/api/bookings", data),
+  createBulk: (data) => api.post("/api/bookings/bulk", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
+  delete: (id) => api.delete(`/api/bookings/${id}`),
 };
 
 export const itinerariesAPI = {
@@ -222,6 +225,27 @@ export const uploadsAPI = {
     });
   },
   deleteImages: (urls) => api.delete("/api/upload", { data: { urls } }),
+};
+
+// Discounts API
+export const discountsAPI = {
+  getPackageDiscounts: () => api.get("/api/discounts", { params: { discount_type: "package" } }),
+};
+
+// Availability API
+export const availabilityAPI = {
+  // ListingHours
+  getListingHours: (listingId) => api.get(`/api/availability/listings/${listingId}/hours`),
+  createListingHours: (listingId, data) => api.post(`/api/availability/listings/${listingId}/hours`, data),
+  updateListingHours: (listingId, day, data) => api.put(`/api/availability/listings/${listingId}/hours/${day}`, data),
+  deleteListingHours: (listingId, day) => api.delete(`/api/availability/listings/${listingId}/hours/${day}`),
+  // ServiceSlots
+  getServiceSlots: (serviceId) => api.get(`/api/availability/services/${serviceId}/slots`),
+  createServiceSlot: (serviceId, data) => api.post(`/api/availability/services/${serviceId}/slots`, data),
+  deleteServiceSlot: (serviceId, slotId) => api.delete(`/api/availability/services/${serviceId}/slots/${slotId}`),
+  // Service Availability
+  getServiceAvailability: (serviceId, date, people = 1) =>
+    api.get(`/api/availability/services/${serviceId}/available`, { params: { date_param: date, people } }),
 };
 
 export default api;

@@ -113,6 +113,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/bookings/:id',
+    name: 'BookingDetail',
+    component: () => import('./views/BookingDetail.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/calendar',
     name: 'Calendar',
     component: () => import('./views/Calendar.vue'),
@@ -135,9 +141,9 @@ const routes = [
     redirect: '/favourites'
   },
   {
-    path: '/mock-booking-test',
-    name: 'MockBookingTest',
-    component: () => import('./views/MockBookingTest.vue'),
+    path: '/bulk-booking/:itineraryId',
+    name: 'BulkBooking',
+    component: () => import('./views/BulkBooking.vue'),
     meta: { requiresAuth: true }
   }
 ]

@@ -159,3 +159,4 @@ node_modules/
 
 .sisyphus/
 alembic/versions/
+.playwright-mcp/

@@ -115,6 +115,7 @@ class ItineraryItemResponse(BaseModel):
     address_snapshot: Optional[dict] = None
     reason_tags: list[str] = Field(default_factory=list)
     extra_metadata: Optional[dict] = None
+    service_id: Optional[UUID] = None
 
 
 class SavedItinerarySummaryResponse(BaseModel):

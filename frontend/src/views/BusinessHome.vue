@@ -446,6 +446,7 @@
             v-if="detailFormComponent"
             :is="detailFormComponent"
             v-model="form.details"
+            :listing-id="editingId"
           />
 
           <div>

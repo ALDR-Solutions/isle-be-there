@@ -255,39 +255,6 @@
             </div>
           </div>
 
-          <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
-            <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Availability</p>
-              <p class="mt-1 text-xs text-slate-500">Choose service days and add optional notes.</p>
-            </div>
-
-            <div>
-              <label class="mb-2 block text-sm font-semibold text-slate-700">Available Days</label>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="day in availableDays"
-                  :key="day"
-                  type="button"
-                  @click="toggleAvailableDay(day)"
-                  class="rounded-2xl border px-3 py-1.5 text-xs font-semibold transition"
-                  :class="serviceForm.available_days.includes(day) ? 'border-cyan-400 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-                >
-                  {{ day }}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="mb-1.5 block text-sm font-semibold text-slate-700">Notes</label>
-              <input
-                v-model="serviceForm.availability_notes"
-                type="text"
-                placeholder="e.g. Morning departures only"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
-            </div>
-          </div>
-
           <div v-if="isHotelType" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
             <div>
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Hotel Service Details</p>
@@ -339,6 +306,120 @@
             </div>
           </div>
 
+          <!-- Service Slots Section (inline) -->
+          <div v-if="editingService" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Service Slots</p>
+                <p class="mt-1 text-xs text-slate-500">Define time slots for this service.</p>
+              </div>
+              <span v-if="loadingSlots" class="text-xs text-slate-400">Loading...</span>
+            </div>
+
+            <!-- Day Tabs -->
+            <div class="flex gap-1 flex-wrap">
+              <button
+                v-for="(name, idx) in slotDayNames"
+                :key="idx"
+                type="button"
+                @click="selectedSlotDay = idx"
+                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition border"
+                :class="selectedSlotDay === idx
+                  ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
+              >
+                {{ name }}
+                <span v-if="slotCountForDay(idx) > 0" class="ml-1 rounded-full bg-cyan-100 text-cyan-700 px-1.5 py-0.5 text-[10px]">
+                  {{ slotCountForDay(idx) }}
+                </span>
+              </button>
+            </div>
+
+            <!-- Slots for selected day -->
+            <div v-if="serviceSlots.length > 0 && slotsForSelectedDay().length > 0" class="space-y-2">
+              <div
+                v-for="slot in slotsForSelectedDay()"
+                :key="slot.id"
+                class="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3"
+              >
+                <div class="flex-1">
+                  <span class="font-medium text-slate-700">{{ slotDayNames[slot.day_of_week] }}</span>
+                  <span class="ml-2 text-slate-600">
+                    {{ formatSlotTime(slot.start_time) }} - {{ formatSlotTime(slot.end_time) }}
+                  </span>
+                  <span class="ml-2 text-xs text-slate-400">Capacity {{ slot.capacity }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <!-- Copy single slot to another day -->
+                  <div class="relative" :ref="'copySlotDropup-' + slot.id">
+                    <button
+                      type="button"
+                      @click="toggleCopySlotDropup(slot.id)"
+                      class="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                    >
+                      Copy
+                    </button>
+                    <div v-if="activeCopySlotDropup === slot.id" class="absolute right-0 mt-1 z-10 bg-white rounded-lg border border-slate-200 shadow-sm p-1 min-w-[120px]">
+                      <button
+                        v-for="item in availableCopyDays(slot)"
+                        :key="item.idx"
+                        type="button"
+                        @click="handleCopySlotToDay(slot, item.idx)"
+                        class="block w-full text-left px-3 py-1.5 text-xs hover:bg-cyan-50 rounded-md"
+                      >
+                        {{ item.name }}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    @click="handleDeleteSlot(slot.id)"
+                    class="text-xs text-red-500 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-slate-400">No slots for {{ slotDayNames[selectedSlotDay] }}.</p>
+
+            <!-- Add Slot Form -->
+            <div class="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Add New Slot for {{ slotDayNames[selectedSlotDay] }}</h4>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    v-model="newSlot.startTime"
+                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
+                    step="300"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    v-model="newSlot.endTime"
+                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
+                    step="300"
+                  />
+                </div>
+              </div>
+
+              <p v-if="slotValidationError" class="text-xs text-red-500">{{ slotValidationError }}</p>
+
+              <button
+                type="button"
+                @click="handleAddSlot"
+                class="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-600"
+              >
+                Add Slot for {{ slotDayNames[selectedSlotDay] }}
+              </button>
+            </div>
+          </div>
+
           <p v-if="serviceErrors.submit" class="text-sm text-red-500">{{ serviceErrors.submit }}</p>
 
           <div class="flex gap-3 pt-2">
@@ -367,7 +448,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 
-import { servicesAPI, uploadsAPI } from '../../services/api'
+import { servicesAPI, uploadsAPI, availabilityAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 
 const props = defineProps({
@@ -397,6 +478,13 @@ const serviceErrors = ref({})
 const roomAmenityInput = ref('')
 const serviceImageInputRef = ref(null)
 const serviceImageUploading = ref(false)
+const serviceSlots = ref([])
+const loadingSlots = ref(false)
+const slotDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const newSlot = ref({ day: 1, startTime: '09:00', endTime: '17:00' })
+const slotValidationError = ref('')
+const selectedSlotDay = ref(1) // Default to Monday
+const activeCopySlotDropup = ref(null)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
@@ -560,6 +648,16 @@ function openServiceModal(service = null) {
   serviceErrors.value = {}
   roomAmenityInput.value = ''
   showServiceModal.value = true
+
+  if (service) {
+    loadingSlots.value = true
+    availabilityAPI.getServiceSlots(service.service_id)
+      .then(response => { serviceSlots.value = response.data || [] })
+      .catch(err => { console.error('Failed to load slots', err); serviceSlots.value = [] })
+      .finally(() => { loadingSlots.value = false })
+  } else {
+    serviceSlots.value = []
+  }
 }
 
 function openServiceImagePicker() {
@@ -701,6 +799,102 @@ function removeListValue(field, index) {
 function formatCurrency(value) {
   const numericValue = Number(value ?? 0)
   return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00'
+}
+
+function formatSlotTime(time) {
+  if (!time) return ''
+  return time.substring(0, 5)
+}
+
+function validateSlotForm() {
+  if (newSlot.value.startTime >= newSlot.value.endTime) {
+    slotValidationError.value = 'Start time must be before end time'
+    return false
+  }
+  slotValidationError.value = ''
+  return true
+}
+
+function slotsForSelectedDay() {
+  return serviceSlots.value.filter(s => s.day_of_week === selectedSlotDay.value)
+}
+
+function slotCountForDay(day) {
+  return serviceSlots.value.filter(s => s.day_of_week === day).length
+}
+
+function availableCopyDays(slot) {
+  return slotDayNames
+    .map((name, idx) => ({ name, idx }))
+    .filter(({ idx }) => {
+      if (idx === slot.day_of_week) return false
+      const existing = serviceSlots.value.find(
+        s => s.day_of_week === idx && s.start_time === slot.start_time && s.end_time === slot.end_time
+      )
+      return !existing
+    })
+}
+
+function buildSlotPayload(dayOverride) {
+  const day = dayOverride !== undefined ? dayOverride : selectedSlotDay.value
+  return {
+    day_of_week: day,
+    service_id: editingService.value.service_id,
+    start_time: newSlot.value.startTime.length === 5 ? newSlot.value.startTime + ':00' : newSlot.value.startTime,
+    end_time: newSlot.value.endTime.length === 5 ? newSlot.value.endTime + ':00' : newSlot.value.endTime,
+    capacity: editingService.value.capacity ?? 1
+  }
+}
+
+async function handleAddSlot() {
+  if (!validateSlotForm() || !editingService.value) return
+  try {
+    const payload = buildSlotPayload()
+    const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
+    serviceSlots.value = [...serviceSlots.value, response.data]
+    toastStore.show('Slot added', 'success')
+    newSlot.value.startTime = '09:00'
+    newSlot.value.endTime = '17:00'
+  } catch (error) {
+    console.error('Failed to add slot', error)
+    toastStore.show(error.response?.data?.detail || 'Failed to add slot', 'error')
+  }
+}
+
+async function handleCopySlotToDay(slot, targetDay) {
+  if (!editingService.value) return
+  activeCopySlotDropup.value = null
+  try {
+    const payload = {
+      day_of_week: targetDay,
+      service_id: editingService.value.service_id,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
+      capacity: slot.capacity
+    }
+    const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
+    serviceSlots.value = [...serviceSlots.value, response.data]
+    toastStore.show('Slot copied', 'success')
+  } catch (error) {
+    console.error('Failed to copy slot', error)
+    toastStore.show(error.response?.data?.detail || 'Failed to copy slot', 'error')
+  }
+}
+
+function toggleCopySlotDropup(slotId) {
+  activeCopySlotDropup.value = activeCopySlotDropup.value === slotId ? null : slotId
+}
+
+async function handleDeleteSlot(slotId) {
+  if (!editingService.value) return
+  try {
+    await availabilityAPI.deleteServiceSlot(editingService.value.service_id, slotId)
+    serviceSlots.value = serviceSlots.value.filter(s => s.id !== slotId)
+    toastStore.show('Slot deleted', 'success')
+  } catch (error) {
+    console.error('Failed to delete slot', error)
+    toastStore.show('Failed to delete slot', 'error')
+  }
 }
 
 function availabilitySummary(service) {
