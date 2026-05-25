@@ -278,11 +278,11 @@
     <Teleport to="body">
       <div
         v-if="showBooking"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8"
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-8"
         @click.self="handleCloseBooking"
       >
-        <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
-          <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div class="flex max-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div class="shrink-0 flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-600">
                 {{ isRestaurantType ? 'Reserve Listing' : 'Book Listing' }}
@@ -303,7 +303,7 @@
             </button>
           </div>
 
-          <div class="space-y-5 px-6 py-6">
+          <div class="flex-1 space-y-5 overflow-y-auto px-6 py-6">
             <div v-if="bookingError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {{ bookingError }}
             </div>
@@ -407,7 +407,7 @@
               <!-- Slot Selector -->
               <label v-if="bookingAvailableSlots.length > 0" class="block mt-3">
                 <span class="text-sm font-semibold text-slate-700">
-                  {{ isRestaurantType ? 'Reservation time' : 'Time slot' }}
+                  {{ isRestaurantType ? 'Choose a reservation time' : 'Choose a time slot' }}
                 </span>
                 <select
                   :value="selectedSlotIdValue"
@@ -432,35 +432,11 @@
                 </select>
               </label>
 
-              <!-- Booking start / end driven by slot -->
-              <div class="grid gap-5 md:grid-cols-2 mt-3">
-                <label class="block">
-                  <span class="text-sm font-semibold text-slate-700">
-                    {{ isRestaurantType ? 'Reservation start' : 'Booking start' }}
-                  </span>
-                  <input
-                    :value="bookingFromTimeDisplay"
-                    type="datetime-local"
-                    :readonly="!!selectedSlotIdValue"
-                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                    :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotIdValue }"
-                    @input="bookingForm.booking_from_time = $event.target.value; bookingForm._selectedSlotId = ''"
-                  />
-                </label>
-
-                <label class="block">
-                  <span class="text-sm font-semibold text-slate-700">
-                    {{ isRestaurantType ? 'Reservation end' : 'Booking end' }}
-                  </span>
-                  <input
-                    :value="bookingToTimeDisplay"
-                    type="datetime-local"
-                    :readonly="!!selectedSlotIdValue"
-                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                    :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotIdValue }"
-                    @input="bookingForm.booking_to_time = $event.target.value; bookingForm._selectedSlotId = ''"
-                  />
-                </label>
+              <div
+                v-else-if="noSlotsForSelectedDate"
+                class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+              >
+                No time slots are available for the selected date. Please choose a different date.
               </div>
             </div>
 
@@ -475,7 +451,7 @@
             </label>
           </div>
 
-          <div class="flex gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
+          <div class="shrink-0 flex gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">
             <button
               type="button"
               class="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -486,7 +462,7 @@
             <button
               type="button"
               class="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="bookingSubmitting || bookingServicesLoading || bookingServices.length === 0"
+              :disabled="bookingSubmitting || bookingServicesLoading || bookingServices.length === 0 || !canSubmitBooking"
               @click="submitBooking"
             >
               {{ bookingSubmitting ? submitPendingLabel : modalSubmitLabel }}
@@ -606,6 +582,7 @@ const bookingAvailability = ref(null);
 const bookingAvailableSlots = ref([]);
 const bookingLoadingAvailability = ref(false);
 const bookingAvailabilityError = ref('');
+const bookingSelectedDate = ref('');
 const currentImageIndex = ref(0);
 const brokenImages = ref(new Set());
 let heroInterval = null;
@@ -651,31 +628,26 @@ const selectedSlot = computed(() => {
   return bookingAvailableSlots.value.find(s => String(s.slot_id) === String(bookingForm._selectedSlotId)) || null
 })
 
-const bookingFromTimeDisplay = computed(() => {
-  if (selectedSlot.value?.start_time) {
-    const date = bookingForm.booking_from_time?.slice(0, 10) || ''
-    const time = String(selectedSlot.value.start_time).slice(0, 5) // "09:00"
-    return date && time ? buildLocalDateTime(date, time) : ''
-  }
-  return bookingForm.booking_from_time
-})
-
-const bookingToTimeDisplay = computed(() => {
-  if (selectedSlot.value?.end_time) {
-    const date = bookingForm.booking_to_time?.slice(0, 10) || ''
-    const time = String(selectedSlot.value.end_time).slice(0, 5) // "10:00"
-    return date && time ? buildLocalDateTime(date, time) : ''
-  }
-  return bookingForm.booking_to_time
-})
-
 const hotelCheckOutDate = computed(() => bookingForm.booking_to_time ? bookingForm.booking_to_time.slice(0, 10) : '')
 
 const bookingDateValue = computed(() => {
+  if (!isHotelType.value) return bookingSelectedDate.value
   return bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : ''
 })
 
 const selectedSlotIdValue = computed(() => bookingForm._selectedSlotId || '')
+const noSlotsForSelectedDate = computed(() => (
+  !isHotelType.value
+  && !!bookingDateValue.value
+  && bookingAvailability.value !== null
+  && !bookingLoadingAvailability.value
+  && !bookingAvailabilityError.value
+  && bookingAvailableSlots.value.length === 0
+))
+const canSubmitBooking = computed(() => {
+  if (isHotelType.value) return true
+  return !!bookingDateValue.value && !!selectedSlot.value
+})
 
 const selectedService = computed(() => {
   if (!selectedServiceId.value) return null
@@ -841,6 +813,7 @@ function resetBookingForm() {
   bookingForm.booking_to_time = '';
   bookingForm.special_requests = '';
   bookingForm._selectedSlotId = '';
+  bookingSelectedDate.value = '';
   bookingError.value = '';
   clearAvailabilityState();
 }
@@ -961,10 +934,13 @@ function selectBookingSlot(slotId) {
 }
 
 function updateBookingDate(date) {
-  bookingForm.booking_from_time = date ? `${date}T09:00:00` : ''
-  bookingForm.booking_to_time = date ? `${date}T10:00:00` : ''
+  bookingSelectedDate.value = date || ''
+  bookingForm.booking_from_time = ''
+  bookingForm.booking_to_time = ''
   bookingForm._selectedSlotId = ''
+  bookingAvailability.value = null
   bookingAvailableSlots.value = []
+  bookingAvailabilityError.value = ''
 }
 
 async function fetchBookingAvailability() {
@@ -981,6 +957,14 @@ async function fetchBookingAvailability() {
     const response = await availabilityAPI.getServiceAvailability(serviceId, date, people)
     bookingAvailability.value = response.data
     bookingAvailableSlots.value = (response.data?.slots || []).filter(s => s.is_available)
+    if (
+      bookingForm._selectedSlotId
+      && (!selectedSlot.value || selectedSlot.value.remaining_capacity < people)
+    ) {
+      bookingForm._selectedSlotId = ''
+      bookingForm.booking_from_time = ''
+      bookingForm.booking_to_time = ''
+    }
   } catch (err) {
     bookingAvailabilityError.value = 'Unable to load availability. Please try again.'
     bookingAvailableSlots.value = []
@@ -1008,10 +992,30 @@ function validateListingBooking() {
     bookingError.value = "Booker's name is required.";
     return false;
   }
+  if (!bookingDateValue.value) {
+    bookingError.value = isHotelType.value
+      ? 'Please choose both check-in and check-out dates.'
+      : 'Please choose a booking date first.';
+    return false;
+  }
+  if (!isHotelType.value && bookingAvailabilityError.value) {
+    bookingError.value = 'Availability could not be loaded. Please try another date.';
+    return false;
+  }
+  if (!isHotelType.value && bookingAvailableSlots.value.length === 0) {
+    bookingError.value = 'No time slots are available for the selected date.';
+    return false;
+  }
+  if (!isHotelType.value && !selectedSlot.value) {
+    bookingError.value = isRestaurantType.value
+      ? 'Please choose a reservation time before continuing.'
+      : 'Please choose a time slot before continuing.';
+    return false;
+  }
   if (!bookingForm.booking_from_time || !bookingForm.booking_to_time) {
     bookingError.value = isHotelType.value
       ? 'Please choose both check-in and check-out dates.'
-      : 'Please choose both a booking start and end time.';
+      : 'Please choose a valid time slot before continuing.';
     return false;
   }
   if (new Date(bookingForm.booking_to_time) <= new Date(bookingForm.booking_from_time)) {
@@ -1130,6 +1134,7 @@ watch(
   () => selectedServiceId.value,
   (newServiceId, oldServiceId) => {
     bookingForm.service_id = newServiceId || '';
+    bookingSelectedDate.value = '';
     bookingForm.booking_from_time = '';
     bookingForm.booking_to_time = '';
     bookingForm._selectedSlotId = '';
@@ -1141,7 +1146,7 @@ watch(
 );
 
 watch(
-  [() => selectedServiceId.value, () => bookingForm.booking_from_time, () => bookingForm.amount_of_people],
+  [() => selectedServiceId.value, () => bookingDateValue.value, () => bookingForm.amount_of_people],
   () => {
     if (!isHotelType.value) {
       fetchBookingAvailability()
