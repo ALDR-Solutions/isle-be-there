@@ -45,6 +45,7 @@ class BookingResponse(BaseModel):
     service_id: Optional[UUID] = None
     service_name: Optional[str] = None
     listing_name: Optional[str] = None
+    listing_business_type_name: Optional[str] = None
     status: Optional[BookingStatus] = None
     created_at: datetime
     updated_at: datetime

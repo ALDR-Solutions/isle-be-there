@@ -46,9 +46,11 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             Booking,
             Service.name.label("service_name"),
             Listing.title.label("listing_name"),
+            BusinessType.name.label("listing_business_type_name"),
             PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(BusinessType, Listing.business_type == BusinessType.id)
         .outerjoin(
             PaymentEvent,
             (PaymentEvent.booking_id == Booking.id) &
@@ -63,11 +65,12 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             **booking.model_dump(),
             service_name=service_name,
             listing_name=listing_name,
+            listing_business_type_name=listing_business_type_name,
             paid_at=paid_at,
             has_refund=_booking_has_refund(db, booking.id),
             refund_date=_get_refund_date(db, booking.id),
         )
-        for booking, service_name, listing_name, paid_at in results
+        for booking, service_name, listing_name, listing_business_type_name, paid_at in results
     ]
 
 
@@ -88,9 +91,11 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
             Booking,
             Service.name.label("service_name"),
             Listing.title.label("listing_name"),
+            BusinessType.name.label("listing_business_type_name"),
             PaymentEvent.created_at.label("paid_at"))
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
+        .outerjoin(BusinessType, Listing.business_type == BusinessType.id)
         .outerjoin(
             PaymentEvent,
             (PaymentEvent.booking_id == Booking.id) &
@@ -107,12 +112,13 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
     if not result:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    booking, service_name, listing_name, paid_at = result
+    booking, service_name, listing_name, listing_business_type_name, paid_at = result
 
     return BookingResponse(
         **booking.model_dump(),
         service_name=service_name,
         listing_name=listing_name,
+        listing_business_type_name=listing_business_type_name,
         paid_at=paid_at,
         has_refund=_booking_has_refund(db, booking.id),
         refund_date=_get_refund_date(db, booking.id),

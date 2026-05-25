@@ -174,27 +174,49 @@
               :details="listing.details"
             />
 
+            <ListingBookingServiceCarousel
+              :services="bookingServices"
+              :selected-service-id="selectedServiceId"
+              :loading="bookingServicesLoading"
+              :business-type-name="listing.business_type_name"
+              @select="handleSelectService"
+            />
+
           </div>
 
           <div class="lg:col-span-1">
-            <div class="sticky top-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Starting from</p>
-              <div class="mt-1 flex items-end gap-1">
-                <span class="text-4xl font-bold text-slate-900">${{ listing.base_price }}</span>
-                <span class="mb-1 text-sm text-slate-400">/ night</span>
+            <div class="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+                {{ isRestaurantType ? 'Average spend' : selectedService ? 'Selected service' : 'Starting from' }}
+              </p>
+              <div class="mt-1 flex items-end gap-2">
+                <span class="text-4xl font-bold text-slate-900">${{ displaySidebarPrice }}</span>
+                <span class="mb-1 text-sm text-slate-400">
+                  {{ sidebarPriceSuffix }}
+                </span>
+              </div>
+
+              <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-4">
+                <p class="text-sm font-semibold text-slate-900">
+                  {{ selectedService?.name || 'Choose a service below' }}
+                </p>
+                <p class="mt-1 text-sm leading-6 text-slate-500">
+                  {{ sidebarHelperText }}
+                </p>
               </div>
 
               <div class="my-6 border-t border-slate-100"></div>
 
               <button
                 @click="handleOpenBooking"
-                class="w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                :disabled="bookingServicesLoading || bookingServices.length === 0 || !selectedService"
+                class="w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                Book Now
+                {{ primaryCtaLabel }}
               </button>
 
               <p class="mt-3 text-center text-xs text-slate-400">
-                You won't be charged yet
+                {{ sidebarFootnote }}
               </p>
             </div>
           </div>
@@ -262,10 +284,12 @@
         <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
           <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-600">Book Listing</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-600">
+                {{ isRestaurantType ? 'Reserve Listing' : 'Book Listing' }}
+              </p>
               <h2 class="mt-2 text-xl font-bold text-slate-900">{{ listing.title }}</h2>
               <p class="mt-1 text-sm text-slate-500">
-                Choose a real service for this listing and complete your booking details.
+                {{ modalDescription }}
               </p>
             </div>
             <button
@@ -284,32 +308,28 @@
               {{ bookingError }}
             </div>
 
-            <div>
-              <label class="block text-sm font-semibold text-slate-700">
-                Service <span class="text-red-500">*</span>
-              </label>
-              <select
-                v-model="bookingForm.service_id"
-                class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                :disabled="bookingServicesLoading || bookingServices.length === 0"
-              >
-                <option value="">
-                  {{ bookingServicesLoading ? 'Loading services...' : bookingServices.length === 0 ? 'No active services available' : '-- Select a service --' }}
-                </option>
-                <option
-                  v-for="service in bookingServices"
-                  :key="service.service_id"
-                  :value="service.service_id"
-                >
-                  {{ bookingServiceLabel(service) }}
-                </option>
-              </select>
-              <p v-if="bookingServices.length > 1" class="mt-1 text-xs text-slate-500">
-                This listing has multiple services. Pick the exact one you want to reserve.
-              </p>
-              <p v-if="bookingServices.length === 0 && !bookingServicesLoading" class="mt-1 text-xs text-amber-600">
-                This listing is not bookable right now because it has no active services.
-              </p>
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    {{ isRestaurantType ? 'Selected reservation option' : 'Selected service' }}
+                  </p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">
+                    {{ selectedService?.name || 'No service selected' }}
+                  </p>
+                  <p class="mt-1 text-sm text-slate-500">
+                    {{ selectedService?.description || 'You can change this from the service carousel on the page.' }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    {{ isRestaurantType ? 'Average spend' : 'Price' }}
+                  </p>
+                  <p class="mt-1 text-xl font-bold text-slate-900">
+                    ${{ selectedServicePrice }}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div class="grid gap-5 md:grid-cols-2">
@@ -365,7 +385,9 @@
             <div v-else>
               <!-- Date picker -->
               <label class="block">
-                <span class="text-sm font-semibold text-slate-700">Date</span>
+                <span class="text-sm font-semibold text-slate-700">
+                  {{ isRestaurantType ? 'Reservation date' : 'Date' }}
+                </span>
                 <input
                   :value="bookingDateValue"
                   type="date"
@@ -384,7 +406,9 @@
 
               <!-- Slot Selector -->
               <label v-if="bookingAvailableSlots.length > 0" class="block mt-3">
-                <span class="text-sm font-semibold text-slate-700">Time slot</span>
+                <span class="text-sm font-semibold text-slate-700">
+                  {{ isRestaurantType ? 'Reservation time' : 'Time slot' }}
+                </span>
                 <select
                   :value="selectedSlotIdValue"
                   class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -411,7 +435,9 @@
               <!-- Booking start / end driven by slot -->
               <div class="grid gap-5 md:grid-cols-2 mt-3">
                 <label class="block">
-                  <span class="text-sm font-semibold text-slate-700">Booking start</span>
+                  <span class="text-sm font-semibold text-slate-700">
+                    {{ isRestaurantType ? 'Reservation start' : 'Booking start' }}
+                  </span>
                   <input
                     :value="bookingFromTimeDisplay"
                     type="datetime-local"
@@ -423,7 +449,9 @@
                 </label>
 
                 <label class="block">
-                  <span class="text-sm font-semibold text-slate-700">Booking end</span>
+                  <span class="text-sm font-semibold text-slate-700">
+                    {{ isRestaurantType ? 'Reservation end' : 'Booking end' }}
+                  </span>
                   <input
                     :value="bookingToTimeDisplay"
                     type="datetime-local"
@@ -461,7 +489,7 @@
               :disabled="bookingSubmitting || bookingServicesLoading || bookingServices.length === 0"
               @click="submitBooking"
             >
-              {{ bookingSubmitting ? 'Booking...' : 'Confirm Booking' }}
+              {{ bookingSubmitting ? submitPendingLabel : modalSubmitLabel }}
             </button>
           </div>
         </div>
@@ -484,11 +512,11 @@
 
             <!-- Per-person or flat fee breakdown -->
             <div class="mt-2 text-sm text-slate-500">
-              <template v-if="isHotelService">
-                <p>1 room × ${{ (selectedService?.price || 0).toFixed(2) }}</p>
+              <template v-if="isHotelType">
+                <p>1 room x ${{ (selectedService?.price || 0).toFixed(2) }}</p>
               </template>
               <template v-else>
-                <p>${{ (selectedService?.price || 0).toFixed(2) }} × {{ bookingForm.amount_of_people || 1 }} people</p>
+                <p>${{ (selectedService?.price || 0).toFixed(2) }} x {{ bookingForm.amount_of_people || 1 }} people</p>
               </template>
             </div>
 
@@ -550,15 +578,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI } from '../services/api';
-import { useAuthStore } from '../stores/auth';
-import { useToastStore } from '../stores/toast';
+import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI } from '../services/api'
+import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
 import RestaurantDetailSection from '../components/listings/detail-sections/RestaurantDetailSection.vue'
 import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
 import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
+import ListingBookingServiceCarousel from '../components/listings/ListingBookingServiceCarousel.vue'
 
 const route = useRoute();
 const router = useRouter();
@@ -569,6 +598,7 @@ const reviews = ref([]);
 const loading = ref(true);
 const showBooking = ref(false);
 const bookingServices = ref([]);
+const selectedServiceId = ref('');
 const bookingServicesLoading = ref(false);
 const bookingSubmitting = ref(false);
 const bookingError = ref('');
@@ -605,6 +635,15 @@ const detailsComponent = computed(() => {
 })
 
 const isHotelType = computed(() => listing.value?.business_type_name === 'Hotel')
+const isRestaurantType = computed(() => listing.value?.business_type_name === 'Restaurant')
+const primaryCtaLabel = computed(() => (isRestaurantType.value ? 'Reserve table' : 'Book now'))
+const modalSubmitLabel = computed(() => (isRestaurantType.value ? 'Confirm reservation' : 'Continue booking'))
+const submitPendingLabel = computed(() => (isRestaurantType.value ? 'Reserving...' : 'Booking...'))
+const modalDescription = computed(() => (
+  isRestaurantType.value
+    ? 'Review the selected dining option and complete your reservation details.'
+    : 'Review the selected service and complete your booking details.'
+))
 const hotelCheckInDate = computed(() => bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : '')
 
 const selectedSlot = computed(() => {
@@ -637,6 +676,44 @@ const bookingDateValue = computed(() => {
 })
 
 const selectedSlotIdValue = computed(() => bookingForm._selectedSlotId || '')
+
+const selectedService = computed(() => {
+  if (!selectedServiceId.value) return null
+  return bookingServices.value.find((service) => String(service.service_id) === String(selectedServiceId.value)) || null
+})
+
+const selectedServicePrice = computed(() => {
+  const price = Number(selectedService.value?.price)
+  return Number.isFinite(price) ? price.toFixed(2) : '0.00'
+})
+
+const displaySidebarPrice = computed(() => {
+  const selectedPrice = Number(selectedService.value?.price)
+  const fallbackPrice = Number(listing.value?.base_price)
+  if (Number.isFinite(selectedPrice)) return selectedPrice.toFixed(2)
+  if (Number.isFinite(fallbackPrice)) return fallbackPrice.toFixed(2)
+  return '0.00'
+})
+
+const sidebarPriceSuffix = computed(() => {
+  if (isRestaurantType.value) return '/ person'
+  if (isHotelType.value) return '/ stay'
+  return ''
+})
+
+const sidebarHelperText = computed(() => {
+  if (bookingServicesLoading.value) return 'Loading active services for this listing.'
+  if (bookingServices.value.length === 0) return 'No active services are available to book right now.'
+  if (!selectedService.value) return 'Choose a service below to continue with the right booking details.'
+  if (isRestaurantType.value) return 'This price is an average spend per guest.'
+  return 'Your selected service will carry into the booking form with the right availability and details.'
+})
+
+const sidebarFootnote = computed(() => (
+  isRestaurantType.value
+    ? 'Reservation only. Payment happens at the restaurant.'
+    : 'You won\'t be charged yet'
+))
 
 const mapCoordinates = computed(() => {
   const lat = Number(listing.value?.location?.lat)
@@ -679,26 +756,13 @@ const currentImage = computed(() => {
 
 });
 
-const selectedService = computed(() => {
-  if (!bookingForm.service_id) return null;
-  return bookingServices.value.find(s => String(s.service_id) === String(bookingForm.service_id)) || null;
-});
-
-const isHotelService = computed(() => {
-  if (!selectedService.value) return false;
-  const svc = selectedService.value;
-  if (svc.item_type?.toLowerCase() === 'hotel') return true;
-  if (svc.extra_metadata?.business_type_name?.toLowerCase() === 'hotel') return true;
-  return false;
-});
-
 const SERVICE_FEE_PERCENT = 0.10;
 
 const receiptSubtotal = computed(() => {
   if (!selectedService.value) return 0;
   const price = Number(selectedService.value.price) || 0;
   const people = bookingForm.amount_of_people || 1;
-  if (isHotelService.value) {
+  if (isHotelType.value) {
     return price; // flat fee per room
   }
   return price * people;
@@ -762,8 +826,15 @@ function getUserFullName() {
   return capitalizeName(`${user.first_name || ''} ${user.last_name || ''}`.trim());
 }
 
+function clearAvailabilityState() {
+  bookingAvailability.value = null;
+  bookingAvailableSlots.value = [];
+  bookingAvailabilityError.value = '';
+  bookingLoadingAvailability.value = false;
+}
+
 function resetBookingForm() {
-  bookingForm.service_id = '';
+  bookingForm.service_id = selectedServiceId.value || '';
   bookingForm.bookers_name = getUserFullName();
   bookingForm.amount_of_people = 1;
   bookingForm.booking_from_time = '';
@@ -771,28 +842,30 @@ function resetBookingForm() {
   bookingForm.special_requests = '';
   bookingForm._selectedSlotId = '';
   bookingError.value = '';
-  bookingAvailability.value = null;
-  bookingAvailableSlots.value = [];
-  bookingAvailabilityError.value = '';
+  clearAvailabilityState();
 }
 
-function applySingleServiceDefault() {
-  if (bookingServices.value.length === 1) {
-    bookingForm.service_id = bookingServices.value[0].service_id;
+function applyServiceSelectionFallback() {
+  if (bookingServices.value.length === 0) {
+    selectedServiceId.value = '';
+    bookingForm.service_id = '';
     return;
   }
 
   const stillValid = bookingServices.value.some(
-    (service) => service.service_id === bookingForm.service_id
+    (service) => String(service.service_id) === String(selectedServiceId.value)
   );
   if (!stillValid) {
-    bookingForm.service_id = '';
+    selectedServiceId.value = bookingServices.value[0].service_id;
   }
+
+  bookingForm.service_id = selectedServiceId.value;
 }
 
 async function loadBookingServices() {
   if (!listing.value?.id) {
     bookingServices.value = [];
+    selectedServiceId.value = '';
     return;
   }
 
@@ -801,13 +874,19 @@ async function loadBookingServices() {
   try {
     const response = await servicesAPI.getAll({ listing_id: listing.value.id });
     bookingServices.value = Array.isArray(response.data) ? response.data : [];
-    applySingleServiceDefault();
+    applyServiceSelectionFallback();
   } catch (err) {
+    console.error('Failed to load active services for listing detail', err);
     bookingServices.value = [];
+    selectedServiceId.value = '';
     bookingError.value = 'Failed to load active services for this listing.';
   } finally {
     bookingServicesLoading.value = false;
   }
+}
+
+function handleSelectService(serviceId) {
+  selectedServiceId.value = serviceId;
 }
 
 async function handleOpenBooking() {
@@ -817,9 +896,17 @@ async function handleOpenBooking() {
     return;
   }
 
+  if (!bookingServices.value.length && !bookingServicesLoading.value) {
+    await loadBookingServices();
+  }
+
+  if (!selectedService.value) {
+    bookingError.value = 'Please choose a service before continuing.';
+    return;
+  }
+
   resetBookingForm();
   showBooking.value = true;
-  await loadBookingServices();
 }
 
 function handleCloseBooking() {
@@ -833,16 +920,6 @@ function updateHotelCheckIn(date) {
 
 function updateHotelCheckOut(date) {
   bookingForm.booking_to_time = date ? `${date}T11:00:00` : '';
-}
-
-function bookingServiceLabel(service) {
-  if (service?.price !== null && service?.price !== undefined) {
-    const price = Number(service.price);
-    if (Number.isFinite(price)) {
-      return `${service.name} ($${price.toFixed(2)})`;
-    }
-  }
-  return service?.name || 'Unnamed service';
 }
 
 function buildLocalDateTime(dateStr, timeStr) {
@@ -891,12 +968,11 @@ function updateBookingDate(date) {
 }
 
 async function fetchBookingAvailability() {
-  const serviceId = bookingForm.service_id
+  const serviceId = selectedServiceId.value
   const date = bookingDateValue.value
   const people = bookingForm.amount_of_people || 1
   if (!serviceId || !date || isHotelType.value) {
-    bookingAvailability.value = null
-    bookingAvailableSlots.value = []
+    clearAvailabilityState()
     return
   }
   bookingLoadingAvailability.value = true
@@ -924,7 +1000,7 @@ function validateListingBooking() {
     bookingError.value = 'This listing is not bookable right now because it has no active services.';
     return false;
   }
-  if (!bookingForm.service_id) {
+  if (!selectedServiceId.value) {
     bookingError.value = 'Please choose a service before continuing.';
     return false;
   }
@@ -953,15 +1029,33 @@ async function submitBooking() {
     return;
   }
 
-  // Capture booking data and show receipt modal instead of calling API
   pendingBookingData.value = {
-    service_id: bookingForm.service_id,
+    service_id: selectedServiceId.value,
     bookers_name: bookingForm.bookers_name.trim(),
     amount_of_people: bookingForm.amount_of_people || 1,
     booking_from_time: bookingForm.booking_from_time,
     booking_to_time: bookingForm.booking_to_time,
     special_requests: bookingForm.special_requests.trim() || null,
   };
+
+  if (isRestaurantType.value) {
+    bookingSubmitting.value = true;
+    try {
+      const response = await bookingsAPI.create(pendingBookingData.value);
+      const createdBooking = response.data;
+      const bookingId = createdBooking.booking_id || createdBooking.id;
+      toastStore.show('Reservation created successfully.', 'success');
+      pendingBookingData.value = null;
+      handleCloseBooking();
+      router.push(`/bookings/${bookingId}`);
+    } catch (err) {
+      bookingError.value = err.response?.data?.detail || 'Failed to create reservation. Please try again.';
+      toastStore.show('Failed to create reservation.', 'error');
+    } finally {
+      bookingSubmitting.value = false;
+    }
+    return;
+  }
 
   receiptError.value = '';
   showReceiptModal.value = true;
@@ -998,12 +1092,19 @@ function handleBackToForm() {
 }
 
 const fetchListings = async () => {
+  loading.value = true;
   try {
-    const response = await listingsAPI.getById(route.params.id);
-    listing.value = response.data;
+    const listingResponse = await listingsAPI.getById(route.params.id);
+    listing.value = listingResponse.data;
+    await loadBookingServices();
 
-    const reviewResponse = await reviewsAPI.getAll({ listing_id:route.params.id});
-    reviews.value = reviewResponse.data;
+    try {
+      const reviewResponse = await reviewsAPI.getAll({ listing_id: route.params.id });
+      reviews.value = reviewResponse.data;
+    } catch (reviewError) {
+      reviews.value = [];
+      console.error('Failed to load reviews', reviewError);
+    }
   }catch (err){
     console.error('Failed to load listing', err);
   }finally{
@@ -1026,7 +1127,21 @@ const reviewAuthorLabel = () => 'Guest';
 const reviewAuthorInitial = () => 'G';
 
 watch(
-  [() => bookingForm.service_id, () => bookingForm.booking_from_time, () => bookingForm.amount_of_people],
+  () => selectedServiceId.value,
+  (newServiceId, oldServiceId) => {
+    bookingForm.service_id = newServiceId || '';
+    bookingForm.booking_from_time = '';
+    bookingForm.booking_to_time = '';
+    bookingForm._selectedSlotId = '';
+    clearAvailabilityState();
+    if (oldServiceId && oldServiceId !== newServiceId) {
+      bookingError.value = '';
+    }
+  }
+);
+
+watch(
+  [() => selectedServiceId.value, () => bookingForm.booking_from_time, () => bookingForm.amount_of_people],
   () => {
     if (!isHotelType.value) {
       fetchBookingAvailability()
@@ -1034,7 +1149,19 @@ watch(
   }
 );
 
+watch(
+  () => images.value.length,
+  () => {
+    currentImageIndex.value = 0;
+    startSlideshow();
+  }
+);
+
 onMounted(() => {
   fetchListings();
+});
+
+onBeforeUnmount(() => {
+  stopSlideshow();
 });
 </script>

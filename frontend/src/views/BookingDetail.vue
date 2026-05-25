@@ -54,7 +54,7 @@
           <div class="mt-6 flex items-start justify-between gap-4">
             <div>
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Booking
+                {{ isRestaurantBooking ? 'Reservation' : 'Booking' }}
               </p>
               <h1 class="mt-2 text-2xl font-bold text-slate-900">
                 Reference No.: #{{ booking.id }}
@@ -172,7 +172,7 @@
 
             <!-- Payment Section for Pending Bookings -->
             <div
-              v-if="normalizedStatus(booking.status) === 'pending'"
+              v-if="normalizedStatus(booking.status) === 'pending' && !isRestaurantBooking"
               class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
               <div class="border-b border-slate-100 bg-slate-50 px-6 py-4">
@@ -198,15 +198,19 @@
           <div class="lg:col-span-1">
             <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm sticky top-8">
               <div class="border-b border-slate-100 bg-slate-50 px-6 py-4">
-                <h2 class="font-bold text-slate-950">Price Summary</h2>
+                <h2 class="font-bold text-slate-950">
+                  {{ isRestaurantBooking ? 'Spend Estimate' : 'Price Summary' }}
+                </h2>
               </div>
               <div class="p-6 space-y-4">
                 <div v-if="booking.base_price !== undefined" class="flex justify-between text-sm">
-                  <span class="text-slate-600">Base Price</span>
+                  <span class="text-slate-600">
+                    {{ isRestaurantBooking ? 'Average spend' : 'Base Price' }}
+                  </span>
                   <span class="font-medium text-slate-900">${{ Number(booking.base_price).toFixed(2) }}</span>
                 </div>
 
-                <div v-if="booking.service_fee_amount !== undefined" class="flex justify-between text-sm">
+                <div v-if="booking.service_fee_amount !== undefined && !isRestaurantBooking" class="flex justify-between text-sm">
                   <span class="text-slate-600">Service Fee</span>
                   <span class="font-medium text-slate-900">${{ Number(booking.service_fee_amount).toFixed(2) }}</span>
                 </div>
@@ -228,9 +232,14 @@
 
                 <div class="border-t border-slate-200 pt-4">
                   <div class="flex justify-between">
-                    <span class="font-semibold text-slate-900">Total</span>
-                    <span class="font-bold text-lg text-slate-900">${{ Number(booking.final_price ?? (booking.base_price + (booking.service_fee_amount || 0) - (booking.discount_amount || 0))).toFixed(2) }}</span>
+                    <span class="font-semibold text-slate-900">
+                      {{ isRestaurantBooking ? 'Estimated total' : 'Total' }}
+                    </span>
+                    <span class="font-bold text-lg text-slate-900">${{ Number(displayTotal).toFixed(2) }}</span>
                   </div>
+                  <p v-if="isRestaurantBooking" class="mt-2 text-xs leading-5 text-slate-500">
+                    This reservation does not require payment in Isle Be There. The amount shown is an average spend estimate only.
+                  </p>
                 </div>
               </div>
             </div>
@@ -255,6 +264,18 @@ const loading = ref(true)
 const error = ref('')
 const clientSecret = ref('')
 
+const isRestaurantBooking = computed(() => booking.value?.listing_business_type_name === 'Restaurant')
+const displayTotal = computed(() => {
+  if (!booking.value) return 0
+  if (isRestaurantBooking.value) {
+    return Number(booking.value.base_price ?? 0)
+  }
+  return Number(
+    booking.value.final_price
+      ?? (booking.value.base_price + (booking.value.service_fee_amount || 0) - (booking.value.discount_amount || 0))
+  )
+})
+
 // PaymentForm component - loaded dynamically
 const PaymentFormComponent = shallowRef(null)
 
@@ -275,9 +296,11 @@ async function fetchBooking() {
     const response = await bookingsAPI.getById(route.params.id)
     booking.value = response.data
 
-    // Fetch client secret if booking is pending
-    if (normalizedStatus(booking.value.status) === 'pending') {
+    // Fetch client secret if booking is pending and payment is required
+    if (normalizedStatus(booking.value.status) === 'pending' && !isRestaurantBooking.value) {
       await loadPaymentFormComponent()
+    } else {
+      PaymentFormComponent.value = null
     }
   } catch (err) {
     if (err.response?.status === 404) {
