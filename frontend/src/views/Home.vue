@@ -77,18 +77,6 @@
               </div>
             </div>
           </div>
-
-          <div class="mt-6 grid w-full gap-3 sm:grid-cols-3">
-            <div
-              v-for="item in heroHighlights"
-              :key="item.label"
-              class="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-left backdrop-blur-md">
-              <p class="text-sm font-semibold text-white">{{ item.label }}</p>
-              <p class="mt-1 text-sm leading-6 text-slate-200">
-                {{ item.text }}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -284,7 +272,7 @@
           <router-link
             v-for="shortcut in categoryShortcuts"
             :key="shortcut.title"
-            :to="{ name: 'Listings', query: { q: shortcut.query } }"
+            :to="{ name: 'Listings', query: { category: shortcut.category } }"
             class="group rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-slate-300 hover:bg-white hover:shadow-lg">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
               {{ shortcut.eyebrow }}
@@ -424,45 +412,30 @@ const heroImages = [
   islandImage,
 ];
 
-const heroHighlights = [
-  {
-    label: "Tailored picks",
-    text: "See more relevant places once your interests are set.",
-  },
-  {
-    label: "Clear planning",
-    text: "Move from browsing to a simple itinerary without extra steps.",
-  },
-  {
-    label: "Save good options",
-    text: "Keep the places you like close while you compare them.",
-  },
-];
-
 const categoryShortcuts = [
   {
     eyebrow: "Stay well",
-    title: "Hotels and villas",
+    title: "Hotels",
     description: "Start with places to stay, from quick resort breaks to longer villa stays.",
-    query: "hotel",
-  },
-  {
-    eyebrow: "Beach days",
-    title: "Coastal stops",
-    description: "Look for beaches, nearby stays, and places that fit slower island days.",
-    query: "beach",
+    category: "hotel",
   },
   {
     eyebrow: "Local food",
     title: "Restaurants",
     description: "Find places to eat when food is one of the main reasons for the trip.",
-    query: "restaurant",
+    category: "restaurant",
+  },
+  {
+    eyebrow: "Guided plans",
+    title: "Tours",
+    description: "Browse guided experiences, day trips, and planned ways to explore the island.",
+    category: "tour",
   },
   {
     eyebrow: "Get outside",
-    title: "Tours and activities",
-    description: "Browse guided experiences, day trips, and more active ways to spend the trip.",
-    query: "tour",
+    title: "Activities",
+    description: "See active experiences and one-off things to do when you want more flexibility.",
+    category: "activity",
   },
 ];
 

@@ -619,6 +619,12 @@ const maxPriceInput = ref("");
 const route = useRoute();
 const router = useRouter();
 const viewMode = ref("list");
+const CATEGORY_SLUG_TO_TYPE_NAME = {
+  hotel: "Hotel",
+  restaurant: "Restaurant",
+  tour: "Tour Operator",
+  activity: "Activity Provider",
+};
 
 // selectedFilters stores checkbox state for non-category filter sections.
 // Shape: { [sectionId]: Set<value> }
@@ -642,6 +648,12 @@ const sortOptions = [
 const searchQuery = computed(() => {
   const rawQ = route.query.q;
   return typeof rawQ === "string" ? rawQ.trim() : "";
+});
+const routeCategorySlug = computed(() => {
+  const rawCategory = route.query.category;
+  return typeof rawCategory === "string"
+    ? rawCategory.trim().toLowerCase()
+    : "";
 });
 
 const hasSearchQuery = computed(() => Boolean(searchQuery.value));
@@ -780,6 +792,42 @@ function normalizeFilterValue(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+function findBusinessTypeBySlug(categorySlug) {
+  const expectedTypeName = CATEGORY_SLUG_TO_TYPE_NAME[categorySlug];
+  if (!expectedTypeName) return null;
+  return (
+    businessTypes.value.find((type) => type.name === expectedTypeName) ?? null
+  );
+}
+
+function getCategorySlugForId(categoryId) {
+  const matchingType = businessTypes.value.find((type) => type.id === categoryId);
+  if (!matchingType) return null;
+
+  return (
+    Object.entries(CATEGORY_SLUG_TO_TYPE_NAME).find(
+      ([, typeName]) => typeName === matchingType.name,
+    )?.[0] ?? null
+  );
+}
+
+function syncCategorySelectionFromRoute() {
+  const matchingType = findBusinessTypeBySlug(routeCategorySlug.value);
+  selectedCategoryIds.value = matchingType ? [matchingType.id] : [];
+}
+
+function updateCategoryQuery(categorySlug) {
+  const nextQuery = { ...route.query };
+
+  if (categorySlug) {
+    nextQuery.category = categorySlug;
+  } else {
+    delete nextQuery.category;
+  }
+
+  router.replace({ name: "Listings", query: nextQuery });
+}
+
 function parsePriceInput(value) {
   if (value === "" || value === null || value === undefined) return null;
   const parsed = Number(value);
@@ -819,13 +867,16 @@ function toggleQuickCategory(categoryId) {
     selectedCategoryIds.value[0] === categoryId
   ) {
     selectedCategoryIds.value = [];
+    updateCategoryQuery(null);
     return;
   }
   selectedCategoryIds.value = [categoryId];
+  updateCategoryQuery(getCategorySlugForId(categoryId));
 }
 
 function clearQuickCategory() {
   selectedCategoryIds.value = [];
+  updateCategoryQuery(null);
 }
 
 function clearAllFilters() {
@@ -899,14 +950,11 @@ async function fetchListings() {
 
 // Drop any selected category IDs that no longer exist in businessTypes
 watch(
-  businessTypes,
-  (types) => {
-    const allowedIds = new Set(types.map((type) => type.id));
-    selectedCategoryIds.value = selectedCategoryIds.value.filter((id) =>
-      allowedIds.has(id),
-    );
+  [businessTypes, routeCategorySlug],
+  () => {
+    syncCategorySelectionFromRoute();
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 
 watch(
