@@ -66,12 +66,8 @@ class Itinerary(SQLModel, table=True):
     )
     budget_level: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     pace: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    total_budget: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
-    strict_budget: Optional[bool] = Field(default=None, sa_column=Column(Boolean, nullable=True))
-    city: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     country: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     interests: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    preferred_business_types: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
     total_estimated_cost: Optional[float] = Field(default=None, sa_column=Column(Numeric(precision=10, scale=2), nullable=True))
     created_at: datetime = Field(
         sa_column=Column(

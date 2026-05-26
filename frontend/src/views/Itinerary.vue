@@ -705,7 +705,7 @@ import { interestsAPI, itinerariesAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import { useToastStore } from "../stores/toast";
 import { CARIBBEAN_COUNTRIES } from "../stores/caribbeanLocations";
-import { normalizeItineraryTags } from "../utils/itineraryTags";
+import { normalizeItineraryTags, getTagToneClasses } from "../utils/itineraryTags";
 import { SunIcon, ScaleIcon, BoltIcon, CurrencyDollarIcon, CreditCardIcon, SparklesIcon } from "@heroicons/vue/24/outline";
 
 const router = useRouter();
@@ -953,6 +953,11 @@ const selectedInterestNamesLabel = computed(() =>
     : "None",
 );
 
+const isLastInterestPage = computed(() => {
+  if (activeStep.value.type !== "interests") return false;
+  return activeStep.value.pageIndex === interestPages.value.length - 1;
+});
+
 const canManageSavedItineraries = computed(
   () => authStore.isAuthenticated && ["user", "admin"].includes(authStore.role),
 );
@@ -1120,8 +1125,9 @@ function getValidationMessage() {
 
   if (activeStep.value.type === "interests") {
     if (activeInterestPage.value.length === 0) return "";
-    if (selectedInterestIds.value.length === 0)
-      return "Choose at least one interest.";
+
+    if (isLastInterestPage.value && selectedInterestIds.value.length === 0)
+      return "Choose at least one interest, or go back and remove that category to continue.";
   }
 
   if (activeStep.value.type === "destination") {
@@ -1384,19 +1390,6 @@ function extractApiError(error, fallbackMessage) {
 
 function getNormalizedReasonTags(tags) {
   return normalizeItineraryTags(tags);
-}
-
-function getTagToneClasses(tone) {
-  if (tone === "success") {
-    return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200";
-  }
-  if (tone === "info") {
-    return "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200";
-  }
-  if (tone === "warning") {
-    return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
-  }
-  return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
 }
 
 function getPaceToneClasses(pace) {

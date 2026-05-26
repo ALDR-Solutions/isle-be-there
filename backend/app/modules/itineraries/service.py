@@ -263,12 +263,8 @@ def save_itinerary(
             status=payload.status.value,
             budget_level=payload.plan_request.budget_level.value,
             pace=payload.plan_request.pace.value,
-            total_budget=None,
-            strict_budget=False,
-            city=None,
             country=payload.plan_request.country,
             interests=payload.plan_request.interests,
-            preferred_business_types=[],
             total_estimated_cost=float(planned.total_estimated_cost),
         )
         db.add(itinerary)
@@ -800,12 +796,8 @@ def serialize_saved_itinerary(
         end_date=itinerary.end_date,
         budget_level=BudgetLevel(itinerary.budget_level),
         pace=PaceLevel(itinerary.pace),
-        total_budget=itinerary.total_budget,
-        strict_budget=itinerary.strict_budget,
-        city=itinerary.city,
         country=itinerary.country,
         interests=list(itinerary.interests or []),
-        preferred_business_types=list(itinerary.preferred_business_types or []),
         total_estimated_cost=float(itinerary.total_estimated_cost or 0),
         created_at=itinerary.created_at,
         updated_at=itinerary.updated_at,
@@ -838,7 +830,7 @@ def saved_itinerary_to_plan_response(
     grouped_days: dict[date, dict] = {}
 
     for item in saved_itinerary.items or []:
-        day_date = _item_value(item, "day_date")
+        day_date = item_value(item, "day_date")
         if day_date is None:
             continue
 
@@ -852,28 +844,28 @@ def saved_itinerary_to_plan_response(
             },
         )
 
-        estimated_cost = float(_item_value(item, "estimated_cost", 0.0) or 0.0)
-        extra_metadata = _item_value(item, "extra_metadata", {}) or {}
+        estimated_cost = float(item_value(item, "estimated_cost", 0.0) or 0.0)
+        extra_metadata = item_value(item, "extra_metadata", {}) or {}
         estimated_duration = float(
-            _dict_or_attr_value(extra_metadata, "estimated_duration_hours", 0.0) or 0.0
+            dict_or_attr_value(extra_metadata, "estimated_duration_hours", 0.0) or 0.0
         )
         grouped_day["stops"].append(
             ItineraryStop(
-                listing_id=_item_value(item, "listing_id") or _item_value(item, "id"),
-                title=_item_value(item, "title", ""),
-                description=_item_value(item, "description"),
-                business_type_name=_dict_or_attr_value(
+                listing_id=item_value(item, "listing_id") or item_value(item, "id"),
+                title=item_value(item, "title", ""),
+                description=item_value(item, "description"),
+                business_type_name=dict_or_attr_value(
                     extra_metadata,
                     "business_type_name",
-                    _item_value(item, "item_type", "stop"),
+                    item_value(item, "item_type", "stop"),
                 ),
-                address=_item_value(item, "address_snapshot", {}) or {},
+                address=item_value(item, "address_snapshot", {}) or {},
                 estimated_cost=estimated_cost,
                 estimated_duration_hours=estimated_duration,
-                start_time=_format_datetime_time(_item_value(item, "start_at")),
-                end_time=_format_datetime_time(_item_value(item, "end_at")),
-                score=float(_dict_or_attr_value(extra_metadata, "score", 0.0) or 0.0),
-                reason_tags=list(_item_value(item, "reason_tags", []) or []),
+                start_time=format_datetime_time(item_value(item, "start_at")),
+                end_time=format_datetime_time(item_value(item, "end_at")),
+                score=float(dict_or_attr_value(extra_metadata, "score", 0.0) or 0.0),
+                reason_tags=list(item_value(item, "reason_tags", []) or []),
             )
         )
         grouped_day["total_estimated_cost"] += estimated_cost
@@ -905,19 +897,19 @@ def saved_itinerary_to_plan_response(
     )
 
 
-def _item_value(item, key: str, default=None):
+def item_value(item, key: str, default=None):
     if isinstance(item, dict):
         return item.get(key, default)
     return getattr(item, key, default)
 
 
-def _dict_or_attr_value(value, key: str, default=None):
+def dict_or_attr_value(value, key: str, default=None):
     if isinstance(value, dict):
         return value.get(key, default)
     return getattr(value, key, default)
 
 
-def _format_datetime_time(value) -> str:
+def format_datetime_time(value) -> str:
     if isinstance(value, datetime):
         return value.strftime("%H:%M")
     if isinstance(value, str) and len(value) >= 16:

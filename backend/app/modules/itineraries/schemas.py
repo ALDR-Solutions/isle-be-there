@@ -137,12 +137,8 @@ class SavedItineraryResponse(BaseModel):
     end_date: date
     budget_level: BudgetLevel
     pace: PaceLevel
-    total_budget: Optional[float] = None
-    strict_budget: bool
-    city: Optional[str] = None
     country: Optional[str] = None
     interests: list[str] = Field(default_factory=list)
-    preferred_business_types: list[str] = Field(default_factory=list)
     total_estimated_cost: float
     created_at: datetime
     updated_at: datetime

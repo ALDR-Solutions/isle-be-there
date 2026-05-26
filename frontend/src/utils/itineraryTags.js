@@ -82,3 +82,16 @@ export function normalizeItineraryTags(tags) {
     .map(normalizeItineraryTag)
     .filter(Boolean)
 }
+
+export function getTagToneClasses(tone) {
+  if (tone === "success") {
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200";
+  }
+  if (tone === "info") {
+    return "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200";
+  }
+  if (tone === "warning") {
+    return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
+  }
+  return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
+}
