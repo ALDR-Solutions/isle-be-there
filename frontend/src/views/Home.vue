@@ -304,38 +304,35 @@
       </div>
     </section>
 
-    <section class="px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
-      <div class="mx-auto max-w-7xl">
-        <div class="max-w-2xl">
-          <p
-            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">
-            Planning
-          </p>
-          <h2 class="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-            Three simple steps.
-          </h2>
-          <p class="mt-4 text-base leading-7 text-slate-600">
-            Keep the process short: find ideas, shape the route, and save what
-            you want to come back to.
-          </p>
-        </div>
+    <section
+      class="relative my-14 flex min-h-[26rem] w-full items-center overflow-hidden sm:my-16 sm:min-h-[30rem] lg:min-h-[34rem]"
+    >
+      <div
+        class="absolute inset-0 bg-cover bg-center bg-no-repeat md:bg-fixed"
+        :style="{ backgroundImage: `url(${promoBannerImage})` }"
+      ></div>
+      <div class="absolute inset-0 bg-slate-950/45"></div>
+      <div
+        class="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.82)_0%,rgba(15,23,42,0.5)_38%,rgba(15,23,42,0.18)_100%)]"
+      ></div>
 
-        <div class="mt-10 grid gap-5 lg:grid-cols-3">
-          <div
-            v-for="step in planningSteps"
-            :key="step.step"
-            class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div
-              class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
-              {{ step.step }}
-            </div>
-            <h3 class="mt-5 text-xl font-bold text-slate-900">
-              {{ step.title }}
-            </h3>
-            <p class="mt-3 text-sm leading-6 text-slate-600">
-              {{ step.description }}
-            </p>
-          </div>
+      <div class="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="max-w-2xl py-16 sm:py-20 lg:py-24">
+          <p class="text-sm font-semibold uppercase tracking-[0.32em] text-white/80">
+            Special Promo
+          </p>
+          <h2 class="mt-4 text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+            Build your itinerary with us and get 10% off.
+          </h2>
+          <p class="mt-5 max-w-xl text-base leading-7 text-slate-100 sm:text-lg">
+            Use the itinerary builder to shape your trip in one place, then unlock a limited-time
+            discount before you book.
+          </p>
+          <router-link
+            :to="{ name: 'ItineraryPlanner' }"
+            class="mt-8 inline-flex items-center justify-center rounded-2xl bg-cyan-300 px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-950 transition hover:-translate-y-0.5 hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-200 focus:ring-offset-2 focus:ring-offset-slate-900 sm:px-7 sm:py-4">
+            Build Your Itinerary
+          </router-link>
         </div>
       </div>
     </section>
@@ -479,6 +476,7 @@ import barbadosImage from "../../images/barbados.jpg";
 import caribbeanImage from "../../images/carib-bkg.jpg";
 import beachImage from "../../images/beach-bkg.jpg";
 import islandImage from "../../images/island-bkg.jpg";
+import promoBannerImage from "../../images/home-promo-banner.jpg";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -515,24 +513,6 @@ const categoryShortcuts = [
     title: "Activities",
     description: "See active experiences and one-off things to do when you want more flexibility.",
     category: "activity",
-  },
-];
-
-const planningSteps = [
-  {
-    step: "01",
-    title: "Browse a few strong options",
-    description: "Start with stays or experiences that already fit the kind of trip you want.",
-  },
-  {
-    step: "02",
-    title: "Shape the flow of the trip",
-    description: "Use the itinerary planner to turn separate ideas into a route that makes sense.",
-  },
-  {
-    step: "03",
-    title: "Save what you want to keep",
-    description: "Return to the best choices without restarting the search each time.",
   },
 ];
 
