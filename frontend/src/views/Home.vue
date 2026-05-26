@@ -341,34 +341,113 @@
     </section>
 
     <section class="px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
-      <div
-        class="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200"
-        :style="finalCtaStyle">
-        <div class="absolute inset-0 bg-slate-950/65"></div>
-        <div
-          class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_35%)]"
-        ></div>
+      <div class="mx-auto max-w-7xl">
+        <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 text-white shadow-2xl shadow-slate-900/10">
+          <div class="bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.18),_transparent_35%),linear-gradient(135deg,_rgba(15,23,42,1),_rgba(30,41,59,0.98))] px-6 py-14 sm:px-8 lg:px-10">
+            <div
+              class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between"
+            >
+              <div class="max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
+                  Continue your trip
+                </p>
+                <h2 class="mt-4 text-3xl font-bold sm:text-4xl">
+                  {{ authStore.isAuthenticated ? "Pick up where you left off." : "Save your trip ideas for later." }}
+                </h2>
+                <p class="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                  {{
+                    authStore.isAuthenticated
+                      ? "Jump back into the parts of the platform that help you keep planning without starting over."
+                      : "Create an account to keep your favourite places, return to your itinerary, and manage bookings in one place."
+                  }}
+                </p>
+              </div>
 
-        <div
-          class="relative mx-auto flex min-h-[360px] max-w-3xl flex-col items-center justify-center px-6 py-16 text-center text-white">
-          <p
-            class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
-            Itinerary planner
-          </p>
-          <h2 class="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
-            Turn a few good ideas into a real trip plan.
-          </h2>
-          <p class="mt-5 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
-            Keep your picks in one place, map out the flow of the trip, and
-            move forward with more confidence.
-          </p>
+              <div
+                v-if="authStore.isAuthenticated"
+                class="grid w-full gap-4 lg:max-w-3xl lg:grid-cols-3"
+              >
+                <router-link
+                  v-for="action in tripPlanningActions"
+                  :key="action.title"
+                  :to="{ name: action.routeName }"
+                  class="group flex h-full flex-col rounded-[1.5rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition hover:-translate-y-1 hover:border-cyan-300/40 hover:bg-white/10"
+                >
+                  <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-300/15 text-cyan-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.8"
+                        :d="action.iconPath"
+                      />
+                    </svg>
+                  </span>
+                  <p class="mt-5 text-lg font-bold text-white">
+                    {{ action.title }}
+                  </p>
+                  <p class="mt-3 flex-1 text-sm leading-6 text-slate-300">
+                    {{ action.description }}
+                  </p>
+                  <div class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-200">
+                    {{ action.cta }}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 transition group-hover:translate-x-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </router-link>
+              </div>
 
-          <div class="mt-8">
-            <router-link
-              :to="{ name: 'ItineraryPlanner' }"
-              class="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-8 py-4 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300">
-              Start planning
-            </router-link>
+              <div
+                v-else
+                class="w-full rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm lg:max-w-xl"
+              >
+                <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-200">
+                  Travel account
+                </p>
+                <div class="mt-5 space-y-4">
+                  <div
+                    v-for="benefit in guestPlanningBenefits"
+                    :key="benefit"
+                    class="flex items-start gap-3 text-sm leading-6 text-slate-200"
+                  >
+                    <span class="mt-1 h-2.5 w-2.5 rounded-full bg-cyan-300"></span>
+                    <span>{{ benefit }}</span>
+                  </div>
+                </div>
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <router-link
+                    :to="{ name: 'Register' }"
+                    class="inline-flex items-center justify-center rounded-2xl bg-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200"
+                  >
+                    Create account
+                  </router-link>
+                  <router-link
+                    :to="{ name: 'Login' }"
+                    class="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
+                  >
+                    Sign in
+                  </router-link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -457,6 +536,36 @@ const planningSteps = [
   },
 ];
 
+const tripPlanningActions = [
+  {
+    title: "Saved listings",
+    description: "Reopen the stays and experiences you marked so you can compare options faster.",
+    cta: "View saved places",
+    routeName: "Favourites",
+    iconPath: "M5.121 19.364A9 9 0 1118.88 6.636L12 21l-6.879-1.636z",
+  },
+  {
+    title: "Itinerary planner",
+    description: "Return to your trip flow and keep shaping the route around the ideas you like most.",
+    cta: "Open planner",
+    routeName: "ItineraryPlanner",
+    iconPath: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  },
+  {
+    title: "Bookings",
+    description: "Check upcoming reservations, pending requests, and confirmed plans in one place.",
+    cta: "See bookings",
+    routeName: "Bookings",
+    iconPath: "M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+];
+
+const guestPlanningBenefits = [
+  "Save listings you want to come back to without searching again.",
+  "Keep your itinerary work in one place as the trip starts to take shape.",
+  "Manage reservations and trip details once you are ready to book.",
+];
+
 const currentSlide = ref(0);
 let heroInterval = null;
 
@@ -490,12 +599,6 @@ const discoveryBody = computed(() =>
     ? "These suggestions use your interest so the page gets you to better options faster."
     : "Start with a small set of places to stay and things to do, then open the ones that feel right for your trip.",
 );
-
-const finalCtaStyle = computed(() => ({
-  backgroundImage: `url(${beachImage})`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-}));
 
 const maxIndex = computed(() =>
   Math.max(0, personalizedListings.value.length - visibleCards.value),
