@@ -105,74 +105,296 @@ def build_itinerary_email_html(
     # )
 
     return f"""
-    <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-      <div style="max-width:880px;margin:0 auto;overflow:hidden;border-radius:28px;border:1px solid #e2e8f0;background:#ffffff;">
-        <div style="padding:40px 32px;background:#020617;">
-          <div style="font-size:12px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#67e8f9;">
-            Itinerary builder
-          </div>
-          <h1 style="margin:16px 0 0;font-size:36px;line-height:1.15;color:#ffffff;">
-            {title}
-          </h1>
-          <p style="margin:16px 0 0;max-width:620px;font-size:16px;line-height:1.7;color:#cbd5e1;">
-            Your Caribbean trip plan is ready. Here is the current day-by-day outline based on your destination, interests, budget, and pace.
-          </p>
-          
-        </div>
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <title>{title}</title>
+        <style>
+          body, table, td, div, h1, p, a {{
+            font-family: Arial, Helvetica, sans-serif;
+          }}
 
-        <div style="padding:24px 24px 8px;background:#ffffff;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0 16px;">
+          body {{
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+            color: #0f172a;
+          }}
+
+          table {{
+            border-collapse: collapse;
+          }}
+
+          .email-shell {{
+            padding: 32px 16px;
+            background: #f8fafc;
+          }}
+
+          .email-card {{
+            width: 100%;
+            max-width: 880px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 28px;
+            overflow: hidden;
+          }}
+
+          .hero {{
+            padding: 40px 32px;
+            background: #020617;
+          }}
+
+          .section-padding {{
+            padding-left: 24px;
+            padding-right: 24px;
+          }}
+
+          .summary-table {{
+            border-collapse: separate;
+            border-spacing: 0 16px;
+          }}
+
+          .summary-cell {{
+            width: 33.33%;
+          }}
+
+          .summary-cell-left {{
+            padding: 0 8px 0 0;
+          }}
+
+          .summary-cell-center {{
+            padding: 0 8px;
+          }}
+
+          .summary-cell-right {{
+            padding: 0 0 0 8px;
+          }}
+
+          .summary-card {{
+            height: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            background: #ffffff;
+            padding: 18px 18px 16px;
+          }}
+
+          .day-card {{
+            margin-top: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            overflow: hidden;
+            background: #ffffff;
+          }}
+
+          .day-header {{
+            padding: 20px 24px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+          }}
+
+          .stop-row td {{
+            vertical-align: top;
+          }}
+
+          .stop-meta {{
+            width: 150px;
+            padding: 0 16px 0 0;
+          }}
+
+          .stop-main {{
+            padding: 0 16px 0 0;
+          }}
+
+          .stop-aside {{
+            width: 110px;
+            text-align: right;
+          }}
+
+          .summary-value,
+          .day-title,
+          .hero-title,
+          .hero-copy,
+          .stop-row-title,
+          .stop-copy,
+          .stop-location,
+          .stop-meta-label,
+          .stop-aside-copy {{
+            word-break: break-word;
+          }}
+
+          @media only screen and (max-width: 620px) {{
+            .email-shell {{
+              padding: 16px 10px !important;
+            }}
+
+            .email-card {{
+              border-radius: 20px !important;
+            }}
+
+            .hero {{
+              padding: 28px 20px !important;
+            }}
+
+            .hero-title {{
+              font-size: 28px !important;
+              line-height: 1.2 !important;
+            }}
+
+            .hero-copy {{
+              font-size: 15px !important;
+              line-height: 1.6 !important;
+            }}
+
+            .section-padding {{
+              padding-left: 14px !important;
+              padding-right: 14px !important;
+            }}
+
+            .section-padding-top {{
+              padding-top: 18px !important;
+            }}
+
+            .summary-table,
+            .stop-layout {{
+              display: block !important;
+            }}
+
+            .summary-table tbody,
+            .summary-table tr,
+            .summary-cell,
+            .stop-layout tbody,
+            .stop-row,
+            .stop-meta,
+            .stop-main,
+            .stop-aside {{
+              display: block !important;
+              width: 100% !important;
+            }}
+
+            .summary-cell {{
+              box-sizing: border-box !important;
+              padding: 0 0 12px 0 !important;
+            }}
+
+            .summary-table tr:last-child .summary-cell:last-child {{
+              padding-bottom: 0 !important;
+            }}
+
+            .summary-card {{
+              padding: 16px !important;
+            }}
+
+            .day-card {{
+              margin-top: 16px !important;
+              border-radius: 20px !important;
+            }}
+
+            .day-header,
+            .stop-shell {{
+              padding: 18px 16px !important;
+            }}
+
+            .day-title {{
+              font-size: 21px !important;
+              line-height: 1.35 !important;
+            }}
+
+            .stop-meta,
+            .stop-main {{
+              padding: 0 0 14px 0 !important;
+            }}
+
+            .stop-aside {{
+              padding: 0 !important;
+              text-align: left !important;
+            }}
+
+            .stop-row-title {{
+              font-size: 17px !important;
+            }}
+          }}
+        </style>
+      </head>
+      <body style="margin:0;padding:0;background:#f8fafc;color:#0f172a;">
+        <div class="email-shell" style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="width:33.33%;padding:0 8px 0 0;">
-                {_render_summary_card("Destination", location)}
-              </td>
-              <td style="width:33.33%;padding:0 8px;">
-                {_render_summary_card("Travel dates", escape(date_summary))}
-              </td>
-              <td style="width:33.33%;padding:0 0 0 8px;">
-                {_render_summary_card("Trip style", f"{escape(itinerary.budget_level.value.title())} budget | {escape(itinerary.pace.value.title())} pace")}
-              </td>
-            </tr>
-            <tr>
-              <td style="width:33.33%;padding:0 8px 0 0;">
-                {_render_summary_card("Trip length", f"{trip_days} {'day' if trip_days == 1 else 'days'}")}
-              </td>
-              <td style="width:33.33%;padding:0 8px;">
-                {_render_summary_card("Estimated total", total_cost)}
-              </td>
-              <td style="width:33.33%;padding:0 0 0 8px;">
-                {_render_summary_card("Daily target", daily_budget)}
+              <td align="center">
+                <div class="email-card" style="max-width:880px;margin:0 auto;overflow:hidden;border-radius:28px;border:1px solid #e2e8f0;background:#ffffff;">
+                  <div class="hero" style="padding:40px 32px;background:#020617;">
+                    <div style="font-size:12px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#67e8f9;">
+                      Itinerary builder
+                    </div>
+                    <h1 class="hero-title" style="margin:16px 0 0;font-size:36px;line-height:1.15;color:#ffffff;">
+                      {title}
+                    </h1>
+                    <p class="hero-copy" style="margin:16px 0 0;max-width:620px;font-size:16px;line-height:1.7;color:#cbd5e1;">
+                      Your Caribbean trip plan is ready. Here is the current day-by-day outline based on your destination, interests, budget, and pace.
+                    </p>
+                  </div>
+
+                  <div class="section-padding section-padding-top" style="padding:24px 24px 8px;background:#ffffff;">
+                    <table class="summary-table" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0 16px;">
+                      <tr>
+                        <td class="summary-cell summary-cell-left" style="width:33.33%;padding:0 8px 0 0;">
+                          {_render_summary_card("Destination", location)}
+                        </td>
+                        <td class="summary-cell summary-cell-center" style="width:33.33%;padding:0 8px;">
+                          {_render_summary_card("Travel dates", escape(date_summary))}
+                        </td>
+                        <td class="summary-cell summary-cell-right" style="width:33.33%;padding:0 0 0 8px;">
+                          {_render_summary_card("Trip style", f"{escape(itinerary.budget_level.value.title())} budget | {escape(itinerary.pace.value.title())} pace")}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="summary-cell summary-cell-left" style="width:33.33%;padding:0 8px 0 0;">
+                          {_render_summary_card("Trip length", f"{trip_days} {'day' if trip_days == 1 else 'days'}")}
+                        </td>
+                        <td class="summary-cell summary-cell-center" style="width:33.33%;padding:0 8px;">
+                          {_render_summary_card("Estimated total", total_cost)}
+                        </td>
+                        <td class="summary-cell summary-cell-right" style="width:33.33%;padding:0 0 0 8px;">
+                          {_render_summary_card("Daily target", daily_budget)}
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <div class="section-padding" style="padding:0 24px 24px;background:#ffffff;">
+                    <div style="border:1px solid #e2e8f0;border-radius:24px;background:#f8fafc;padding:20px 20px 16px;">
+                      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#0891b2;">
+                        Selected interests
+                      </div>
+                      <div style="margin-top:12px;">
+                        {interest_html or '<span style="font-size:14px;color:#64748b;">No interests were selected.</span>'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="section-padding" style="padding:0 24px 32px;background:#ffffff;">
+                    {day_sections or '<div style="padding:28px;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;color:#64748b;">No itinerary stops are available yet.</div>'}
+                  </div>
+                </div>
               </td>
             </tr>
           </table>
         </div>
-
-        <div style="padding:0 24px 24px;background:#ffffff;">
-          <div style="border:1px solid #e2e8f0;border-radius:24px;background:#f8fafc;padding:20px 20px 16px;">
-            <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:#0891b2;">
-              Selected interests
-            </div>
-            <div style="margin-top:12px;">
-              {interest_html or '<span style="font-size:14px;color:#64748b;">No interests were selected.</span>'}
-            </div>
-          </div>
-        </div>
-
-        <div style="padding:0 24px 32px;background:#ffffff;">
-          {day_sections or '<div style="padding:28px;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;color:#64748b;">No itinerary stops are available yet.</div>'}
-        </div>
-      </div>
-    </div>
+      </body>
+    </html>
     """
 
 
 def _render_summary_card(label: str, value: str) -> str:
     return f"""
-    <div style="height:100%;border:1px solid #e2e8f0;border-radius:20px;background:#ffffff;padding:18px 18px 16px;">
+    <div class="summary-card" style="height:100%;border:1px solid #e2e8f0;border-radius:20px;background:#ffffff;padding:18px 18px 16px;">
       <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">
         {escape(label)}
       </div>
-      <div style="margin-top:10px;font-size:16px;font-weight:700;line-height:1.5;color:#0f172a;">
+      <div class="summary-value" style="margin-top:10px;font-size:16px;font-weight:700;line-height:1.5;color:#0f172a;">
         {value}
       </div>
     </div>
@@ -184,12 +406,12 @@ def _render_day_section(day, index: int) -> str:
     total_hours = f"{day.total_duration_hours:g} hours"
     stops_html = "".join(_render_stop(stop) for stop in day.stops)
     return f"""
-    <div style="margin-top:20px;overflow:hidden;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;">
-      <div style="padding:20px 24px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+    <div class="day-card" style="margin-top:20px;overflow:hidden;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;">
+      <div class="day-header" style="padding:20px 24px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
         <div style="font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#0891b2;">
           Day {index + 1}
         </div>
-        <div style="margin-top:6px;font-size:24px;font-weight:700;color:#020617;">
+        <div class="day-title" style="margin-top:6px;font-size:24px;font-weight:700;color:#020617;">
           {escape(day.date.strftime("%A, %B %d, %Y"))}
         </div>
         <div style="margin-top:8px;font-size:14px;font-weight:700;color:#64748b;">
@@ -209,12 +431,12 @@ def _render_stop(stop) -> str:
     location = ", ".join(part for part in [city, country] if part)
     tags_html = "".join(_render_reason_tag(tag) for tag in stop.reason_tags)
     description_html = (
-        f'<div style="margin-top:10px;font-size:14px;line-height:1.7;color:#475569;">{description}</div>'
+        f'<div class="stop-copy" style="margin-top:10px;font-size:14px;line-height:1.7;color:#475569;">{description}</div>'
         if description
         else ""
     )
     location_html = (
-        f'<div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b;">{location}</div>'
+        f'<div class="stop-location" style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b;">{location}</div>'
         if location
         else ""
     )
@@ -224,30 +446,30 @@ def _render_stop(stop) -> str:
         else ""
     )
     return f"""
-    <div style="padding:22px 24px;border-top:1px solid #f1f5f9;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-        <tr>
-          <td style="width:150px;vertical-align:top;padding:0 16px 0 0;">
-            <div style="font-size:15px;font-weight:700;color:#020617;">
+    <div class="stop-shell" style="padding:22px 24px;border-top:1px solid #f1f5f9;">
+      <table class="stop-layout" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        <tr class="stop-row">
+          <td class="stop-meta" style="width:150px;vertical-align:top;padding:0 16px 0 0;">
+            <div class="stop-meta-label" style="font-size:15px;font-weight:700;color:#020617;">
               {escape(stop.start_time)} - {escape(stop.end_time)}
             </div>
             <div style="margin-top:8px;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#94a3b8;">
               {business_type}
             </div>
           </td>
-          <td style="vertical-align:top;padding:0 16px 0 0;">
-            <div style="font-size:18px;font-weight:700;color:#020617;">
+          <td class="stop-main" style="vertical-align:top;padding:0 16px 0 0;">
+            <div class="stop-row-title" style="font-size:18px;font-weight:700;color:#020617;">
               {escape(stop.title)}
             </div>
             {location_html}
             {description_html}
             {tags_block}
           </td>
-          <td style="width:110px;vertical-align:top;text-align:right;">
+          <td class="stop-aside" style="width:110px;vertical-align:top;text-align:right;">
             <div style="font-size:16px;font-weight:700;color:#020617;">
               {_format_currency(stop.estimated_cost)}
             </div>
-            <div style="margin-top:8px;font-size:13px;color:#64748b;">
+            <div class="stop-aside-copy" style="margin-top:8px;font-size:13px;color:#64748b;">
               {stop.estimated_duration_hours:g} h
             </div>
           </td>

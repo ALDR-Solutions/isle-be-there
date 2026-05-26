@@ -73,25 +73,33 @@
 
                 <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <button
-                    v-for="category in categoryNames"
-                    :key="category"
+                    v-for="category in categoryCards"
+                    :key="category.name"
                     type="button"
-                    class="group flex min-h-32 flex-col justify-between rounded-3xl border p-5 text-left shadow-sm transition hover:-translate-y-0.5"
+                    class="group flex min-h-40 flex-col justify-between rounded-3xl border p-5 text-left shadow-sm transition hover:-translate-y-0.5"
                     :class="
-                      isCategorySelected(category)
+                      isCategorySelected(category.name)
                         ? 'border-cyan-400 bg-cyan-50 text-cyan-900 shadow-cyan-100'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                     "
-                    @click="toggleCategory(category)"
+                    @click="toggleCategory(category.name)"
                   >
                     <span class="flex items-start justify-between gap-4">
-                      <span class="text-lg font-bold capitalize">{{
-                        category
-                      }}</span>
+                      <span>
+                        <span class="text-lg font-bold capitalize">{{
+                          category.name
+                        }}</span>
+                        <span
+                          v-if="category.description"
+                          class="mt-2 block max-w-[24ch] text-sm font-medium leading-6 text-slate-500"
+                        >
+                          {{ category.description }}
+                        </span>
+                      </span>
                       <span
                         class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
                         :class="
-                          isCategorySelected(category)
+                          isCategorySelected(category.name)
                             ? 'border-cyan-500 bg-cyan-500 text-white'
                             : 'border-slate-300 text-transparent'
                         "
@@ -111,9 +119,9 @@
                       </span>
                     </span>
                     <span class="mt-8 text-sm font-medium text-slate-500">
-                      {{ groupedInterests[category]?.length || 0 }}
+                      {{ groupedInterests[category.name]?.length || 0 }}
                       {{
-                        groupedInterests[category]?.length === 1
+                        groupedInterests[category.name]?.length === 1
                           ? "interest"
                           : "interests"
                       }}
@@ -263,7 +271,8 @@
                         Only show services available for booking
                       </span>
                       <span class="mt-1 block text-sm text-slate-500">
-                        Limit interests and itinerary stops to listings with active bookable services.
+                        Limit interests and itinerary stops to listings with
+                        active bookable services.
                       </span>
                     </span>
                   </label>
@@ -381,6 +390,24 @@
                           option.label
                         }}</span>
                         <span
+                          class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
+                          :class="getBudgetToneClasses(option.value)"
+                        >
+                          <CurrencyDollarIcon
+                            v-if="option.value === 'low'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <CreditCardIcon
+                            v-else-if="option.value === 'medium'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <SparklesIcon
+                            v-else-if="option.value === 'high'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          ${{ option.dailyTarget}}/day target
+                        </span>
+                        <span
                           class="mt-1 block text-sm leading-6 text-slate-500"
                           >{{ option.description }}</span
                         >
@@ -411,6 +438,25 @@
                         <span class="block font-bold text-slate-900">{{
                           option.label
                         }}</span>
+
+                        <span
+                          class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
+                          :class="getPaceToneClasses(option.value)"
+                        >
+                          <SunIcon
+                            v-if="option.value === 'relaxed'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <ScaleIcon
+                            v-else-if="option.value === 'balanced'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <BoltIcon
+                            v-else-if="option.value === 'packed'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          {{ option.activityLimit }} activities/day
+                        </span>
                         <span
                           class="mt-1 block text-sm leading-6 text-slate-500"
                           >{{ option.description }}</span
@@ -660,6 +706,7 @@ import { useAuthStore } from "../stores/auth";
 import { useToastStore } from "../stores/toast";
 import { CARIBBEAN_COUNTRIES } from "../stores/caribbeanLocations";
 import { normalizeItineraryTags } from "../utils/itineraryTags";
+import { SunIcon, ScaleIcon, BoltIcon, CurrencyDollarIcon, CreditCardIcon, SparklesIcon } from "@heroicons/vue/24/outline";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -670,6 +717,7 @@ const savedItinerary = ref(null);
 const isLoadingSavedItinerary = ref(false);
 
 const allInterests = ref([]);
+const availableCategories = ref([]);
 const availableInterests = ref([]);
 const loadingInterests = ref(true);
 const isLoadingCountryInterests = ref(false);
@@ -699,17 +747,20 @@ const countryOptions = ["Barbados", "Guyana", "Jamaica", "Trinidad and Tobago"];
 const budgetOptions = [
   {
     value: "low",
-    label: "Simple",
+    label: "Budget-friendly",
+    dailyTarget: 120,
     description: "Prioritize lower-cost stops and lighter spending.",
   },
   {
     value: "medium",
     label: "Balanced",
+    dailyTarget: 240,
     description: "Mix affordable picks with standout experiences.",
   },
   {
     value: "high",
     label: "Premium",
+    dailyTarget: 420,
     description: "Leave room for higher-end stays, dining, and tours.",
   },
 ];
@@ -718,16 +769,19 @@ const paceOptions = [
   {
     value: "relaxed",
     label: "Relaxed",
+    activityLimit: 2,
     description: "Fewer stops with more open time between plans.",
   },
   {
     value: "balanced",
     label: "Balanced",
+    activityLimit: 3,
     description: "A steady day with time for both plans and rest.",
   },
   {
     value: "packed",
     label: "Packed",
+    activityLimit: 4,
     description: "More stops for travelers who want a fuller schedule.",
   },
 ];
@@ -761,8 +815,20 @@ const groupedInterests = computed(() => {
   }, {});
 });
 
+const categoryCards = computed(() => {
+  if (!availableCategories.value.length) {
+    return Object.keys(groupedInterests.value)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name, description: "" }));
+  }
+
+  return [...availableCategories.value]
+    .filter((category) => groupedInterests.value[category.name]?.length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
 const categoryNames = computed(() =>
-  Object.keys(groupedInterests.value).sort((a, b) => a.localeCompare(b)),
+  categoryCards.value.map((category) => category.name),
 );
 
 const filteredInterests = computed(() => {
@@ -798,14 +864,14 @@ const steps = computed(() => [
 
   ...(bookableOnly.value
     ? [
-{
-    key: "travelers",
-    type: "travelers",
-    title: "Who is going?",
-    description:
-      "Traveler counts stay in this planner for trip context, but do not affect the backend request yet.",
-  },
-]
+        {
+          key: "travelers",
+          type: "travelers",
+          title: "Who is going?",
+          description:
+            "Traveler counts stay in this planner for trip context, but do not affect the backend request yet.",
+        },
+      ]
     : []),
   {
     key: "categories",
@@ -876,7 +942,9 @@ const selectedInterestNames = computed(() => {
 });
 
 const selectedCategoriesLabel = computed(() =>
-  selectedCategories.value.length ? selectedCategories.value.join(", ") : "None",
+  selectedCategories.value.length
+    ? selectedCategories.value.join(", ")
+    : "None",
 );
 
 const selectedInterestNamesLabel = computed(() =>
@@ -930,7 +998,10 @@ watch(steps, () => {
 watch(
   () => authStore.user?.email?.trim() || "",
   (email) => {
-    if (!itineraryEmail.value || itineraryEmail.value === lastAutofilledEmail.value) {
+    if (
+      !itineraryEmail.value ||
+      itineraryEmail.value === lastAutofilledEmail.value
+    ) {
       itineraryEmail.value = email;
     }
     lastAutofilledEmail.value = email;
@@ -993,10 +1064,16 @@ async function getAvailableInterestsByListingCountry(country) {
     const response = await interestsAPI.getByListingCountry(country, {
       bookable_only: bookableOnly.value,
     });
-    availableInterests.value = Array.isArray(response.data)
-      ? response.data
+    availableCategories.value = Array.isArray(response.data?.categories)
+      ? response.data.categories
       : [];
+    availableInterests.value = Array.isArray(response.data?.interests)
+      ? response.data.interests
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
   } catch (error) {
+    availableCategories.value = [];
     console.error("Failed to load interests for country", error);
     toastStore.show("Failed to load interests for selected country.", "error");
     return [];
@@ -1320,6 +1397,26 @@ function getTagToneClasses(tone) {
     return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
   }
   return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
+}
+
+function getPaceToneClasses(pace) {
+  if (pace === "relaxed")
+    return "bg-[#EAF3DE] text-[#27500A] ring-1 ring-inset ring-[#97C459]";
+  if (pace === "balanced")
+    return "bg-[#E6F1FB] text-[#0C447C] ring-1 ring-inset ring-[#85B7EB]";
+  if (pace === "packed")
+    return "bg-[#FAEEDA] text-[#633806] ring-1 ring-inset ring-[#EF9F27]";
+  return "bg-[#F1EFE8] text-[#5F5E5A] ring-1 ring-inset ring-[#B4B2A9]";
+}
+
+function getBudgetToneClasses(budget) {
+  if (budget === "low")
+    return "bg-[#E1F5EE] text-[#085041] ring-1 ring-inset ring-[#5DCAA5]";
+  if (budget === "medium")
+    return "bg-[#EEEDFE] text-[#3C3489] ring-1 ring-inset ring-[#AFA9EC]";
+  if (budget === "high")
+    return "bg-[#FAECE7] text-[#712B13] ring-1 ring-inset ring-[#F0997B]";
+  return "bg-[#F1EFE8] text-[#5F5E5A] ring-1 ring-inset ring-[#B4B2A9]";
 }
 </script>
 
