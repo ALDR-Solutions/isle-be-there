@@ -1,12 +1,10 @@
 <template>
   <div class="bg-white">
     <div>
-      <!-- Mobile filter dialog -->
       <TransitionRoot as="template" :show="mobileFiltersOpen">
         <Dialog
           class="relative z-40 lg:hidden"
-          @close="mobileFiltersOpen = false"
-        >
+          @close="mobileFiltersOpen = false">
           <TransitionChild
             as="template"
             enter="transition-opacity ease-linear duration-300"
@@ -14,8 +12,7 @@
             enter-to="opacity-100"
             leave="transition-opacity ease-linear duration-300"
             leave-from="opacity-100"
-            leave-to="opacity-0"
-          >
+            leave-to="opacity-0">
             <div class="fixed inset-0 bg-black/25" />
           </TransitionChild>
 
@@ -27,18 +24,15 @@
               enter-to="translate-x-0"
               leave="transition ease-in-out duration-300 transform"
               leave-from="translate-x-0"
-              leave-to="translate-x-full"
-            >
+              leave-to="translate-x-full">
               <DialogPanel
-                class="relative ml-auto flex size-full w-full max-w-sm flex-col overflow-hidden bg-white pt-4 shadow-xl"
-              >
+                class="relative ml-auto flex size-full w-full max-w-sm flex-col overflow-hidden bg-white pt-4 shadow-xl">
                 <div class="flex items-center justify-between px-4">
                   <h2 class="text-lg font-medium text-gray-900">Filters</h2>
                   <button
                     type="button"
                     class="relative -mr-2 flex size-10 items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                    @click="mobileFiltersOpen = false"
-                  >
+                    @click="mobileFiltersOpen = false">
                     <span class="absolute -inset-0.5" />
                     <span class="sr-only">Close menu</span>
                     <XMarkIcon class="size-6" aria-hidden="true" />
@@ -48,8 +42,7 @@
                 <!-- Mobile Filters -->
                 <form
                   class="mt-4 flex-1 overflow-y-auto border-t border-gray-200 pb-24"
-                  @submit.prevent
-                >
+                  @submit.prevent>
                   <!-- Quick category chips -->
                   <div class="px-4 pt-4">
                     <div class="flex items-center justify-between gap-3">
@@ -62,9 +55,8 @@
                         "
                         type="button"
                         class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="clearAllFilters"
-                      >
-                        Clear all
+                        @click="clearAllFilters">
+                        Clear 
                       </button>
                     </div>
 
@@ -77,8 +69,7 @@
                             ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/40'
                         "
-                        @click="clearQuickCategory"
-                      >
+                        @click="clearQuickCategory">
                         All categories
                       </button>
                       <button
@@ -91,8 +82,7 @@
                             ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/40'
                         "
-                        @click="toggleQuickCategory(category.id)"
-                      >
+                        @click="toggleQuickCategory(category.id)">
                         {{ category.name }}
                       </button>
                     </div>
@@ -108,8 +98,7 @@
                         v-if="hasPriceRangeFilter"
                         type="button"
                         class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="clearPriceRange"
-                      >
+                        @click="clearPriceRange">
                         Clear
                       </button>
                     </div>
@@ -147,12 +136,10 @@
                     :key="section.id"
                     v-slot="{ open }"
                     as="div"
-                    class="border-t border-gray-200 px-4 py-6"
-                  >
+                    class="border-t border-gray-200 px-4 py-6">
                     <h3 class="-mx-2 -my-3 flow-root">
                       <DisclosureButton
-                        class="flex w-full items-center justify-between bg-white px-2 py-3 text-gray-400 hover:text-gray-500"
-                      >
+                        class="flex w-full items-center justify-between bg-white px-2 py-3 text-gray-400 hover:text-gray-500">
                         <span class="font-medium text-gray-900">{{
                           section.name
                         }}</span>
@@ -171,8 +158,7 @@
                         <div
                           v-for="(option, optionIdx) in section.options"
                           :key="option.value"
-                          class="flex gap-3"
-                        >
+                          class="flex gap-3">
                           <div class="flex h-5 shrink-0 items-center">
                             <input
                               :id="`filter-mobile-${section.id}-${optionIdx}`"
@@ -194,8 +180,7 @@
                           </div>
                           <label
                             :for="`filter-mobile-${section.id}-${optionIdx}`"
-                            class="min-w-0 flex-1 text-gray-500"
-                          >
+                            class="min-w-0 flex-1 text-gray-500">
                             {{ option.label }}
                           </label>
                         </div>
@@ -208,11 +193,8 @@
                   <button
                     type="button"
                     class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    @click="mobileFiltersOpen = false"
-                  >
-                    View {{ filteredListings.length }} result{{
-                      filteredListings.length === 1 ? "" : "s"
-                    }}
+                    @click="mobileFiltersOpen = false">
+                    View {{ resultsLabel }}
                   </button>
                 </div>
               </DialogPanel>
@@ -221,111 +203,106 @@
         </Dialog>
       </TransitionRoot>
 
-      <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div
-          class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pt-16 pb-5 sm:pt-24 sm:pb-6"
-        >
-          <div class="flex min-w-0 items-center gap-3">
-            <h1
-              class="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl"
-            >
-              {{
-                hasSearchQuery
-                  ? `Results for "${searchQuery}"`
-                  : "Explore Listings"
-              }}
-            </h1>
-            <button
-              v-if="hasSearchQuery"
-              @click="clearSearch"
-              class="whitespace-nowrap text-sm text-slate-400 hover:text-slate-600 underline"
-            >
-              Clear search
-            </button>
-          </div>
+      <div
+        class="relative z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:sticky lg:top-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div
+            class="flex flex-col gap-4 py-4 lg:min-h-[5.5rem] lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0">
+              <div class="flex min-w-0 flex-wrap items-center gap-3">
+                <h1
+                  class="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                  {{
+                    hasSearchQuery
+                      ? `Results for "${searchQuery}"`
+                      : "Explore Listings"
+                  }}
+                </h1>
+                <button
+                  v-if="hasSearchQuery"
+                  @click="clearSearch"
+                  class="whitespace-nowrap text-sm text-slate-400 underline hover:text-slate-600">
+                  Clear search
+                </button>
+              </div>
+              <p class="mt-1 text-sm text-slate-500">{{ resultsLabel }}</p>
+            </div>
 
-          <div class="flex items-center">
-            <!-- Sort menu -->
-            <Menu as="div" class="relative inline-block text-left">
-              <MenuButton
-                class="group inline-flex items-center justify-center text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <span class="hidden sm:inline">{{ activeSortLabel }}</span>
-                <span class="sm:hidden">Sort</span>
-                <ChevronDownIcon
-                  class="-mr-1 ml-1 size-5 shrink-0 text-gray-400 group-hover:text-gray-500"
-                  aria-hidden="true"
-                />
-              </MenuButton>
+            <div class="flex items-center justify-between gap-3 sm:justify-end">
+              <!-- Sort menu -->
+              <Menu as="div" class="relative inline-block text-left">
+                <MenuButton
+                  class="group inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:border-slate-300 hover:text-gray-900">
+                  <span class="hidden sm:inline">{{ activeSortLabel }}</span>
+                  <span class="sm:hidden">Sort</span>
+                  <ChevronDownIcon
+                    class="-mr-1 ml-1 size-5 shrink-0 text-gray-400 group-hover:text-gray-500"
+                    aria-hidden="true"/>
+                </MenuButton>
 
-              <transition
-                enter-active-class="transition ease-out duration-100"
-                enter-from-class="transform opacity-0 scale-95"
-                enter-to-class="transform opacity-100 scale-100"
-                leave-active-class="transition ease-in duration-75"
-                leave-from-class="transform opacity-100 scale-100"
-                leave-to-class="transform opacity-0 scale-95"
-              >
-                <MenuItems
-                  class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden sm:right-0 sm:left-auto -left-24"
-                >
-                  <div class="py-1">
-                    <MenuItem
-                      v-for="option in sortOptions"
-                      :key="option.value"
-                      v-slot="{ active }"
-                    >
-                      <button
-                        type="button"
-                        class="block w-full px-4 py-2 text-left text-sm"
-                        :class="[
-                          activeSort === option.value
-                            ? 'font-medium text-gray-900'
-                            : 'text-gray-500',
-                          active ? 'bg-gray-100' : '',
-                        ]"
-                        @click="selectSort(option.value)"
-                      >
-                        {{ option.name }}
-                      </button>
-                    </MenuItem>
-                  </div>
-                </MenuItems>
-              </transition>
-            </Menu>
+                <transition
+                  enter-active-class="transition ease-out duration-100"
+                  enter-from-class="transform opacity-0 scale-95"
+                  enter-to-class="transform opacity-100 scale-100"
+                  leave-active-class="transition ease-in duration-75"
+                  leave-from-class="transform opacity-100 scale-100"
+                  leave-to-class="transform opacity-0 scale-95">
+                  <MenuItems
+                    class="absolute left-0 sm:left-auto sm:right-0 z-50 mt-2 w-48 origin-top-right rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 focus:outline-hidden">
+                    <div class="py-1">
+                      <MenuItem
+                        v-for="option in sortOptions"
+                        :key="option.value"
+                        v-slot="{ active }">
+                        <button
+                          type="button"
+                          class="block w-full px-4 py-2 text-left text-sm"
+                          :class="[
+                            activeSort === option.value
+                              ? 'font-medium text-gray-900'
+                              : 'text-gray-500',
+                            active ? 'bg-gray-100' : '',
+                          ]"
+                          @click="selectSort(option.value)">
+                          {{ option.name }}
+                        </button>
+                      </MenuItem>
+                    </div>
+                  </MenuItems>
+                </transition>
+              </Menu>
 
-            <button
-              type="button"
-              class="-m-2 ml-3 p-2.5 text-gray-400 hover:text-gray-500 sm:ml-5"
-              @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
-            >
-              <span class="sr-only">Toggle view</span>
-              <Squares2X2Icon
-                v-if="viewMode === 'list'"
-                class="size-5"
-                aria-hidden="true"
-              />
-              <ListBulletIcon v-else class="size-5" aria-hidden="true" />
-            </button>
-            <!-- Mobile filter button -->
-            <button
-              type="button"
-              class="relative -m-2 ml-3 p-2.5 text-gray-400 hover:text-gray-500 lg:hidden"
-              :class="activeFilterCount > 0 ? 'text-indigo-600' : ''"
-              @click="mobileFiltersOpen = true"
-            >
-              <span class="sr-only">Filters</span>
-              <FunnelIcon class="size-5" aria-hidden="true" />
-              <span
-                v-if="activeFilterCount > 0"
-                class="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white"
-              >
-                {{ activeFilterCount }}
-              </span>
-            </button>
+              <button
+                type="button"
+                class="hidden sm:inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-gray-400 shadow-sm transition hover:border-slate-300 hover:text-gray-500"
+                @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'">
+                <span class="sr-only">Toggle view</span>
+                <Squares2X2Icon
+                  v-if="viewMode === 'list'"
+                  class="size-5"
+                  aria-hidden="true"/>
+                <ListBulletIcon v-else class="size-5" aria-hidden="true" />
+              </button>
+              <!-- Mobile filter button -->
+              <button
+                type="button"
+                class="relative inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-gray-400 shadow-sm transition hover:border-slate-300 hover:text-gray-500 lg:hidden"
+                :class="activeFilterCount > 0 ? 'text-indigo-600' : ''"
+                @click="mobileFiltersOpen = true">
+                <span class="sr-only">Filters</span>
+                <FunnelIcon class="size-5" aria-hidden="true" />
+                <span
+                  v-if="activeFilterCount > 0"
+                  class="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
+                  {{ activeFilterCount }}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
+      <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <section aria-labelledby="products-heading" class="pt-6 pb-24">
           <h2 id="products-heading" class="sr-only">Products</h2>
 
@@ -336,9 +313,8 @@
                 v-if="selectedCategoryIds.length || hasActiveExtraFilters"
                 type="button"
                 class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                @click="clearAllFilters"
-              >
-                Clear all
+                @click="clearAllFilters">
+                Clear 
               </button>
             </div>
 
@@ -351,8 +327,7 @@
                     ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                     : 'border-gray-200 text-gray-700'
                 "
-                @click="clearQuickCategory"
-              >
+                @click="clearQuickCategory">
                 All categories
               </button>
               <button
@@ -372,42 +347,67 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-4">
+          <div
+            class="grid grid-cols-1 gap-x-8 gap-y-8 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]">
             <!-- Desktop sidebar filters -->
-            <form class="hidden lg:block" @submit.prevent>
-              <!-- Quick-filter category list (business types) -->
-              <h3 class="sr-only">Categories</h3>
-              <div
-                v-if="selectedCategoryIds.length || hasActiveExtraFilters"
-                class="mb-4 flex justify-end"
-              >
-                <button
-                  type="button"
-                  class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                  @click="clearAllFilters"
-                >
-                  Clear all
-                </button>
-              </div>
-              <ul
-                role="list"
-                class="space-y-4 border-b border-gray-200 pb-6 text-sm font-medium text-gray-900"
-              >
-                <li v-for="category in subCategories" :key="category.id">
+            <div class="hidden lg:block">
+              <form
+                class="sticky top-44 max-h-[calc(100vh-12rem)] self-start overflow-y-auto rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm xl:p-6"
+                @submit.prevent>
+                <!-- Quick-filter category list (business types) -->
+                <h3 class="sr-only">Categories</h3>
+                <div class="mb-5 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-900">
+                      Filters
+                    </p>
+                    <p class="text-xs text-slate-500">
+                      Narrow the listings without leaving the page.
+                    </p>
+                  </div>
                   <button
+                    v-if="selectedCategoryIds.length || hasActiveExtraFilters"
                     type="button"
-                    class="text-left"
-                    :class="
-                      isOnlyQuickCategorySelected(category.id)
-                        ? 'text-indigo-700'
-                        : 'hover:text-indigo-700'
-                    "
-                    @click="toggleQuickCategory(category.id)"
-                  >
-                    {{ category.name }}
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearAllFilters">
+                    Clear 
                   </button>
-                </li>
-              </ul>
+                </div>
+                <div class="border-b border-gray-200 pb-6">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Categories
+                  </p>
+                  <ul
+                    role="list"
+                    class="mt-4 space-y-3 text-sm font-medium text-gray-900">
+                    <li>
+                      <button
+                        type="button"
+                        class="text-left transition"
+                        :class="
+                          selectedCategoryIds.length === 0
+                            ? 'text-indigo-700'
+                            : 'hover:text-indigo-700'
+                        "
+                        @click="clearQuickCategory">
+                        All categories
+                      </button>
+                    </li>
+                    <li v-for="category in subCategories" :key="category.id">
+                      <button
+                        type="button"
+                        class="text-left transition"
+                        :class="
+                          isOnlyQuickCategorySelected(category.id)
+                            ? 'text-indigo-700'
+                            : 'hover:text-indigo-700'
+                        "
+                        @click="toggleQuickCategory(category.id)">
+                        {{ category.name }}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
 
               <!-- Additional filter sections (no category — already shown above) -->
               <div class="border-b border-gray-200 py-6">
@@ -417,8 +417,7 @@
                     v-if="hasPriceRangeFilter"
                     type="button"
                     class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                    @click="clearPriceRange"
-                  >
+                    @click="clearPriceRange">
                     Clear
                   </button>
                 </div>
@@ -433,8 +432,7 @@
                       step="0.01"
                       inputmode="decimal"
                       placeholder="0"
-                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
-                    />
+                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"/>
                   </label>
                   <label class="block">
                     <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
@@ -445,8 +443,7 @@
                       step="0.01"
                       inputmode="decimal"
                       placeholder="Any"
-                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
-                    />
+                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"/>
                   </label>
                 </div>
               </div>
@@ -456,12 +453,10 @@
                 :key="section.id"
                 v-slot="{ open }"
                 as="div"
-                class="border-b border-gray-200 py-6"
-              >
+                class="border-b border-gray-200 py-6">
                 <h3 class="-my-3 flow-root">
                   <DisclosureButton
-                    class="flex w-full items-center justify-between bg-white py-3 text-sm text-gray-400 hover:text-gray-500"
-                  >
+                    class="flex w-full items-center justify-between bg-white py-3 text-sm text-gray-400 hover:text-gray-500">
                     <span class="font-medium text-gray-900">{{
                       section.name
                     }}</span>
@@ -469,8 +464,7 @@
                       <PlusIcon
                         v-if="!open"
                         class="size-5"
-                        aria-hidden="true"
-                      />
+                        aria-hidden="true"/>
                       <MinusIcon v-else class="size-5" aria-hidden="true" />
                     </span>
                   </DisclosureButton>
@@ -480,8 +474,7 @@
                     <div
                       v-for="(option, optionIdx) in section.options"
                       :key="option.value"
-                      class="flex gap-3"
-                    >
+                      class="flex gap-3">
                       <div class="flex h-5 shrink-0 items-center">
                         <input
                           :id="`filter-${section.id}-${optionIdx}`"
@@ -496,63 +489,56 @@
                               option.value,
                               $event.target.checked,
                             )
-                          "
-                        />
+                          "/>
                       </div>
                       <label
                         :for="`filter-${section.id}-${optionIdx}`"
-                        class="text-sm text-gray-600"
-                      >
+                        class="text-sm text-gray-600">
                         {{ option.label }}
                       </label>
                     </div>
                   </div>
                 </DisclosurePanel>
               </Disclosure>
-            </form>
+              </form>
+            </div>
 
             <!-- Listing grid -->
-            <div class="lg:col-span-3">
+            <div class="min-w-0">
               <div v-if="loading" class="flex justify-center py-20">
                 <svg
                   class="h-8 w-8 animate-spin text-cyan-500"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
-                  viewBox="0 0 24 24"
-                >
+                  viewBox="0 0 24 24">
                   <circle
                     class="opacity-25"
                     cx="12"
                     cy="12"
                     r="10"
                     stroke="currentColor"
-                    stroke-width="4"
-                  />
+                    stroke-width="4"/>
                   <path
                     class="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
                 </svg>
               </div>
 
               <div
                 v-else-if="filteredListings.length === 0"
-                class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm"
-              >
+                class="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="mx-auto h-12 w-12 text-slate-300"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                  stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="1.5"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
                 <p class="mt-4 text-base font-medium text-slate-500">
                   {{
@@ -578,14 +564,12 @@
                   viewMode === 'grid'
                     ? 'grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3'
                     : 'flex flex-col gap-4'
-                "
-              >
+                ">
                 <DestinationCard
                   v-for="listing in filteredListings"
                   :key="listing.id"
                   :listing="listing"
-                  :viewMode="viewMode"
-                />
+                  :viewMode="viewMode"/>
               </div>
             </div>
           </div>
@@ -634,7 +618,13 @@ const minPriceInput = ref("");
 const maxPriceInput = ref("");
 const route = useRoute();
 const router = useRouter();
-const viewMode = ref("grid");
+const viewMode = ref("list");
+const CATEGORY_SLUG_TO_TYPE_NAME = {
+  hotel: "Hotel",
+  restaurant: "Restaurant",
+  tour: "Tour Operator",
+  activity: "Activity Provider",
+};
 
 // selectedFilters stores checkbox state for non-category filter sections.
 // Shape: { [sectionId]: Set<value> }
@@ -658,6 +648,12 @@ const sortOptions = [
 const searchQuery = computed(() => {
   const rawQ = route.query.q;
   return typeof rawQ === "string" ? rawQ.trim() : "";
+});
+const routeCategorySlug = computed(() => {
+  const rawCategory = route.query.category;
+  return typeof rawCategory === "string"
+    ? rawCategory.trim().toLowerCase()
+    : "";
 });
 
 const hasSearchQuery = computed(() => Boolean(searchQuery.value));
@@ -775,6 +771,13 @@ const activeFilterCount = computed(() => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const resultsLabel = computed(
+  () =>
+    `${filteredListings.value.length} result${
+      filteredListings.value.length === 1 ? "" : "s"
+    }`,
+);
+
 function numberValue(value) {
   const num = Number(value ?? 0);
   return Number.isFinite(num) ? num : 0;
@@ -787,6 +790,42 @@ function dateValue(value) {
 
 function normalizeFilterValue(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function findBusinessTypeBySlug(categorySlug) {
+  const expectedTypeName = CATEGORY_SLUG_TO_TYPE_NAME[categorySlug];
+  if (!expectedTypeName) return null;
+  return (
+    businessTypes.value.find((type) => type.name === expectedTypeName) ?? null
+  );
+}
+
+function getCategorySlugForId(categoryId) {
+  const matchingType = businessTypes.value.find((type) => type.id === categoryId);
+  if (!matchingType) return null;
+
+  return (
+    Object.entries(CATEGORY_SLUG_TO_TYPE_NAME).find(
+      ([, typeName]) => typeName === matchingType.name,
+    )?.[0] ?? null
+  );
+}
+
+function syncCategorySelectionFromRoute() {
+  const matchingType = findBusinessTypeBySlug(routeCategorySlug.value);
+  selectedCategoryIds.value = matchingType ? [matchingType.id] : [];
+}
+
+function updateCategoryQuery(categorySlug) {
+  const nextQuery = { ...route.query };
+
+  if (categorySlug) {
+    nextQuery.category = categorySlug;
+  } else {
+    delete nextQuery.category;
+  }
+
+  router.replace({ name: "Listings", query: nextQuery });
 }
 
 function parsePriceInput(value) {
@@ -828,13 +867,16 @@ function toggleQuickCategory(categoryId) {
     selectedCategoryIds.value[0] === categoryId
   ) {
     selectedCategoryIds.value = [];
+    updateCategoryQuery(null);
     return;
   }
   selectedCategoryIds.value = [categoryId];
+  updateCategoryQuery(getCategorySlugForId(categoryId));
 }
 
 function clearQuickCategory() {
   selectedCategoryIds.value = [];
+  updateCategoryQuery(null);
 }
 
 function clearAllFilters() {
@@ -908,14 +950,11 @@ async function fetchListings() {
 
 // Drop any selected category IDs that no longer exist in businessTypes
 watch(
-  businessTypes,
-  (types) => {
-    const allowedIds = new Set(types.map((type) => type.id));
-    selectedCategoryIds.value = selectedCategoryIds.value.filter((id) =>
-      allowedIds.has(id),
-    );
+  [businessTypes, routeCategorySlug],
+  () => {
+    syncCategorySelectionFromRoute();
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 
 watch(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional, List
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from app.modules.discounts.models import DiscountType
@@ -41,7 +42,7 @@ class DiscountUpdate(BaseModel):
 
 
 class DiscountResponse(BaseModel):
-    id: int
+    id: UUID
     name: str
     discount_type: DiscountType
     discount_percent: float

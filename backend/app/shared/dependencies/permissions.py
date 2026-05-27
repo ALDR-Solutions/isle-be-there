@@ -58,6 +58,15 @@ def get_current_user(
     return _get_user_from_token(credentials, db)
 
 
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    return _get_user_from_token(credentials, db)
+
+
 def get_user_role(user: User) -> str:
     if user.user_type == "admin":
         return "admin"
@@ -192,6 +201,7 @@ def require_service_access(
 
 __all__ = [
     "get_current_user",
+    "get_optional_current_user",
     "get_user_role",
     "require_roles",
     "require_booking_owner",

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -23,7 +23,7 @@ class BookingBase(BaseModel):
 
 class BookingCreate(BookingBase):
     status: BookingStatus = BookingStatus.pending
-    service_id: Optional[UUID] = None
+    service_id: UUID
     base_price: Optional[float] = None
 
 
@@ -45,6 +45,7 @@ class BookingResponse(BaseModel):
     service_id: Optional[UUID] = None
     service_name: Optional[str] = None
     listing_name: Optional[str] = None
+    listing_business_type_name: Optional[str] = None
     status: Optional[BookingStatus] = None
     created_at: datetime
     updated_at: datetime
@@ -56,6 +57,9 @@ class BookingResponse(BaseModel):
     discount_amount: Optional[float] = None
     display_price: Optional[float] = None
     final_price: Optional[float] = None
+    paid_at: Optional[datetime] = None  # Populated from payment_events for approved bookings
+    has_refund: bool = False  # True if booking has refund.* PaymentEvent
+    refund_date: Optional[datetime] = None  # Populated from refund.* PaymentEvent
     model_config = {"from_attributes": True}
 
 
@@ -78,3 +82,15 @@ class BookingCreateResponse(BaseModel):
     service_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+
+
+class BulkBookingCreateRequest(BaseModel):
+    items: List[BookingCreate]
+
+
+class BulkBookingCreateResponse(BaseModel):
+    bookings: List[BookingCreateResponse]
+
+
+class PaymentIntentResponse(BaseModel):
+    client_secret: str

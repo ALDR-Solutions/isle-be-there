@@ -118,6 +118,8 @@ class Listing(SQLModel, table=True):
         back_populates="listings",
         link_model=ListingInterest,
     )
+    listing_hours: list["ListingHours"] = Relationship(back_populates="listing_rel")
+
 
 
 class EmployeeListings(SQLModel, table=True):

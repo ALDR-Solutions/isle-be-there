@@ -5,42 +5,36 @@
       viewMode === 'grid'
         ? 'flex h-full flex-col'
         : 'flex flex-col items-stretch sm:flex-row'
-    "
-  >
+    ">
     <div
       class="relative overflow-hidden shrink-0"
-      :class="viewMode === 'grid' ? '' : 'w-full sm:w-52 md:w-64'"
-    >
+      :class="viewMode === 'grid' ? '' : 'w-full sm:w-52 md:w-64'">
       <img
-        v-if="listing.image_urls?.length"
-        :src="listing.image_urls[0]"
+        v-if="primaryImageUrl"
+        :src="primaryImageUrl"
         :alt="listing.title"
         :class="
           viewMode === 'grid'
             ? 'h-56 w-full object-cover transition duration-500 group-hover:scale-105'
             : 'h-48 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-full'
         "
-        @error="$event.target.src = '/placeholder.jpg'"
-      />
+        @error="imageErrored = true"/>
 
       <div
         v-else
         class="flex w-full items-center justify-center bg-slate-200 text-slate-400"
-        :class="viewMode === 'grid' ? 'h-56' : 'h-48 min-h-[10rem] sm:h-full'"
-      >
+        :class="viewMode === 'grid' ? 'h-56' : 'h-48 min-h-[10rem] sm:h-full'">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="h-12 w-12"
           fill="none"
           viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
+          stroke="currentColor">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
       </div>
 
@@ -56,8 +50,7 @@
               ? 'bg-white/15 text-amber-400 hover:bg-white/30'
               : 'bg-white/15 text-white hover:bg-white/30'
           "
-          @click.prevent="toggleFavourite(listing.id)"
-        >
+          @click.prevent="toggleFavourite(listing.id)">
           <svg
             v-if="!isFavourited"
             xmlns="http://www.w3.org/2000/svg"
@@ -65,26 +58,22 @@
             viewBox="0 0 24 24"
             stroke-width="2"
             stroke="currentColor"
-            class="h-5 w-5"
-          >
+            class="h-5 w-5">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
-            />
+              d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"/>
           </svg>
           <svg
             v-else
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="currentColor"
-            class="h-5 w-5"
-          >
+            class="h-5 w-5">
             <path
               fill-rule="evenodd"
               d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 0 1-1.085.67L12 18.089l-7.165 3.583A.75.75 0 0 1 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z"
-              clip-rule="evenodd"
-            />
+              clip-rule="evenodd"/>
           </svg>
         </button>
       </div>
@@ -92,47 +81,40 @@
 
     <div
       class="flex flex-1 flex-col"
-      :class="viewMode === 'grid' ? 'p-6' : 'p-4 sm:p-5'"
-    >
+      :class="viewMode === 'grid' ? 'p-6' : 'p-4 sm:p-5'">
       <div class="mb-3">
         <div class="flex items-start gap-2">
           <h3
             class="font-bold leading-tight text-slate-900"
-            :class="viewMode === 'grid' ? 'text-xl' : 'text-lg sm:text-base'"
-          >
+            :class="viewMode === 'grid' ? 'text-xl' : 'text-lg sm:text-base'">
             {{ listing.title }}
           </h3>
           <span
             v-if="hotelStarLabel"
-            class="mt-1 inline-flex shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700"
-          >
+            class="mt-1 inline-flex shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
             {{ hotelStarLabel }}
           </span>
         </div>
 
         <div
           v-if="listing.address"
-          class="mt-3 flex items-start text-sm text-slate-500"
-        >
+          class="mt-3 flex items-start text-sm text-slate-500">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="mr-2 mt-0.5 h-4 w-4 shrink-0 text-cyan-600"
             fill="none"
             viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
+            stroke="currentColor">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
-            />
+              d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/>
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
           <span class="line-clamp-2">{{ locationText }}</span>
         </div>
@@ -144,8 +126,7 @@
           viewMode === 'grid'
             ? 'mb-5 flex items-center justify-between'
             : 'mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-between'
-        "
-      >
+        ">
         <div class="flex items-center gap-2">
           <div class="flex">
             <svg
@@ -158,8 +139,7 @@
                   : 'text-slate-200'
               "
               fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+              viewBox="0 0 20 20">
               <path
                 d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
               />
@@ -172,8 +152,7 @@
 
         <span
           v-if="listing.review_count"
-          class="text-sm font-medium text-cyan-700 sm:ml-auto"
-        >
+          class="text-sm font-medium text-cyan-700 sm:ml-auto">
           {{ listing.review_count }}
           {{ listing.review_count === 1 ? "Review" : "Reviews" }}
         </span>
@@ -184,24 +163,21 @@
       <component
         v-if="viewMode === 'grid' && highlightComponent && listing.details"
         :is="highlightComponent"
-        :details="listing.details"
-      />
+        :details="listing.details"/>
       <div
         class="mt-auto flex gap-4"
         :class="
           viewMode === 'grid'
             ? 'items-center justify-between'
             : 'flex-col items-stretch pt-3 sm:flex-row sm:items-center sm:justify-between'
-        "
-      >
+        ">
         <div>
           <p class="text-xs uppercase tracking-[0.2em] text-slate-400">
             Starting from
           </p>
           <p
             class="font-bold text-slate-900"
-            :class="viewMode === 'grid' ? 'text-2xl' : 'text-xl'"
-          >
+            :class="viewMode === 'grid' ? 'text-2xl' : 'text-xl'">
             ${{ parseFloat(listing.base_price || 0).toFixed(2) }}
           </p>
         </div>
@@ -209,8 +185,7 @@
         <router-link
           :to="`/listings/${listing.id}`"
           class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          :class="viewMode === 'list' ? 'w-full sm:w-auto' : ''"
-        >
+          :class="viewMode === 'list' ? 'w-full sm:w-auto' : ''">
           View Details
         </router-link>
       </div>
@@ -219,7 +194,7 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useFavouritesStore } from "../stores/favourites";
@@ -245,8 +220,12 @@ const router = useRouter();
 const authStore = useAuthStore();
 const favouritesStore = useFavouritesStore();
 const toastStore = useToastStore();
+const imageErrored = ref(false);
 
 const isFavourited = computed(() => favouritesStore.has(props.listing.id));
+const primaryImageUrl = computed(() =>
+  imageErrored.value ? "" : props.listing.image_urls?.[0] || "",
+);
 
 const highlightComponent = computed(() => {
   switch (props.listing.business_type_name) {
@@ -286,6 +265,14 @@ const locationText = computed(() => {
     .filter(Boolean)
     .join(", ");
 });
+
+watch(
+  () => props.listing.image_urls?.[0],
+  () => {
+    imageErrored.value = false;
+  },
+  { immediate: true },
+);
 
 async function toggleFavourite(listingId) {
   if (!authStore.isAuthenticated) {

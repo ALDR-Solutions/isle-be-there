@@ -786,7 +786,10 @@ def status_value(status) -> str:
 def serialize_saved_itinerary(
     itinerary: Itinerary,
     items: list[ItineraryItem],
+    services_map: dict = None,
 ) -> SavedItineraryResponse:
+    if services_map is None:
+        services_map = {}
     return SavedItineraryResponse(
         id=itinerary.id,
         user_id=itinerary.user_id,
@@ -818,6 +821,7 @@ def serialize_saved_itinerary(
                 "address_snapshot": item.address_snapshot,
                 "reason_tags": list(item.reason_tags or []),
                 "extra_metadata": item.extra_metadata,
+                "service_id": services_map.get(item.listing_id) if item.listing_id else None,
             }
             for item in items
         ],
@@ -1025,9 +1029,20 @@ def convert_itinerary_to_bookings(
         if item.linked_booking_id is not None:
             continue
 
+        service = db.exec(
+            select(Service)
+            .where(Service.listing_id == item.listing_id)
+            .where(Service.status == ServiceStatusTypes.active)
+            .order_by(Service.created_at)
+        ).first()
+        if not service:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot convert itinerary item to booking without an active service",
+            )
+
         booking_data = BookingCreate(
-            listing_id=item.listing_id,
-            itinerary_id=itinerary_id,
+            service_id=service.service_id,
             itinerary_item_id=item.id,
             booking_from_time=item.start_at,
             booking_to_time=item.end_at,

@@ -29,6 +29,27 @@
 
     <div class="bg-white px-6 py-8 sm:px-10 sm:py-12">
       <div class="mx-auto w-full max-w-md">
+        <router-link
+          to="/"
+          class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back to home
+        </router-link>
+
         <div class="mb-8">
           <p
             class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500"

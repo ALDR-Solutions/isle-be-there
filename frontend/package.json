@@ -17,6 +17,7 @@
     "@fullcalendar/vue3": "^6.1.17",
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.2.0",
+    "@stripe/stripe-js": "^4.10.0",
     "axios": "^1.14.0",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",

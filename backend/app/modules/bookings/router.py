@@ -1,25 +1,32 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import Session
+from sqlmodel.sql.expression import select
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_booking_owner, require_roles
 
-from .models import Booking
-from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse
+from .models import Booking, BookingStatus, PaymentEvent
+from uuid import UUID
+from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse, BulkBookingCreateRequest, BulkBookingCreateResponse, PaymentIntentResponse
 from .service import (
     cancel_booking,
     create_booking,
+    create_bulk_bookings,
+    create_payment_intent,
+    delete_booking,
     get_booking_by_id,
     list_bookings,
     update_booking,
     price_booking_by_id,
 )
+from app.modules.availability.service import is_available as check_availability
+from app.modules.services.models import Service
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
-
 
 
 
@@ -51,6 +58,18 @@ def create_booking_endpoint(
     return create_booking(db, booking_data, current_user.id)
 
 
+@router.post("/bulk", response_model=BulkBookingCreateResponse, status_code=201)
+def create_bulk_bookings_endpoint(
+    request: BulkBookingCreateRequest,
+    current_user: User = Depends(require_roles("regular")),
+    db: Session = Depends(get_db),
+):
+    bookings = create_bulk_bookings(db, request.items, current_user.id)
+    return BulkBookingCreateResponse(
+        bookings=[BookingCreateResponse.model_validate(b) for b in bookings]
+    )
+
+
 @router.put("/{booking_id}", response_model=BookingResponse)
 def update_booking_endpoint(
     booking_data: BookingUpdate,
@@ -71,6 +90,41 @@ def cancel_booking_endpoint(
 
     cancel_booking(db, booking)
     return Response(status_code=204)
+
+
+@router.post("/{booking_id}/payment-intent", response_model=PaymentIntentResponse)
+def create_payment_intent_endpoint(
+    current_user: User = Depends(require_roles("regular", "admin")),
+    booking: Booking = Depends(require_booking_owner),
+    db: Session = Depends(get_db),
+):
+    result = create_payment_intent(db, booking.id, current_user.id)
+    return PaymentIntentResponse(**result)
+
+
+@router.post("/{booking_id}/confirm-payment")
+def confirm_payment_endpoint(
+    current_user: User = Depends(require_roles("regular", "admin")),
+    booking: Booking = Depends(require_booking_owner),
+    db: Session = Depends(get_db),
+):
+    """Confirm payment was successful via Stripe API and update booking status."""
+    # Delegate to stripe_payment service
+    from app.modules.stripe_payment.service import confirm_payment as stripe_confirm_payment
+    result = stripe_confirm_payment(db, booking)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
+@router.delete("/{booking_id}", status_code=204)
+def delete_booking_endpoint(
+    booking: Booking = Depends(require_booking_owner),
+    db: Session = Depends(get_db),
+):
+    delete_booking(db, booking)
+    return Response(status_code=204)
+
 
 @router.get("/{booking_id}/price", response_model=BookingPriceResponse)
 def get_booking_price_endpoint(

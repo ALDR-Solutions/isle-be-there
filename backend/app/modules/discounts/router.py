@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,9 +25,9 @@ router = APIRouter(prefix="/api/discounts", tags=["Discounts"])
 
 
 @router.get("", response_model=List[DiscountResponse])
-def get_discounts_endpoint(db: Session = Depends(get_db), admin: User = Depends(require_roles("admin"))):
-    # Admin only: list all active discounts
-    return get_active_discounts(db)
+def get_discounts_endpoint(db: Session = Depends(get_db), discount_type: Optional[str] = None):
+    # Public endpoint: list all active discounts
+    return get_active_discounts(db, discount_type=discount_type)
 
 
 @router.get("/{discount_id}", response_model=DiscountResponse)

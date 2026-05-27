@@ -16,6 +16,8 @@ from sqlmodel import Session, asc, col, desc, select
 from app.modules.bookings.models import Booking, BookingStatus
 from app.modules.businesses.models import Business
 from app.modules.interests.models import ListingInterest, UserInterest, BusinessTypeInterest
+from app.modules.availability.service import get_booked_count
+from app.modules.interests.models import ListingInterest, UserInterest
 from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes

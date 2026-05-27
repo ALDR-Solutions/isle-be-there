@@ -133,5 +133,12 @@ class Booking(SQLModel, table=True):
         ),
     )
     itinerary_item: Optional["ItineraryItem"] = Relationship(back_populates="booking_rel")
+    stripe_payment_intent_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True, unique=True),
+    )
+
+
+from app.modules.stripe_payment.models import PaymentEvent
 
 
