@@ -208,12 +208,21 @@ def _validate_service_capacity(
         )
 
 
+def _calculate_hotel_days(booking_from_time: datetime, booking_to_time: datetime) -> int:
+    """Calculate number of nights for hotel booking (check-out day doesn't count)."""
+    diff = booking_to_time - booking_from_time
+    days = diff.days
+    return max(1, days)
+
+
 def price_booking_from_itinerary_item(
     db: Session,
     itinerary_item_id: UUID,
     user_id: UUID,
     service: Service,
     amount_of_people: int,
+    booking_from_time: Optional[datetime] = None,
+    booking_to_time: Optional[datetime] = None,
 ) -> dict:
     # 1. Get ItineraryItem by ID
     itinerary_item = db.get(ItineraryItem, itinerary_item_id)
@@ -232,8 +241,14 @@ def price_booking_from_itinerary_item(
     base_price = float(price_info.get("base_price", 0.0))
 
     # Apply per-person pricing for non-hotel services
-    if not _is_hotel_service(db, service):
+    is_hotel = _is_hotel_service(db, service)
+    if not is_hotel:
         base_price = base_price * amount_of_people
+    else:
+        # For hotels, multiply by number of nights
+        if booking_from_time and booking_to_time:
+            hotel_days = _calculate_hotel_days(booking_from_time, booking_to_time)
+            base_price = base_price * hotel_days
 
     service_fee_percent = float(price_info.get("service_fee_percent", 0.0))
     service_fee_amount = base_price * service_fee_percent
@@ -288,7 +303,15 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
         # Use stored amount_of_people if available, otherwise default to 1
         # (for existing bookings, base_price is already multiplied)
         people = getattr(booking, 'amount_of_people', None) or 1
-        return price_booking_from_itinerary_item(db, booking.itinerary_item_id, user_id, service, people)
+        return price_booking_from_itinerary_item(
+            db,
+            booking.itinerary_item_id,
+            user_id,
+            service,
+            people,
+            booking_from_time=booking.booking_from_time,
+            booking_to_time=booking.booking_to_time,
+        )
 
     # Use stored base_price if available, otherwise recalculate
     if booking.base_price is not None:
@@ -360,6 +383,8 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
             user_id,
             service,
             booking.amount_of_people or 1,
+            booking_from_time=booking.booking_from_time,
+            booking_to_time=booking.booking_to_time,
         )
         # Populate price fields on the Booking object
         booking_record.base_price = price_breakdown.get("base_price")
@@ -377,9 +402,13 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         people = booking.amount_of_people or 1
 
         # base_price from pricing service is per-person (or per-room for hotels)
-        # Multiply by people to get total for this booking
+        # Multiply by people to get total for this booking (or by nights for hotels)
         per_person_base = float(price_breakdown.get("base_price", 0))
-        total_base = per_person_base * people if not is_hotel else per_person_base
+        if is_hotel:
+            hotel_days = _calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
+            total_base = per_person_base * hotel_days
+        else:
+            total_base = per_person_base * people
 
         service_fee_percent = float(price_breakdown.get("service_fee_percent", 0.10))
         service_fee_amount = total_base * service_fee_percent

@@ -489,7 +489,7 @@
             <!-- Per-person or flat fee breakdown -->
             <div class="mt-2 text-sm text-slate-500">
               <template v-if="isHotelType">
-                <p>1 room x ${{ (selectedService?.price || 0).toFixed(2) }}</p>
+                <p>1 room x ${{ (selectedService?.price || 0).toFixed(2) }} x {{ hotelNightsForReceipt }} night{{ hotelNightsForReceipt !== 1 ? 's' : '' }}</p>
               </template>
               <template v-else>
                 <p>${{ (selectedService?.price || 0).toFixed(2) }} x {{ bookingForm.amount_of_people || 1 }} people</p>
@@ -735,9 +735,28 @@ const receiptSubtotal = computed(() => {
   const price = Number(selectedService.value.price) || 0;
   const people = bookingForm.amount_of_people || 1;
   if (isHotelType.value) {
-    return price; // flat fee per room
+    // Calculate number of nights for hotel booking
+    const checkIn = bookingForm.booking_from_time ? new Date(bookingForm.booking_from_time) : null;
+    const checkOut = bookingForm.booking_to_time ? new Date(bookingForm.booking_to_time) : null;
+    let nights = 1;
+    if (checkIn && checkOut && checkOut > checkIn) {
+      const diffMs = checkOut.getTime() - checkIn.getTime();
+      nights = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    }
+    return price * nights;
   }
   return price * people;
+});
+
+// Helper to calculate hotel nights for receipt display
+const hotelNightsForReceipt = computed(() => {
+  const checkIn = bookingForm.booking_from_time ? new Date(bookingForm.booking_from_time) : null;
+  const checkOut = bookingForm.booking_to_time ? new Date(bookingForm.booking_to_time) : null;
+  if (checkIn && checkOut && checkOut > checkIn) {
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+  }
+  return 1;
 });
 
 const receiptServiceFee = computed(() => receiptSubtotal.value * SERVICE_FEE_PERCENT);

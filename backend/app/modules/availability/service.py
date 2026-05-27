@@ -344,6 +344,8 @@ def get_service_availability(
     if not slots:
         # Get listing hours for this day
         listing_hours = get_listing_hours(db, service.listing_id, db_day_of_week)
+        # Use service capacity, or fallback to a high number if service has no capacity set
+        service_capacity = service.capacity if service.capacity is not None else 999
         if listing_hours:
             # Create virtual slot from listing hours using namedtuple
             VirtualSlot = namedtuple('VirtualSlot', ['id', 'service_id', 'day_of_week', 'start_time', 'end_time', 'capacity', 'is_virtual'])
@@ -354,7 +356,7 @@ def get_service_availability(
                     day_of_week=db_day_of_week,
                     start_time=listing_hours.open_time,
                     end_time=listing_hours.close_time,
-                    capacity=999,  # High capacity for listing-hour-based slots
+                    capacity=service_capacity,  # Use service capacity
                     is_virtual=True,  # Mark as virtual slot
                 )
             ]
@@ -369,7 +371,7 @@ def get_service_availability(
                     day_of_week=db_day_of_week,
                     start_time=time_class(0, 0, 0),  # 00:00:00
                     end_time=time_class(23, 59, 59),  # 23:59:59
-                    capacity=999,  # High capacity for anytime slots
+                    capacity=service_capacity,  # Use service capacity
                     is_virtual=True,
                 )
             ]
