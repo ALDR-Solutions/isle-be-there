@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+  <div class="overflow-hidden rounded-none border border-slate-200 bg-white shadow-sm">
     <!-- Header -->
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
       <div class="flex items-start justify-between gap-4">
@@ -95,7 +95,8 @@
         <span class="text-sm font-semibold text-slate-700">Time slot</span>
         <select
           :value="selectedSlotValue"
-          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+          class="mt-2 w-full rounded-2xl border bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+          :class="errors.time_slot ? 'border-red-300' : 'border-slate-200'"
           @change="selectSlot($event.target.value)"
         >
           <option value="">-- Select a time slot --</option>
@@ -110,18 +111,27 @@
             <span v-else>({{ slot.remaining_capacity }} spots left)</span>
           </option>
         </select>
+        <p v-if="errors.time_slot" class="mt-1 text-xs text-red-500">{{ errors.time_slot }}</p>
       </label>
 
-      <!-- Time Start / End (driven by selected slot) -->
-      <div class="grid grid-cols-2 gap-3">
+      <div v-if="availableSlots.length > 0" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Selected time</p>
+        <p v-if="selectedSlotValue" class="mt-2 text-sm font-semibold text-slate-900">
+          {{ timeStartValue }} - {{ timeEndValue }}
+        </p>
+        <p v-else class="mt-2 text-sm text-slate-500">
+          Choose a time slot to set the booking window.
+        </p>
+      </div>
+
+      <!-- Time Start / End (manual only when no slots are available) -->
+      <div v-else class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="text-sm font-semibold text-slate-700">Time start</span>
           <input
             :value="timeStartValue"
             type="time"
-            :readonly="!!selectedSlotValue"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-            :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotValue }"
             @input="updateTimeStartField($event.target.value)"
           />
         </label>
@@ -130,9 +140,7 @@
           <input
             :value="timeEndValue"
             type="time"
-            :readonly="!!selectedSlotValue"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-            :class="{ 'cursor-not-allowed bg-slate-50': selectedSlotValue }"
             @input="updateTimeEndField($event.target.value)"
           />
         </label>
@@ -196,7 +204,8 @@ const emit = defineEmits(['update:modelValue'])
 
 const errors = reactive({
   service_id: '',
-  bookers_name: ''
+  bookers_name: '',
+  time_slot: ''
 })
 
 // Availability state
@@ -416,6 +425,7 @@ function serviceOptionLabel(service) {
 function validate() {
   errors.service_id = ''
   errors.bookers_name = ''
+  errors.time_slot = ''
   if (!formData.value.service_id) {
     errors.service_id = props.services.length === 0
       ? 'No active services are available for this listing.'
@@ -424,7 +434,10 @@ function validate() {
   if (!formData.value.bookers_name || !formData.value.bookers_name.trim()) {
     errors.bookers_name = "Booker's name is required"
   }
-  return !errors.service_id && !errors.bookers_name
+  if (availableSlots.value.length > 0 && !selectedSlotValue.value) {
+    errors.time_slot = 'Please choose an available time slot.'
+  }
+  return !errors.service_id && !errors.bookers_name && !errors.time_slot
 }
 
 // Expose validate method for parent components

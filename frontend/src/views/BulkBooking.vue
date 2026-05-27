@@ -110,7 +110,7 @@
                 : 'border-transparent bg-transparent'
             ]"
           >
-            <div class="flex items-center justify-end px-4 pt-4">
+            <div class="flex items-center justify-end px-4 pt-4 pb-3">
               <label class="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm">
                 <span>{{ isItemSelected(item._key) ? 'Selected' : 'Select' }}</span>
                 <input

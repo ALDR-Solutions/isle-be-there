@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+  <div class="overflow-hidden rounded-none border border-slate-200 bg-white shadow-sm">
     <!-- Header -->
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
       <div class="flex items-start justify-between gap-4">
