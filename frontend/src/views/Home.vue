@@ -3,19 +3,29 @@
     <section
       class="relative -mt-20 flex min-h-screen w-full items-center overflow-hidden pt-20"
     >
-      <transition-group name="fade" tag="div" class="absolute inset-0">
-        <div
-          v-for="(img, i) in heroImages"
-          v-show="currentSlide === i"
-          :key="img"
-          class="absolute inset-0 bg-cover bg-center"
-          :style="{ backgroundImage: `url(${img})` }">
-          <div class="absolute inset-0 bg-slate-950/60"></div>
-          <div
-            class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.2),_transparent_40%)]"
-          ></div>
-        </div>
-      </transition-group>
+      <template v-if="showVideoHero">
+        <video
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          :poster="heroPosterImage"
+          class="absolute inset-0 h-full w-full object-cover"
+          @error="showVideoHero = false"
+        >
+          <source :src="droneBeachHeroVideo" type="video/mp4" />
+        </video>
+      </template>
+      <div
+        v-else
+        class="absolute inset-0 bg-cover bg-center"
+        :style="{ backgroundImage: `url(${heroPosterImage})` }"
+      ></div>
+      <div class="absolute inset-0 bg-slate-950/60"></div>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.2),_transparent_40%)]"
+      ></div>
 
       <div
         class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
@@ -80,25 +90,9 @@
         </div>
       </div>
 
-      <div class="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 gap-3">
-        <button
-          v-for="(img, i) in heroImages"
-          :key="`${img}-dot`"
-          type="button"
-          :aria-label="`Show hero image ${i + 1}`"
-          :aria-pressed="currentSlide === i"
-          @click="currentSlide = i"
-          class="h-3 rounded-full transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:ring-offset-2 focus:ring-offset-slate-900"
-          :class="
-            currentSlide === i
-              ? 'w-10 bg-cyan-300'
-              : 'w-3 bg-white/45 hover:bg-white/70'
-          "
-        />
-      </div>
     </section>
 
-    <section class="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+    <section class="px-4 pt-14 pb-8 sm:px-6 sm:pt-20 sm:pb-10 lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div
           class="mb-8 flex flex-col items-start justify-between gap-6 lg:mb-12 lg:flex-row lg:items-end">
@@ -253,7 +247,7 @@
       </div>
     </section>
 
-    <section class="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
+    <section class="bg-white px-4 pt-8 pb-14 sm:px-6 sm:pt-10 sm:pb-16 lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div class="max-w-2xl">
           <p
@@ -471,23 +465,14 @@ import { listingsAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import DestinationCard from "../components/DestinationCard.vue";
 import InterestsModal from "../components/interestsModal.vue";
-import trinidadImage from "../../images/trinidad.jpg";
-import barbadosImage from "../../images/barbados.jpg";
-import caribbeanImage from "../../images/carib-bkg.jpg";
 import beachImage from "../../images/beach-bkg.jpg";
-import islandImage from "../../images/island-bkg.jpg";
 import promoBannerImage from "../../images/home-promo-banner.jpg";
+import droneBeachHeroVideo from "../../clips/drone_beach-hero.mp4";
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const heroImages = [
-  trinidadImage,
-  barbadosImage,
-  caribbeanImage,
-  beachImage,
-  islandImage,
-];
+const heroPosterImage = beachImage;
 
 const categoryShortcuts = [
   {
@@ -546,13 +531,11 @@ const guestPlanningBenefits = [
   "Manage reservations and trip details once you are ready to book.",
 ];
 
-const currentSlide = ref(0);
-let heroInterval = null;
-
 const loading = ref(true);
 const listingsLoadFailed = ref(false);
 const personalizedListings = ref([]);
 const searchQuery = ref("");
+const showVideoHero = ref(true);
 
 const trackRef = ref(null);
 const carouselIndex = ref(0);
@@ -563,6 +546,7 @@ const gap = 24;
 const showInterestsModal = ref(false);
 let interestsPromptTimeout = null;
 let interestsPromptQueued = false;
+let reducedMotionMediaQuery = null;
 
 const discoveryEyebrow = computed(() =>
   authStore.isAuthenticated ? "Tailored picks" : "Where to start",
@@ -611,20 +595,23 @@ watch(
 );
 
 onMounted(() => {
-  heroInterval = window.setInterval(() => {
-    currentSlide.value = (currentSlide.value + 1) % heroImages.length;
-  }, 4000);
-
+  reducedMotionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  showVideoHero.value = !reducedMotionMediaQuery.matches;
+  reducedMotionMediaQuery.addEventListener("change", handleReducedMotionChange);
   fetchPersonalizedListings();
   window.addEventListener("resize", updateCardWidth);
   updateCardWidth();
 });
 
 onUnmounted(() => {
-  window.clearInterval(heroInterval);
   window.clearTimeout(interestsPromptTimeout);
+  reducedMotionMediaQuery?.removeEventListener("change", handleReducedMotionChange);
   window.removeEventListener("resize", updateCardWidth);
 });
+
+function handleReducedMotionChange(event) {
+  showVideoHero.value = !event.matches;
+}
 
 function onInterestsSaved() {
   fetchPersonalizedListings();
@@ -713,16 +700,6 @@ function onTouchEnd(e) {
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 1s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 input::placeholder {
   letter-spacing: 0.01em;
 }
