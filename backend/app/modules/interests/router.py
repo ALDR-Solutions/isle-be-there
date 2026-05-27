@@ -7,7 +7,11 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import get_current_user
 
-from .schemas import InterestResponse, UserInterestsUpdate
+from .schemas import (
+    InterestResponse,
+    ItineraryInterestsResponse,
+    UserInterestsUpdate,
+)
 from .service import (
     get_all_interests,
     get_interests_by_business_type,
@@ -31,7 +35,7 @@ def get_business_type_interests_route(
 ):
     return get_interests_by_business_type(db, business_type_id)
 
-@router.get("/listing-country/{country}", response_model=list[InterestResponse])
+@router.get("/listing-country/{country}", response_model=ItineraryInterestsResponse)
 def get_listing_country_interests_route(
     country: str,
     bookable_only: bool = Query(default=False),

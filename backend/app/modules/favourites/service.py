@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from app.modules.listings.models import Listing
-from app.modules.listings.service import _serialize_listings
+from app.modules.listings.service import serialize_listings
 
 from .models import Favourites
 
@@ -14,7 +14,7 @@ def list_favourites(db: Session, user_id):
         .where(Favourites.user_id == user_id)
     )
     rows = db.exec(query).all()
-    serialized_listings = _serialize_listings(db, [listing for _, listing in rows])
+    serialized_listings = serialize_listings(db, [listing for _, listing in rows])
     listings_by_id = {listing["id"]: listing for listing in serialized_listings}
     return [
         {
@@ -46,7 +46,7 @@ def add_favourite(db: Session, user_id, listing_id):
     db.add(favourite)
     db.commit()
     db.refresh(favourite)
-    serialized_listing = _serialize_listings(db, [listing])[0]
+    serialized_listing = serialize_listings(db, [listing])[0]
     return {
         "id": favourite.id,
         "user_id": favourite.user_id,

@@ -73,25 +73,33 @@
 
                 <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <button
-                    v-for="category in categoryNames"
-                    :key="category"
+                    v-for="category in categoryCards"
+                    :key="category.name"
                     type="button"
-                    class="group flex min-h-32 flex-col justify-between rounded-3xl border p-5 text-left shadow-sm transition hover:-translate-y-0.5"
+                    class="group flex min-h-40 flex-col justify-between rounded-3xl border p-5 text-left shadow-sm transition hover:-translate-y-0.5"
                     :class="
-                      isCategorySelected(category)
+                      isCategorySelected(category.name)
                         ? 'border-cyan-400 bg-cyan-50 text-cyan-900 shadow-cyan-100'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                     "
-                    @click="toggleCategory(category)"
+                    @click="toggleCategory(category.name)"
                   >
                     <span class="flex items-start justify-between gap-4">
-                      <span class="text-lg font-bold capitalize">{{
-                        category
-                      }}</span>
+                      <span>
+                        <span class="text-lg font-bold capitalize">{{
+                          category.name
+                        }}</span>
+                        <span
+                          v-if="category.description"
+                          class="mt-2 block max-w-[24ch] text-sm font-medium leading-6 text-slate-500"
+                        >
+                          {{ category.description }}
+                        </span>
+                      </span>
                       <span
                         class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
                         :class="
-                          isCategorySelected(category)
+                          isCategorySelected(category.name)
                             ? 'border-cyan-500 bg-cyan-500 text-white'
                             : 'border-slate-300 text-transparent'
                         "
@@ -111,9 +119,9 @@
                       </span>
                     </span>
                     <span class="mt-8 text-sm font-medium text-slate-500">
-                      {{ groupedInterests[category]?.length || 0 }}
+                      {{ groupedInterests[category.name]?.length || 0 }}
                       {{
-                        groupedInterests[category]?.length === 1
+                        groupedInterests[category.name]?.length === 1
                           ? "interest"
                           : "interests"
                       }}
@@ -263,7 +271,8 @@
                         Only show services available for booking
                       </span>
                       <span class="mt-1 block text-sm text-slate-500">
-                        Limit interests and itinerary stops to listings with active bookable services.
+                        Limit interests and itinerary stops to listings with
+                        active bookable services.
                       </span>
                     </span>
                   </label>
@@ -381,6 +390,24 @@
                           option.label
                         }}</span>
                         <span
+                          class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
+                          :class="getBudgetToneClasses(option.value)"
+                        >
+                          <CurrencyDollarIcon
+                            v-if="option.value === 'low'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <CreditCardIcon
+                            v-else-if="option.value === 'medium'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <SparklesIcon
+                            v-else-if="option.value === 'high'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          ${{ option.dailyTarget}}/day target
+                        </span>
+                        <span
                           class="mt-1 block text-sm leading-6 text-slate-500"
                           >{{ option.description }}</span
                         >
@@ -411,6 +438,25 @@
                         <span class="block font-bold text-slate-900">{{
                           option.label
                         }}</span>
+
+                        <span
+                          class="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
+                          :class="getPaceToneClasses(option.value)"
+                        >
+                          <SunIcon
+                            v-if="option.value === 'relaxed'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <ScaleIcon
+                            v-else-if="option.value === 'balanced'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          <BoltIcon
+                            v-else-if="option.value === 'packed'"
+                            class="h-4 w-4 shrink-0"
+                          />
+                          {{ option.activityLimit }} activities/day
+                        </span>
                         <span
                           class="mt-1 block text-sm leading-6 text-slate-500"
                           >{{ option.description }}</span
@@ -527,26 +573,46 @@
             </p>
           </div>
 
-          <div v-if="!savedItinerary" class="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              @click="generatedItinerary = null"
-            >
-              Adjust answers
-            </button>
-
-            <button
-              type="button"
-              class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="isSaving"
-              @click="handleSaveItinerary"
-            >
-              {{ isSaving ? "Saving..." : "Save itinerary" }}
-            </button>
+          <div
+            class="flex w-full flex-col gap-3 lg:ml-auto lg:max-w-3xl lg:items-end"
+          >
+            <div class="flex w-full flex-col gap-3 sm:flex-row lg:justify-end">
+              <input
+                v-model="itineraryEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="Email itinerary to you@example.com"
+                class="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 lg:max-w-sm"
+              />
+              <button
+                type="button"
+                class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSendingEmail"
+                @click="handleEmailItinerary"
+              >
+                {{ isSendingEmail ? "Sending..." : "Send itinerary" }}
+              </button>
+              <button
+                v-if="!savedItinerary"
+                type="button"
+                class="shrink-0 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                @click="generatedItinerary = null"
+              >
+                Adjust answers
+              </button>
+              <button
+                v-if="!savedItinerary"
+                type="button"
+                class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSaving"
+                @click="handleSaveItinerary"
+              >
+                {{ isSaving ? "Saving..." : "Save itinerary" }}
+              </button>
+            </div>
           </div>
 
-          <div v-else>
+          <div v-if="savedItinerary">
             <RouterLink
               to="/profile"
               class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -616,11 +682,12 @@
                   </p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
-                      v-for="tag in stop.reason_tags"
-                      :key="tag"
-                      class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"
+                      v-for="tag in getNormalizedReasonTags(stop.reason_tags)"
+                      :key="tag.key"
+                      class="rounded-full px-3 py-1 text-xs font-semibold"
+                      :class="getTagToneClasses(tag.tone)"
                     >
-                      {{ tag }}
+                      {{ tag.label }}
                     </span>
                   </div>
                 </div>
@@ -645,6 +712,8 @@ import { interestsAPI, itinerariesAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import { useToastStore } from "../stores/toast";
 import { CARIBBEAN_COUNTRIES } from "../stores/caribbeanLocations";
+import { normalizeItineraryTags, getTagToneClasses } from "../utils/itineraryTags";
+import { SunIcon, ScaleIcon, BoltIcon, CurrencyDollarIcon, CreditCardIcon, SparklesIcon } from "@heroicons/vue/24/outline";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -655,6 +724,7 @@ const savedItinerary = ref(null);
 const isLoadingSavedItinerary = ref(false);
 
 const allInterests = ref([]);
+const availableCategories = ref([]);
 const availableInterests = ref([]);
 const loadingInterests = ref(true);
 const isLoadingCountryInterests = ref(false);
@@ -673,6 +743,9 @@ const pace = ref("balanced");
 const generatedItinerary = ref(null);
 const isGenerating = ref(false);
 const isSaving = ref(false);
+const isSendingEmail = ref(false);
+const itineraryEmail = ref("");
+const lastAutofilledEmail = ref("");
 const errorMessage = ref("");
 const slideDirection = ref("slide-left");
 
@@ -681,17 +754,20 @@ const countryOptions = ["Barbados", "Guyana", "Jamaica", "Trinidad and Tobago"];
 const budgetOptions = [
   {
     value: "low",
-    label: "Simple",
+    label: "Budget-friendly",
+    dailyTarget: 120,
     description: "Prioritize lower-cost stops and lighter spending.",
   },
   {
     value: "medium",
     label: "Balanced",
+    dailyTarget: 240,
     description: "Mix affordable picks with standout experiences.",
   },
   {
     value: "high",
     label: "Premium",
+    dailyTarget: 420,
     description: "Leave room for higher-end stays, dining, and tours.",
   },
 ];
@@ -700,16 +776,19 @@ const paceOptions = [
   {
     value: "relaxed",
     label: "Relaxed",
+    activityLimit: 2,
     description: "Fewer stops with more open time between plans.",
   },
   {
     value: "balanced",
     label: "Balanced",
+    activityLimit: 3,
     description: "A steady day with time for both plans and rest.",
   },
   {
     value: "packed",
     label: "Packed",
+    activityLimit: 4,
     description: "More stops for travelers who want a fuller schedule.",
   },
 ];
@@ -743,8 +822,20 @@ const groupedInterests = computed(() => {
   }, {});
 });
 
+const categoryCards = computed(() => {
+  if (!availableCategories.value.length) {
+    return Object.keys(groupedInterests.value)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name, description: "" }));
+  }
+
+  return [...availableCategories.value]
+    .filter((category) => groupedInterests.value[category.name]?.length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
 const categoryNames = computed(() =>
-  Object.keys(groupedInterests.value).sort((a, b) => a.localeCompare(b)),
+  categoryCards.value.map((category) => category.name),
 );
 
 const filteredInterests = computed(() => {
@@ -780,14 +871,14 @@ const steps = computed(() => [
 
   ...(bookableOnly.value
     ? [
-{
-    key: "travelers",
-    type: "travelers",
-    title: "Who is going?",
-    description:
-      "Traveler counts stay in this planner for trip context, but do not affect the backend request yet.",
-  },
-]
+        {
+          key: "travelers",
+          type: "travelers",
+          title: "Who is going?",
+          description:
+            "Traveler counts stay in this planner for trip context, but do not affect the backend request yet.",
+        },
+      ]
     : []),
   {
     key: "categories",
@@ -858,7 +949,9 @@ const selectedInterestNames = computed(() => {
 });
 
 const selectedCategoriesLabel = computed(() =>
-  selectedCategories.value.length ? selectedCategories.value.join(", ") : "None",
+  selectedCategories.value.length
+    ? selectedCategories.value.join(", ")
+    : "None",
 );
 
 const selectedInterestNamesLabel = computed(() =>
@@ -866,6 +959,17 @@ const selectedInterestNamesLabel = computed(() =>
     ? selectedInterestNames.value.join(", ")
     : "None",
 );
+
+const isLastInterestPage = computed(() => {
+  if (activeStep.value.type !== "interests") return false;
+  return activeStep.value.pageIndex === interestPages.value.length - 1;
+});
+
+const canManageSavedItineraries = computed(
+  () => authStore.isAuthenticated && ["user", "admin"].includes(authStore.role),
+);
+
+const canEmailItinerary = computed(() => !!generatedItinerary.value);
 
 const tripLength = computed(() => {
   if (!startDate.value || !endDate.value || endDate.value < startDate.value)
@@ -902,6 +1006,20 @@ watch(steps, () => {
     currentStepIndex.value = Math.max(0, steps.value.length - 1);
   }
 });
+
+watch(
+  () => authStore.user?.email?.trim() || "",
+  (email) => {
+    if (
+      !itineraryEmail.value ||
+      itineraryEmail.value === lastAutofilledEmail.value
+    ) {
+      itineraryEmail.value = email;
+    }
+    lastAutofilledEmail.value = email;
+  },
+  { immediate: true },
+);
 
 function toggleCategory(category) {
   errorMessage.value = "";
@@ -958,10 +1076,16 @@ async function getAvailableInterestsByListingCountry(country) {
     const response = await interestsAPI.getByListingCountry(country, {
       bookable_only: bookableOnly.value,
     });
-    availableInterests.value = Array.isArray(response.data)
-      ? response.data
+    availableCategories.value = Array.isArray(response.data?.categories)
+      ? response.data.categories
       : [];
+    availableInterests.value = Array.isArray(response.data?.interests)
+      ? response.data.interests
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
   } catch (error) {
+    availableCategories.value = [];
     console.error("Failed to load interests for country", error);
     toastStore.show("Failed to load interests for selected country.", "error");
     return [];
@@ -1008,8 +1132,9 @@ function getValidationMessage() {
 
   if (activeStep.value.type === "interests") {
     if (activeInterestPage.value.length === 0) return "";
-    if (selectedInterestIds.value.length === 0)
-      return "Choose at least one interest.";
+
+    if (isLastInterestPage.value && selectedInterestIds.value.length === 0)
+      return "Choose at least one interest, or go back and remove that category to continue.";
   }
 
   if (activeStep.value.type === "destination") {
@@ -1107,43 +1232,138 @@ function mapSavedItineraryToPreview(saved) {
   };
 }
 
-async function handleSaveItinerary() {
+function redirectToLogin() {
+  router.push({ name: "Login", query: { redirect: route.fullPath } });
+}
+
+async function persistGeneratedItinerary({ redirectToCalendar = false } = {}) {
   if (!authStore.isAuthenticated) {
     toastStore.show("Sign in to save your itinerary.", "info");
-    router.push({ name: "Login", query: { redirect: "/itinerary" } });
-    return;
+    redirectToLogin();
+    return null;
   }
 
-  if (!["user", "admin"].includes(authStore.role)) {
+  if (!canManageSavedItineraries.value) {
     toastStore.show(
       "Saved itineraries are only available for traveler accounts right now.",
       "info",
     );
-    return;
+    return null;
+  }
+
+  if (savedItinerary.value) {
+    return savedItinerary.value;
   }
 
   if (!generatedItinerary.value || isSaving.value) {
-    return;
+    return null;
   }
 
   isSaving.value = true;
 
   try {
-    await itinerariesAPI.save({
+    const response = await itinerariesAPI.save({
       plan_request: buildPayload(),
       plan_response: generatedItinerary.value,
     });
-    toastStore.show("Itinerary saved to your account.", "success");
-    router.push({ name: "Calendar" });
+    savedItinerary.value = response.data;
+    generatedItinerary.value = mapSavedItineraryToPreview(response.data);
+
+    if (redirectToCalendar) {
+      toastStore.show("Itinerary saved to your account.", "success");
+      router.push({ name: "Calendar" });
+    } else {
+      router.replace({
+        name: "SavedItinerary",
+        params: { id: response.data.id },
+      });
+    }
+
+    return response.data;
   } catch (error) {
     console.error("Failed to save itinerary", error);
     toastStore.show(
       extractApiError(error, "Could not save itinerary right now."),
       "error",
     );
+    return null;
   } finally {
     isSaving.value = false;
   }
+}
+
+async function handleSaveItinerary() {
+  await persistGeneratedItinerary({ redirectToCalendar: true });
+}
+
+async function handleEmailItinerary() {
+  if (savedItinerary.value?.id && !authStore.isAuthenticated) {
+    toastStore.show("Sign in to email your saved itinerary.", "info");
+    redirectToLogin();
+    return;
+  }
+
+  if (savedItinerary.value?.id && !canManageSavedItineraries.value) {
+    toastStore.show(
+      "Email delivery is only available for traveler accounts right now.",
+      "info",
+    );
+    return;
+  }
+
+  const recipientEmail = itineraryEmail.value.trim();
+  if (!recipientEmail) {
+    toastStore.show("Enter an email address before sending.", "error");
+    return;
+  }
+
+  if (!isValidEmail(recipientEmail)) {
+    toastStore.show("Enter a valid email address before sending.", "error");
+    return;
+  }
+
+  if (!generatedItinerary.value) {
+    toastStore.show("Generate an itinerary before sending it.", "error");
+    return;
+  }
+
+  if (isSendingEmail.value) {
+    return;
+  }
+
+  isSendingEmail.value = true;
+
+  try {
+    if (savedItinerary.value?.id) {
+      await itinerariesAPI.sendEmail(savedItinerary.value.id, {
+        email: recipientEmail,
+      });
+    } else {
+      await itinerariesAPI.sendUnsavedEmail({
+        email: recipientEmail,
+        plan_request: buildPayload(),
+        plan_response: generatedItinerary.value,
+      });
+    }
+    toastStore.show(`Itinerary sent to ${recipientEmail}.`, "success");
+  } catch (error) {
+    console.error("Failed to send itinerary email", error);
+    toastStore.show(
+      extractApiError(error, "Could not send itinerary email right now."),
+      "error",
+    );
+  } finally {
+    isSendingEmail.value = false;
+  }
+}
+
+function handleEmailSignIn() {
+  toastStore.show("Sign in to email your itinerary.", "info");
+  redirectToLogin();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function formatDisplayDate(value) {
@@ -1173,6 +1393,30 @@ function extractApiError(error, fallbackMessage) {
     return detail;
   }
   return fallbackMessage;
+}
+
+function getNormalizedReasonTags(tags) {
+  return normalizeItineraryTags(tags);
+}
+
+function getPaceToneClasses(pace) {
+  if (pace === "relaxed")
+    return "bg-[#EAF3DE] text-[#27500A] ring-1 ring-inset ring-[#97C459]";
+  if (pace === "balanced")
+    return "bg-[#E6F1FB] text-[#0C447C] ring-1 ring-inset ring-[#85B7EB]";
+  if (pace === "packed")
+    return "bg-[#FAEEDA] text-[#633806] ring-1 ring-inset ring-[#EF9F27]";
+  return "bg-[#F1EFE8] text-[#5F5E5A] ring-1 ring-inset ring-[#B4B2A9]";
+}
+
+function getBudgetToneClasses(budget) {
+  if (budget === "low")
+    return "bg-[#E1F5EE] text-[#085041] ring-1 ring-inset ring-[#5DCAA5]";
+  if (budget === "medium")
+    return "bg-[#EEEDFE] text-[#3C3489] ring-1 ring-inset ring-[#AFA9EC]";
+  if (budget === "high")
+    return "bg-[#FAECE7] text-[#712B13] ring-1 ring-inset ring-[#F0997B]";
+  return "bg-[#F1EFE8] text-[#5F5E5A] ring-1 ring-inset ring-[#B4B2A9]";
 }
 </script>
 

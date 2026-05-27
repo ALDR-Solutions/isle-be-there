@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import random
+from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -14,6 +15,7 @@ from sqlmodel import Session, asc, col, desc, select
 
 from app.modules.bookings.models import Booking, BookingStatus
 from app.modules.businesses.models import Business
+from app.modules.interests.models import ListingInterest, UserInterest, BusinessTypeInterest
 from app.modules.availability.service import get_booked_count
 from app.modules.interests.models import ListingInterest, UserInterest
 from app.modules.listings.schemas import ListingCreate
@@ -26,7 +28,7 @@ from .models import Listing, Statuses
 ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
 
 
-def _build_location(location_data):
+def build_location(location_data):
     if not location_data:
         return None
 
@@ -51,7 +53,7 @@ def _build_location(location_data):
     return from_shape(Point(lng, lat), srid=4326)
 
 
-def _batch_review_stats(db: Session, listing_ids: list) -> dict:
+def batch_review_stats(db: Session, listing_ids: list) -> dict:
     if not listing_ids:
         return {}
 
@@ -82,7 +84,7 @@ def _batch_review_stats(db: Session, listing_ids: list) -> dict:
     return stats
 
 
-def _normalize_interest_ids(interest_ids: list[UUID] | None) -> list[UUID]:
+def normalize_interest_ids(interest_ids: list[UUID] | None) -> list[UUID]:
     if not interest_ids:
         return []
 
@@ -96,7 +98,7 @@ def _normalize_interest_ids(interest_ids: list[UUID] | None) -> list[UUID]:
     return deduplicated
 
 
-def _get_allowed_interest_ids(db: Session, business_type_id: UUID | None) -> set[UUID]:
+def get_allowed_interest_ids(db: Session, business_type_id: UUID | None) -> set[UUID]:
     if not business_type_id:
         return set()
 
@@ -108,16 +110,16 @@ def _get_allowed_interest_ids(db: Session, business_type_id: UUID | None) -> set
     return set(rows)
 
 
-def _validate_interest_ids_for_business_type(
+def validate_interest_ids_for_business_type(
     db: Session,
     business_type_id: UUID | None,
     interest_ids: list[UUID] | None,
 ) -> list[UUID]:
-    normalized_interest_ids = _normalize_interest_ids(interest_ids)
+    normalized_interest_ids = normalize_interest_ids(interest_ids)
     if not normalized_interest_ids:
         return []
 
-    allowed_interest_ids = _get_allowed_interest_ids(db, business_type_id)
+    allowed_interest_ids = get_allowed_interest_ids(db, business_type_id)
     invalid_interest_ids = [
         str(interest_id)
         for interest_id in normalized_interest_ids
@@ -132,7 +134,29 @@ def _validate_interest_ids_for_business_type(
     return normalized_interest_ids
 
 
-def _sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UUID]) -> None:
+def sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UUID]) -> None:
+    """
+    Synchronize the interests associated with a listing by adding new interests and removing old ones.
+
+    This function performs a synchronization between the current interests in the database for a given
+    listing and the target set of interest IDs provided. It removes any existing interests that are not
+    in the target set and adds any new interests that are not already associated with the listing.
+
+    Args:
+        db (Session): The database session for executing database operations.
+        listing_id (UUID): The unique identifier of the listing to synchronize interests for.
+        interest_ids (list[UUID]): The list of interest IDs that should be associated with the listing.
+
+    Returns:
+        None: This function modifies the database directly and does not return any value.
+
+    Notes:
+        - The function handles special characters in interest data, including:
+          * Tab character (\t)
+          * Carriage return (\r)
+          * Newline character (\n)
+        - The operation is performed in a single transaction within the provided database session.
+    """
     existing_rows = db.exec(
         select(ListingInterest).where(ListingInterest.listing_id == listing_id)
     ).all()
@@ -149,7 +173,7 @@ def _sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UU
         db.add(ListingInterest(listing_id=listing_id, interest_id=interest_id))
 
 
-def _batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UUID, list[UUID]]:
+def batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UUID, list[UUID]]:
     if not listing_ids:
         return {}
 
@@ -164,7 +188,7 @@ def _batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UU
     return interest_map
 
 
-def _serialize_listing(
+def serialize_listing(
     listing: Listing,
     review_stats: dict | None = None,
     interest_ids: list[UUID] | None = None,
@@ -174,11 +198,7 @@ def _serialize_listing(
         data["status"] = Statuses.active
 
     location = listing.location
-    if isinstance(location, WKBElement):
-        point = to_shape(location)
-        data["location"] = {"lat": point.y, "lng": point.x}
-    else:
-        data["location"] = None
+    data["location"] = extract_lat_lng(location)
 
     data["business_type_name"] = (
         listing.business_type_rel.name if listing.business_type_rel else None
@@ -196,14 +216,14 @@ def _serialize_listing(
     return data
 
 
-def _serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
+def serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
     if not listings:
         return []
     listing_ids = [listing.id for listing in listings]
-    stats_map = _batch_review_stats(db, listing_ids)
-    interest_map = _batch_listing_interest_ids(db, listing_ids)
+    stats_map = batch_review_stats(db, listing_ids)
+    interest_map = batch_listing_interest_ids(db, listing_ids)
     return [
-        _serialize_listing(
+        serialize_listing(
             listing,
             stats_map[listing.id],
             interest_map.get(listing.id, []),
@@ -212,7 +232,7 @@ def _serialize_listings(db: Session, listings: list[Listing]) -> list[dict]:
     ]
 
 
-def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
+def fetch_active_listings(db: Session, limit: int) -> list[Listing]:
     listings = db.exec(
         select(Listing)
         .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
@@ -227,7 +247,7 @@ def _fetch_active_listings(db: Session, limit: int) -> list[Listing]:
 
 
 def get_listing_review_stats(db: Session, listing_id) -> dict:
-    return _batch_review_stats(db, [listing_id])[listing_id]
+    return batch_review_stats(db, [listing_id])[listing_id]
 
 
 def list_listings(
@@ -271,7 +291,7 @@ def list_listings(
     if limit is not None:
         query = query.limit(limit)
     listings = db.exec(query).all()
-    return _serialize_listings(db, listings)
+    return serialize_listings(db, listings)
 
 
 def get_listing_by_id(db: Session, listing_id: str):
@@ -286,26 +306,31 @@ def get_listing_by_id(db: Session, listing_id: str):
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     review_stats = get_listing_review_stats(db, listing_id)
-    interest_map = _batch_listing_interest_ids(db, [listing.id])
-    return _serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
+    interest_map = batch_listing_interest_ids(db, [listing.id])
+    return serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
 def create_listing(db: Session, data: ListingCreate, user_id: str):
+    validated_interest_ids = validate_interest_ids_for_business_type(
+        db,
+        data.business_type,
+        data.interest_ids,
+    )
     listing = Listing(
-        **data.model_dump()
+        **data.model_dump(exclude={"location", "interest_ids"})
     )
 
     if data.location:
-        listing.location = _build_location(data.location)
+        listing.location = build_location(data.location)
 
     db.add(listing)
     db.flush()
-    _sync_listing_interests(db, listing.id, validated_interest_ids)
+    sync_listing_interests(db, listing.id, validated_interest_ids)
     db.commit()
     db.refresh(listing)
 
     review_stats = get_listing_review_stats(db, listing.id)
-    return _serialize_listing(listing, review_stats, validated_interest_ids)
+    return serialize_listing(listing, review_stats, validated_interest_ids)
 
 
 def update_listing(
@@ -341,18 +366,31 @@ def update_listing(
 
     should_update_interests = "interest_ids" in update_data
     requested_interest_ids = update_data.pop("interest_ids", None)
+    next_business_type = update_data.get("business_type", listing.business_type)
+    validated_interest_ids = (
+        validate_interest_ids_for_business_type(
+            db,
+            next_business_type,
+            requested_interest_ids,
+        )
+        if should_update_interests
+        else None
+    )
 
     if "location" in update_data:
-        listing.location = _build_location(update_data.pop("location"))
+        listing.location = build_location(update_data.pop("location"))
 
-    next_business_type = update_data.get("business_type", listing.business_type)
     for key, value in update_data.items():
         setattr(listing, key, value)
+
+    if should_update_interests and validated_interest_ids is not None:
+        sync_listing_interests(db, listing.id, validated_interest_ids)
 
     db.commit()
     db.refresh(listing)
     review_stats = get_listing_review_stats(db, listing.id)
-    return _serialize_listing(listing, review_stats)
+    interest_map = batch_listing_interest_ids(db, [listing.id])
+    return serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
 def delete_listing(db: Session,listing: Listing):
@@ -367,7 +405,7 @@ def delete_listing(db: Session,listing: Listing):
 
 
 def get_active_listings(db: Session, limit: int = 20):
-    return _serialize_listings(db, _fetch_active_listings(db, limit))
+    return serialize_listings(db, fetch_active_listings(db, limit))
 
 
 def get_business_listings(db: Session, user_id: str):
@@ -383,7 +421,7 @@ def get_business_listings(db: Session, user_id: str):
         )
         .order_by(desc(Listing.created_at))
     ).all()
-    return _serialize_listings(db, listings)
+    return serialize_listings(db, listings)
 
 
 def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
@@ -392,7 +430,7 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
     )
 
     if not user_interests:
-        return _serialize_listings(db, _fetch_active_listings(db, limit))
+        return serialize_listings(db, fetch_active_listings(db, limit))
 
     try:
         # PostgreSQL doesn't allow ORDER BY random() with DISTINCT unless random() is in SELECT
@@ -434,14 +472,14 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
                 .where(Listing.status == Statuses.active)
             ).all()
         else:
-            listings = _fetch_active_listings(db, limit)
+            listings = fetch_active_listings(db, limit)
 
         if not listings:
-            listings = _fetch_active_listings(db, limit)
+            listings = fetch_active_listings(db, limit)
 
-        return _serialize_listings(db, listings)
+        return serialize_listings(db, listings)
     except Exception:
-        return _serialize_listings(db, _fetch_active_listings(db, limit))
+        return serialize_listings(db, fetch_active_listings(db, limit))
 
 
 def search_listings_combined(
@@ -498,7 +536,7 @@ def search_listings_combined(
         for row in rows
     ]
 
-    serialized = _serialize_listings(db, listings)
+    serialized = serialize_listings(db, listings)
     listing_data_by_id = {item["id"]: item for item in serialized}
 
     for row in rows:
@@ -567,3 +605,9 @@ def filter_by_availability(
             available_listing_ids.add(service.listing_id)
 
     return [l for l in listings if l.id in available_listing_ids]
+
+def extract_lat_lng(location) -> Optional[dict]:
+    if isinstance(location, WKBElement):
+        point = to_shape(location)
+        return {"lat": float(point.y), "lng": float(point.x)}
+    return None

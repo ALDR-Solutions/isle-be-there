@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
 from geoalchemy2 import Geography
@@ -9,7 +9,12 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, Enum as SAEnum, ForeignKey, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
+from app.modules.interests.models import ListingInterest
 
+if TYPE_CHECKING:
+    from app.modules.businesses.models import Business, BusinessType
+    from app.modules.itineraries.models import ItineraryItem
+    from app.modules.interests.models import Interests
 
 
 class Statuses(str, Enum):
@@ -49,9 +54,15 @@ class Listing(SQLModel, table=True):
     )
     business_rel: Optional["Business"] = Relationship(back_populates="listings")
     title: str = Field(sa_column=Column(Text, nullable=False))
-    description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    address: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    base_price: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric, nullable=True))
+    description: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    address: Optional[dict] = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+    base_price: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric, nullable=True)
+    )
     business_type: Optional[UUID] = Field(
         default=None,
         sa_column=Column(
@@ -60,7 +71,9 @@ class Listing(SQLModel, table=True):
             nullable=True,
         ),
     )
-    business_type_rel: Optional["BusinessType"] = Relationship(back_populates="listings")
+    business_type_rel: Optional["BusinessType"] = Relationship(
+        back_populates="listings"
+    )
     updated_at: Optional[datetime] = Field(
         default=None,
         sa_column=Column(DateTime(timezone=False), nullable=True),
@@ -76,8 +89,12 @@ class Listing(SQLModel, table=True):
             nullable=True,
         ),
     )
-    phone_number: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    email_address: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    phone_number: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    email_address: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
     location: Optional[Any] = Field(
         default=None,
         sa_column=Column(Geography, nullable=True),
@@ -86,11 +103,21 @@ class Listing(SQLModel, table=True):
         default=None,
         sa_column=Column(Vector(), nullable=True),
     )
-    details: Optional[dict] = Field(default=None, sa_column=Column(JSONB, nullable=True))
-    start_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
-    end_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    details: Optional[dict] = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+    start_time: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    end_time: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
     itinerary_items: list["ItineraryItem"] = Relationship(back_populates="listing_rel")
+    interests: list["Interests"] = Relationship(
+        back_populates="listings",
+        link_model=ListingInterest,
+    )
     listing_hours: list["ListingHours"] = Relationship(back_populates="listing_rel")
 
 

@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 
 from app.modules.businesses.models import Business
 from app.modules.listings.models import EmployeeListings, Listing
-from app.modules.listings.service import _serialize_listings
+from app.modules.listings.service import serialize_listings
 from app.modules.users.models import User
 
 from .models import Business_Employee
@@ -26,7 +26,7 @@ def get_employee_listings(db: Session, employee_id: UUID):
         .options(selectinload(Listing.business_type_rel))
     ).all()
 
-    return _serialize_listings(db, listings)
+    return serialize_listings(db, listings)
 
 
 def get_employees_for_listing(db: Session, listing_id: UUID, business_owner_id: UUID):
