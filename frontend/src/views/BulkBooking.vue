@@ -1,61 +1,45 @@
 <template>
-  <div class="bg-slate-50 min-h-screen">
-    <!-- Hero Header -->
-    <section
-      class="relative overflow-hidden border-b border-slate-200 bg-slate-950"
-      style="
-        background-image:
-          linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
-          url('/images/beach-bkg.jpg');
-        background-size: cover;
-        background-position: center;
-      "
-    >
-      <div class="mx-auto flex min-h-[280px] max-w-7xl flex-col justify-end px-4 pb-10 pt-24 sm:px-6 lg:px-8">
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">Bulk booking</p>
-        <h1 class="mt-4 max-w-3xl text-4xl font-bold leading-tight text-white sm:text-5xl">
-          Book {{ bookableItems.length }} {{ bookableItems.length === 1 ? 'Item' : 'Items' }}
-        </h1>
-        <p class="mt-5 max-w-2xl text-base leading-7 text-slate-200">{{ itinerary?.title || 'Your Itinerary' }}</p>
-      </div>
-
-      <!-- Tab Navigation -->
-      <div v-if="tabs.length > 1" class="mb-6 border-b border-slate-200">
-        <nav class="flex gap-6 px-4">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            :class="[
-              'pb-3 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'border-b-2 border-cyan-600 text-cyan-600'
-                : 'text-slate-500 hover:text-slate-700'
-            ]"
-            @click="activeTab = tab.id"
-          >
-            {{ tab.label }}
-          </button>
-        </nav>
-      </div>
-
-      <!-- Loading Skeleton -->
-      <div v-if="loading" class="grid gap-6">
-        <div v-for="n in 3" :key="n" class="animate-pulse rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div class="h-6 w-1/3 rounded bg-slate-200"></div>
-          <div class="mt-4 h-4 w-1/2 rounded bg-slate-100"></div>
-          <div class="mt-6 h-32 rounded-2xl bg-slate-100"></div>
+  <div class="min-h-screen bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div class="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div class="max-w-3xl">
+          <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">Book All</p>
+          <h1 class="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">
+            Book {{ bookableItems.length }} {{ bookableItems.length === 1 ? 'item' : 'items' }}
+          </h1>
+          <p class="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
+            Review the services in {{ itinerary?.title || 'your itinerary' }}, confirm the booking details, and finish everything in one flow.
+          </p>
         </div>
-      </div>
 
-      <!-- Error State -->
-      <div v-else-if="error" class="rounded-3xl border border-red-200 bg-red-50 px-6 py-12 text-center shadow-sm">
-        <p class="text-base font-medium text-red-700">{{ error }}</p>
-        <button @click="router.back()" class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-          Go Back
+        <button
+          type="button"
+          @click="router.back()"
+          class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+        >
+          Back
         </button>
       </div>
 
-      <!-- Empty State -->
+      <div v-if="loading" class="grid gap-6 md:grid-cols-2">
+        <div v-for="n in 4" :key="n" class="animate-pulse rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div class="h-5 w-1/3 rounded bg-slate-200"></div>
+          <div class="mt-4 h-4 w-1/2 rounded bg-slate-100"></div>
+          <div class="mt-6 h-40 rounded-2xl bg-slate-100"></div>
+        </div>
+      </div>
+
+      <div v-else-if="error" class="rounded-3xl border border-red-200 bg-red-50 px-6 py-12 text-center shadow-sm">
+        <p class="text-base font-medium text-red-700">{{ error }}</p>
+        <button
+          type="button"
+          @click="router.back()"
+          class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Go back
+        </button>
+      </div>
+
       <div v-else-if="bookableItems.length === 0" class="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm">
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,34 +48,80 @@
         </div>
         <h2 class="mt-5 text-lg font-bold text-slate-900">No items to book</h2>
         <p class="mt-2 text-sm text-slate-500">This itinerary has no bookable items yet.</p>
-        <button @click="router.back()" class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-          Go Back
+        <button
+          type="button"
+          @click="router.back()"
+          class="mt-6 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Go back
         </button>
       </div>
 
-      <!-- Bulk Actions Bar -->
-      <template v-if="!loading && !error && bookableItems.length > 0">
-        <div class="mb-4 flex items-center justify-between px-4">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" :checked="allVisibleSelected" :indeterminate="someVisibleSelected && !allVisibleSelected" @change="toggleSelectAll" class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-            <span class="text-sm font-medium text-slate-700">{{ allVisibleSelected ? 'Deselect All' : 'Select All' }} ({{ filteredItems.length }} visible)</span>
-          </label>
-          <div v-if="selectedItemsIds.size > 0" class="text-sm text-slate-600">{{ selectedItemsIds.size }} item{{ selectedItemsIds.size === 1 ? '' : 's' }} selected</div>
+      <template v-else>
+        <div v-if="tabs.length > 1" class="mb-6 rounded-3xl border border-slate-200 bg-white px-5 shadow-sm">
+          <nav class="flex gap-6 overflow-x-auto">
+            <button
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="[
+                'border-b-2 px-1 py-4 text-sm font-medium transition-colors',
+                activeTab === tab.id
+                  ? 'border-cyan-600 text-cyan-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              ]"
+              @click="activeTab = tab.id"
+            >
+              {{ tab.label }}
+            </button>
+          </nav>
         </div>
 
-        <!-- Items Grid -->
+        <div class="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <label class="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                :checked="allVisibleSelected"
+                :indeterminate="someVisibleSelected && !allVisibleSelected"
+                @change="toggleSelectAll"
+                class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+              />
+              <span class="text-sm font-semibold text-slate-700">
+                {{ allVisibleSelected ? 'Deselect all' : 'Select all' }} in this view
+              </span>
+            </label>
+
+            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+              <span>{{ filteredItems.length }} visible</span>
+              <span class="hidden h-1 w-1 rounded-full bg-slate-300 sm:block"></span>
+              <span>{{ selectedItemsIds.size }} selected</span>
+            </div>
+          </div>
+        </div>
+
         <div class="grid gap-6">
           <div
             v-for="item in filteredItems"
             :key="item._key"
-            :class="['relative overflow-hidden rounded-3xl border transition-all', isItemSelected(item._key) ? 'border-cyan-400 bg-cyan-50 ring-1 ring-cyan-200' : 'border-slate-200 bg-white']"
+            :class="[
+              'rounded-[1.9rem] border bg-white transition-all',
+              isItemSelected(item._key)
+                ? 'border-cyan-300 bg-cyan-50/70 ring-1 ring-cyan-100'
+                : 'border-transparent bg-transparent'
+            ]"
           >
-            <!-- Checkbox -->
-            <label class="absolute top-4 left-4 z-10 flex items-center justify-center">
-              <input type="checkbox" :checked="isItemSelected(item._key)" @change="toggleItem(item._key)" class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-            </label>
+            <div class="flex items-center justify-end px-4 pt-4">
+              <label class="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm">
+                <span>{{ isItemSelected(item._key) ? 'Selected' : 'Select' }}</span>
+                <input
+                  type="checkbox"
+                  :checked="isItemSelected(item._key)"
+                  @change="toggleItem(item._key)"
+                  class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+              </label>
+            </div>
 
-            <!-- Hotel Card -->
             <HotelBookingFormCard
               v-if="item.isHotel"
               :ref="el => { if (el) formCardRefs[item._key] = el }"
@@ -103,7 +133,6 @@
               :is-selected="isItemSelected(item._key)"
               @update:modelValue="val => formDataMap[item._key] = val"
             />
-            <!-- Regular Card -->
             <BookingFormCard
               v-else
               :ref="el => { if (el) formCardRefs[item._key] = el }"
@@ -117,89 +146,154 @@
           </div>
         </div>
 
-        <!-- Action Footer -->
-        <div class="mt-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div class="flex gap-3">
-            <button type="button" @click="openReceiptModal" :disabled="confirming || selectedItemsIds.size === 0" class="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60 disabled:cursor-not-allowed">
-              {{ confirming ? 'Processing...' : (selectedItemsIds.size === 0 ? 'Select items to book' : `Review & Book (${selectedItemsIds.size})`) }}
-            </button>
-            <button type="button" @click="router.back()" class="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-              Cancel
-            </button>
+        <div class="mt-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-slate-900">
+                {{ selectedItemsIds.size === 0 ? 'Choose the bookings you want to confirm.' : `${selectedItemsIds.size} booking${selectedItemsIds.size === 1 ? '' : 's'} selected` }}
+              </p>
+              <p class="mt-1 text-sm text-slate-500">
+                {{ filteredItems.length }} booking{{ filteredItems.length === 1 ? '' : 's' }} visible in this section.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                @click="router.back()"
+                class="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                @click="openReceiptModal"
+                :disabled="confirming || selectedItemsIds.size === 0"
+                class="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {{ confirming ? 'Processing...' : (selectedItemsIds.size === 0 ? 'Select items to book' : `Review & Book (${selectedItemsIds.size})`) }}
+              </button>
+            </div>
           </div>
-          <p class="text-sm text-slate-500">{{ filteredItems.length }} booking{{ filteredItems.length === 1 ? '' : 's' }} ready to confirm</p>
         </div>
       </template>
-    </section>
+    </div>
 
-    <!-- Receipt Modal -->
     <Teleport to="body">
-      <div v-if="showReceiptModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
-          <div class="rounded-t-3xl border-b border-slate-100 bg-slate-50 px-6 py-5">
-            <h2 class="text-xl font-bold text-slate-900">Booking Receipt</h2>
+      <div v-if="showReceiptModal" class="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" @click="showReceiptModal = false"></div>
+        <div class="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">Review booking</p>
+            <div class="mt-2 flex items-start justify-between gap-4">
+              <div>
+                <h2 class="text-2xl font-bold text-slate-900">Booking receipt</h2>
+                <p class="mt-1 text-sm text-slate-500">
+                  Confirm {{ selectedItems.length }} selected booking{{ selectedItems.length === 1 ? '' : 's' }} before checkout.
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="showReceiptModal = false"
+                class="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
-            <!-- Items List -->
-            <div class="mb-6 space-y-3">
-              <div v-for="item in selectedItems" :key="item._key" class="flex justify-between text-sm">
-                <div class="flex-1">
-                  <p class="font-medium text-slate-900">{{ formatServiceName(getServicesForItem(item), formDataMap[item._key]?.service_id) || (item.title || item.name) }}</p>
-                  <p class="text-slate-500">
+          <div class="max-h-[65vh] overflow-y-auto px-6 py-6 sm:px-8">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div v-for="item in selectedItems" :key="item._key" class="flex items-start justify-between gap-4 py-3 text-sm first:pt-0 last:pb-0">
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold text-slate-900">
+                    {{ formatServiceName(getServicesForItem(item), formDataMap[item._key]?.service_id) || (item.title || item.name) }}
+                  </p>
+                  <p class="mt-1 text-slate-500">
                     <template v-if="isHotelItem(item)">1 room</template>
                     <template v-else>{{ formDataMap[item._key]?.amount_of_people || 1 }} person{{ (formDataMap[item._key]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
                   </p>
                 </div>
-                <p class="font-medium text-slate-900">${{ calculateItemTotal(item).toFixed(2) }}</p>
+                <p class="shrink-0 font-semibold text-slate-900">${{ calculateItemTotal(item).toFixed(2) }}</p>
               </div>
             </div>
 
-            <!-- Subtotal -->
-            <div class="border-t border-slate-100 pt-4">
-              <div class="flex justify-between text-sm">
-                <p class="text-slate-600">Subtotal</p>
-                <p class="font-medium text-slate-900">${{ receiptSubtotal.toFixed(2) }}</p>
+            <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+              <div class="flex items-center justify-between text-sm">
+                <p class="text-slate-500">Subtotal</p>
+                <p class="font-semibold text-slate-900">${{ receiptSubtotal.toFixed(2) }}</p>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-sm">
+                <p class="text-slate-500">Service fee</p>
+                <p class="font-semibold text-slate-900">${{ receiptServiceFee.toFixed(2) }}</p>
               </div>
             </div>
 
-            <!-- Service Fee Section -->
-            <div class="mt-4 border-t border-slate-100 pt-4">
-              <div class="flex justify-between text-sm">
-                <p class="text-slate-600">Service Fee</p>
-                <p class="font-medium text-slate-900">${{ receiptServiceFee.toFixed(2) }}</p>
+            <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">Discount</p>
+                  <p class="mt-1 text-sm text-slate-500">
+                    Apply an eligible offer before confirming the booking.
+                  </p>
+                </div>
+                <span
+                  v-if="isDiscountEligible && selectedDiscount"
+                  class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                >
+                  {{ (selectedDiscount.discount_percent * 100).toFixed(0) }}% applied
+                </span>
               </div>
-            </div>
 
-            <!-- Discount Section -->
-            <div class="mt-4 border-t border-slate-100 pt-4">
-              <p class="mb-2 text-sm font-medium text-slate-700">Discount</p>
               <template v-if="availableDiscounts.length === 0">
-                <p class="text-sm text-slate-500">No discounts available</p>
+                <p class="mt-4 text-sm text-slate-500">No discounts available.</p>
               </template>
               <template v-else>
-                <select v-model="selectedDiscountId" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500">
-                  <option v-for="discount in availableDiscounts" :key="discount.id" :value="discount.id">{{ discount.name }} ({{ (discount.discount_percent * 100).toFixed(0) }}% off)</option>
+                <select
+                  v-model="selectedDiscountId"
+                  class="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                >
+                  <option v-for="discount in availableDiscounts" :key="discount.id" :value="discount.id">
+                    {{ discount.name }} ({{ (discount.discount_percent * 100).toFixed(0) }}% off)
+                  </option>
                 </select>
-                <div class="mt-2 flex items-center gap-2">
-                  <span v-if="isDiscountEligible && selectedDiscount" class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">{{ (selectedDiscount.discount_percent * 100).toFixed(0) }}% discount applied!</span>
-                  <span v-else-if="!isDiscountEligible" class="text-xs text-amber-600">Select 50%+ items to unlock discount</span>
-                </div>
+                <p v-if="!isDiscountEligible" class="mt-3 text-xs font-medium text-amber-600">
+                  Select at least half of the available bookings to unlock the discount.
+                </p>
               </template>
             </div>
 
-            <!-- Final Total -->
-            <div class="mt-4 border-t border-slate-200 pt-4">
-              <div class="flex justify-between">
-                <p class="text-base font-semibold text-slate-900">Final Total</p>
-                <p class="text-xl font-bold text-cyan-600">${{ receiptFinalTotal.toFixed(2) }}</p>
+            <div class="mt-6 rounded-2xl bg-slate-950 px-5 py-4 text-white">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Final total</p>
+                  <p class="mt-1 text-sm text-slate-300">
+                    Includes service fee and any eligible discount.
+                  </p>
+                </div>
+                <p class="text-2xl font-bold">${{ receiptFinalTotal.toFixed(2) }}</p>
               </div>
             </div>
           </div>
 
-          <div class="flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 bg-slate-50 px-6 py-4">
-            <button type="button" @click="showReceiptModal = false" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">← Back to Selection</button>
-            <button type="button" @click="handleConfirmBooking" :disabled="confirming" class="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60">{{ confirming ? 'Processing...' : 'Confirm Booking' }}</button>
+          <div class="flex flex-col-reverse gap-3 border-t border-slate-100 bg-white px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+            <button
+              type="button"
+              @click="showReceiptModal = false"
+              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Back to selection
+            </button>
+            <button
+              type="button"
+              @click="handleConfirmBooking"
+              :disabled="confirming"
+              class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+            >
+              {{ confirming ? 'Processing...' : 'Confirm booking' }}
+            </button>
           </div>
         </div>
       </div>
@@ -227,7 +321,7 @@ const error = ref('');
 const confirming = ref(false);
 const itinerary = ref(null);
 const formDataMap = ref({});
-const formCardRefs = ref({});  // Fixed: was array, now object
+const formCardRefs = ref({});
 const activeTab = ref('');
 const showReceiptModal = ref(false);
 const availableDiscounts = ref([]);
@@ -251,15 +345,15 @@ function toggleItem(key) {
 
 function toggleSelectAll() {
   const newSet = new Set(selectedItemsIds.value);
-  filteredItems.value.forEach(item => {
+  filteredItems.value.forEach((item) => {
     allVisibleSelected.value ? newSet.delete(item._key) : newSet.add(item._key);
   });
   selectedItemsIds.value = newSet;
 }
 
-const allVisibleSelected = computed(() => filteredItems.value.length > 0 && filteredItems.value.every(item => selectedItemsIds.value.has(item._key)));
-const someVisibleSelected = computed(() => filteredItems.value.some(item => selectedItemsIds.value.has(item._key)));
-const selectedItems = computed(() => bookableItems.value.filter(item => selectedItemsIds.value.has(item._key)));
+const allVisibleSelected = computed(() => filteredItems.value.length > 0 && filteredItems.value.every((item) => selectedItemsIds.value.has(item._key)));
+const someVisibleSelected = computed(() => filteredItems.value.some((item) => selectedItemsIds.value.has(item._key)));
+const selectedItems = computed(() => bookableItems.value.filter((item) => selectedItemsIds.value.has(item._key)));
 
 // --- Helpers ---
 const isHotelItem = (item) => item.item_type?.toLowerCase() === 'hotel' || item.extra_metadata?.business_type_name?.toLowerCase() === 'hotel';
@@ -314,7 +408,6 @@ const tabs = computed(() => {
   const dayMap = {};
   const hotelItems = [];
 
-  // Group non-hotels by day, collect hotels separately
   for (const item of bookableItems.value) {
     if (item.isHotel) {
       hotelItems.push(item);
@@ -324,9 +417,8 @@ const tabs = computed(() => {
     }
   }
 
-  // Build tabs: day tabs + hotels tab
   return [
-    ...Object.keys(dayMap).sort().map(dayKey => ({
+    ...Object.keys(dayMap).sort().map((dayKey) => ({
       id: `day-${dayKey}`,
       label: dayKey === 'unknown' ? 'Unscheduled' : `Day - ${dayKey}`,
     })),
@@ -334,7 +426,6 @@ const tabs = computed(() => {
   ];
 });
 
-// Set active tab to first tab when tabs change
 watch(tabs, (newTabs) => {
   if (newTabs.length > 0 && !activeTab.value) activeTab.value = newTabs[0].id;
 }, { immediate: true });
@@ -342,25 +433,23 @@ watch(tabs, (newTabs) => {
 // --- Computed: Filtered Items by Tab ---
 const filteredItems = computed(() => {
   if (!activeTab.value) return [];
-  if (activeTab.value === 'hotels') return bookableItems.value.filter(item => item.isHotel);
+  if (activeTab.value === 'hotels') return bookableItems.value.filter((item) => item.isHotel);
   const dayKey = activeTab.value.replace('day-', '');
-  return bookableItems.value.filter(item => !item.isHotel && normalizeDayDate(item.day_date) === dayKey).slice(0, 4);
+  return bookableItems.value.filter((item) => !item.isHotel && normalizeDayDate(item.day_date) === dayKey).slice(0, 4);
 });
 
 // --- Receipt Computeds ---
-const receiptSubtotal = computed(() => selectedItems.value.reduce((total, item) => {
-  return total + calculateItemTotal(item);
-}, 0));
+const receiptSubtotal = computed(() => selectedItems.value.reduce((total, item) => total + calculateItemTotal(item), 0));
 
 const isDiscountEligible = computed(() => selectedItemsIds.value.size >= bookableItems.value.length * 0.5);
-const selectedDiscount = computed(() => availableDiscounts.value.find(d => d.id === selectedDiscountId.value));
+const selectedDiscount = computed(() => availableDiscounts.value.find((d) => d.id === selectedDiscountId.value));
 const receiptDiscountAmount = computed(() => isDiscountEligible.value ? receiptSubtotal.value * (selectedDiscount.value?.discount_percent || 0) : 0);
-const receiptServiceFee = computed(() => receiptSubtotal.value * 0.10);  // 10% service fee
+const receiptServiceFee = computed(() => receiptSubtotal.value * 0.10);
 const receiptFinalTotal = computed(() => receiptSubtotal.value + receiptServiceFee.value - receiptDiscountAmount.value);
 
 const formatServiceName = (services, serviceId) => {
   if (!services || !serviceId) return '';
-  const service = services.find(s => s.service_id === serviceId);
+  const service = services.find((s) => s.service_id === serviceId);
   return service ? service.name || 'Service' : '';
 };
 
@@ -370,9 +459,8 @@ const calculateItemTotal = (item) => {
   const people = formData?.amount_of_people || 1;
   const serviceId = formData?.service_id;
 
-  // Use the selected service's price if available, otherwise use item.estimated_cost
   if (services.length > 0 && serviceId) {
-    const service = services.find(s => s.service_id === serviceId);
+    const service = services.find((s) => s.service_id === serviceId);
     if (service?.price) {
       return service.price * (isHotelItem(item) ? 1 : people);
     }
@@ -389,7 +477,6 @@ const calculateItemTotal = (item) => {
 watch(itinerary, (newItinerary) => {
   if (!newItinerary?.items) return;
 
-  // Initialize form data for all items
   const newMap = {};
   for (const item of bookableItems.value) {
     newMap[item._key] = {
@@ -410,19 +497,19 @@ watch(itinerary, (newItinerary) => {
 }, { immediate: true });
 
 watch(bookableItems, async (items) => {
-  const listingIds = [...new Set(items.map(item => item.listing_id).filter(Boolean))];
+  const listingIds = [...new Set(items.map((item) => item.listing_id).filter(Boolean))];
   if (listingIds.length === 0) return;
 
-  // Set loading states
-  servicesLoadingByListing.value = listingIds.reduce((acc, id) => { acc[id] = true; return acc; }, {});
+  servicesLoadingByListing.value = listingIds.reduce((acc, id) => {
+    acc[id] = true;
+    return acc;
+  }, {});
 
-  // Fetch services for all listings in parallel
   const results = await Promise.allSettled(listingIds.map(async (listingId) => {
     const response = await servicesAPI.getAll({ listing_id: listingId });
     return { listingId, services: Array.isArray(response.data) ? response.data : [] };
   }));
 
-  // Process results
   const nextServices = {};
   for (const result of results) {
     if (result.status === 'fulfilled') {
@@ -431,28 +518,28 @@ watch(bookableItems, async (items) => {
   }
   servicesByListing.value = nextServices;
 
-  // Auto-select service if only one available
   const nextFormDataMap = { ...formDataMap.value };
   for (const item of items) {
     const availableServices = nextServices[item.listing_id] || [];
     const currentServiceId = nextFormDataMap[item._key]?.service_id;
     if (availableServices.length === 1) {
       nextFormDataMap[item._key] = { ...nextFormDataMap[item._key], service_id: availableServices[0].service_id };
-    } else if (!availableServices.some(s => s.service_id === currentServiceId)) {
+    } else if (!availableServices.some((s) => s.service_id === currentServiceId)) {
       nextFormDataMap[item._key] = { ...nextFormDataMap[item._key], service_id: null };
     }
   }
   formDataMap.value = nextFormDataMap;
 
-  // Clear loading states
   const nextLoading = {};
-  listingIds.forEach(id => { nextLoading[id] = false; });
+  listingIds.forEach((id) => {
+    nextLoading[id] = false;
+  });
   servicesLoadingByListing.value = nextLoading;
 }, { immediate: true });
 
 watch(formDataMap, (newMap) => {
   for (const [itemKey, formData] of Object.entries(newMap)) {
-    const item = bookableItems.value.find(i => i._key === itemKey);
+    const item = bookableItems.value.find((i) => i._key === itemKey);
     if (!item) continue;
     const serviceId = formData?.service_id;
     const date = formData?.booking_from_time?.slice(0, 10);
@@ -477,7 +564,6 @@ async function fetchAvailabilityForItem(itemKey, serviceId, date, people) {
 async function openReceiptModal() {
   if (!validateSelectedItems()) return;
 
-  // Validate selected item cards
   for (const item of selectedItems.value) {
     const card = formCardRefs.value[item._key];
     if (card?.validate && !card.validate()) {
@@ -540,8 +626,7 @@ async function handleConfirmBooking() {
   confirming.value = true;
   let createdBookings = [];
   try {
-    // Create all bookings and collect their IDs
-    const results = await Promise.all(selectedItems.value.map(item => {
+    const results = await Promise.all(selectedItems.value.map((item) => {
       const formData = formDataMap.value[item._key];
       return bookingsAPI.create({
         service_id: formData.service_id,
@@ -551,14 +636,13 @@ async function handleConfirmBooking() {
         bookers_name: formData.bookers_name,
         amount_of_people: formData.amount_of_people || 1,
         special_requests: formData.special_requests || null,
-      }).then(response => response.data);
+      }).then((response) => response.data);
     }));
 
     createdBookings = results;
     toastStore.show(`Confirmed ${createdBookings.length} bookings!`, 'success');
     showReceiptModal.value = false;
 
-    // Redirect to payment page for the first booking
     if (createdBookings.length > 0) {
       const firstBookingId = createdBookings[0].booking_id || createdBookings[0].id;
       router.push(`/bookings/${firstBookingId}`);

@@ -26,7 +26,7 @@
       <!-- Booker's Name -->
       <label class="block">
         <span class="text-sm font-semibold text-slate-700">
-          Room or service <span class="text-red-500">*</span>
+          Room Type <span class="text-red-500">*</span>
         </span>
         <select
           :value="formData.service_id || ''"

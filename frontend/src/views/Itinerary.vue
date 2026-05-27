@@ -610,22 +610,24 @@
                 {{ isSaving ? "Saving..." : "Save itinerary" }}
               </button>
             </div>
-          </div>
 
-          <div v-if="savedItinerary">
-            <RouterLink
-              to="/profile"
-              class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Back to profile
-            </RouterLink>
-            <RouterLink
+            <div
               v-if="savedItinerary"
-              :to="`/bulk-booking/${savedItinerary.id}`"
-              class="ml-3 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              class="flex w-full flex-wrap gap-3 lg:justify-end"
             >
-              Book All
-            </RouterLink>
+              <RouterLink
+                to="/profile"
+                class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Back to profile
+              </RouterLink>
+              <RouterLink
+                :to="`/bulk-booking/${savedItinerary.id}`"
+                class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Book All
+              </RouterLink>
+            </div>
           </div>
         </div>
 
