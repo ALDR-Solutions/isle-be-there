@@ -467,7 +467,7 @@ import DestinationCard from "../components/DestinationCard.vue";
 import InterestsModal from "../components/interestsModal.vue";
 import beachImage from "../../images/beach-bkg.jpg";
 import promoBannerImage from "../../images/home-promo-banner.jpg";
-import droneBeachHeroVideo from "../../clips/drone_beach-hero.mp4";
+import droneBeachHeroVideo from "../../clips/drone_beach.mp4";
 
 const authStore = useAuthStore();
 const router = useRouter();
