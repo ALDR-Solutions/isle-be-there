@@ -5,16 +5,29 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.security import decode_token
 from app.infrastructure.database.session import get_db
 from app.modules.bookings.models import Booking
 from app.modules.businesses.models import Business
-from app.modules.listings.models import EmployeeListings, Listing
+from app.modules.listings.models import Listing
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service
 from app.modules.users.models import User
+from app.shared.domain import (
+    ensure_booking_owner,
+    ensure_business_owner,
+    ensure_listing_owner,
+    ensure_review_owner,
+    ensure_service_access,
+    get_booking_or_404,
+    get_business_or_404,
+    get_listing_or_404,
+    get_review_or_404,
+    get_service_or_404,
+    get_user_by_id,
+)
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -37,7 +50,7 @@ def _get_user_from_token(
             detail="Token missing user ID",
         )
 
-    user = db.exec(select(User).where(User.id == user_id)).first()
+    user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -99,12 +112,8 @@ def require_booking_owner(
     user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Booking:
-    booking = db.exec(select(Booking).where(Booking.id == booking_id)).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    if not user.user_type == "admin" and str(booking.user_id) != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return booking
+    booking = get_booking_or_404(db, booking_id)
+    return ensure_booking_owner(user, booking)
 
 
 def require_review_owner(
@@ -112,12 +121,8 @@ def require_review_owner(
     user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    if not user.user_type == "admin" and str(review.user_id) != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return review
+    review = get_review_or_404(db, review_id)
+    return ensure_review_owner(user, review)
 
 
 def require_business_owner(
@@ -125,12 +130,8 @@ def require_business_owner(
     user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ) -> Business:
-    business = db.exec(select(Business).where(Business.id == business_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found")
-    if not user.user_type == "admin" and str(business.user_id) != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return business
+    business = get_business_or_404(db, business_id)
+    return ensure_business_owner(user, business)
 
 
 def require_listing_owner(
@@ -138,20 +139,8 @@ def require_listing_owner(
     user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ) -> Listing:
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-
-    if user.user_type == "admin":
-        return listing
-
-    if not listing.business_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    business = db.exec(select(Business).where(Business.id == listing.business_id)).first()
-    if not business or str(business.user_id) != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return listing
+    listing = get_listing_or_404(db, listing_id)
+    return ensure_listing_owner(db, user, listing)
 
 
 def require_service_access(
@@ -159,45 +148,8 @@ def require_service_access(
     user: User = Depends(require_roles("business", "employee", "admin")),
     db: Session = Depends(get_db),
 ) -> Service:
-
-    service = db.exec(
-        select(Service).where(Service.service_id == service_id)
-    ).first()
-
-    if not service:
-        raise HTTPException(404, "Service not found")
-
-    if user.user_type == "admin":
-        return service
-
-    listing = db.exec(
-        select(Listing).where(Listing.id == service.listing_id)
-    ).first()
-
-    if not listing:
-        raise HTTPException(404, "Listing not found")
-
-    # business owner
-    if listing.business_id:
-        business = db.exec(
-            select(Business).where(Business.id == listing.business_id)
-        ).first()
-
-        if business and str(business.user_id) == str(user.id):
-            return service
-
-    # employee access
-    assignment = db.exec(
-        select(EmployeeListings).where(
-            EmployeeListings.listing_id == listing.id,
-            EmployeeListings.employee_id == user.id,
-        )
-    ).first()
-
-    if assignment:
-        return service
-
-    raise HTTPException(403, "Not authorized")
+    service = get_service_or_404(db, service_id)
+    return ensure_service_access(db, user, service)
 
 __all__ = [
     "get_current_user",

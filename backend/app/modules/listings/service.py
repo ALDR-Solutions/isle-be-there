@@ -22,6 +22,11 @@ from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 from app.modules.users.models import User
+from app.shared.domain import (
+    ensure_listing_belongs_to_business,
+    get_business_by_user_id,
+    get_listing_or_404,
+)
 
 from .models import Listing, Statuses
 
@@ -340,13 +345,16 @@ def update_listing(
     user_id: str,
     is_admin: bool = False,
 ):
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
+    listing = get_listing_or_404(db, listing_id)
     if not is_admin:
-        business = db.exec(select(Business).where(Business.user_id == user_id)).first()
-        if not business or str(listing.business_id) != str(business.id):
+        business = get_business_by_user_id(db, user_id)
+        if not business:
             raise HTTPException(status_code=403, detail="Not authorized")
+        ensure_listing_belongs_to_business(
+            listing,
+            business,
+            detail="Not authorized",
+        )
         if listing.status == Statuses.suspended:
             raise HTTPException(
                 status_code=403,
@@ -409,7 +417,7 @@ def get_active_listings(db: Session, limit: int = 20):
 
 
 def get_business_listings(db: Session, user_id: str):
-    business = db.exec(select(Business).where(Business.user_id == user_id)).first()
+    business = get_business_by_user_id(db, user_id)
     if not business:
         return []
     listings = db.exec(

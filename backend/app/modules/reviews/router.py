@@ -8,8 +8,12 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_review_owner, require_roles
 
-from .keyword_classifier import BUSINESS_TYPE_UUIDS, check_flags, classify_with_keywords
-from .review_classifier import classify_review as ml_classify_review
+from .classification import (
+    BUSINESS_TYPE_UUIDS,
+    check_review_flags,
+    classify_review_text,
+    fallback_business_type_name,
+)
 from .models import Review
 from .schemas import ReviewClassifyRequest, ReviewClassifyResponse, ReviewCreate, ReviewUpdate, ReviewSubmitRequest, ReviewSubmitResponse, ReviewVisibilityUpdate
 from .service import delete_review, get_review, list_reviews, submit_review, toggle_review_visibility, update_review
@@ -110,73 +114,36 @@ def classify_review_route(
     All reviews are checked for inappropriate content (profanity, hate speech, spam, personal attacks).
     """
     # First check for flags (applies to ALL business types)
-    flag_result = check_flags(review_request.text)
+    flag_result = check_review_flags(review_request.text)
 
-    # Get keyword-based business type UUIDs
-    events_uuid = BUSINESS_TYPE_UUIDS["events"]
-    tours_uuid = BUSINESS_TYPE_UUIDS["tours"]
-    services_uuid = BUSINESS_TYPE_UUIDS["services"]
-
-    # Route to appropriate classifier based on business type
-    if review_request.business_type_uuid in [events_uuid, tours_uuid, services_uuid]:
-        # Keyword-based classification for Events, Tours, Services
-        result = classify_with_keywords(review_request.text, review_request.business_type_uuid)
+    try:
+        result = classify_review_text(
+            review_request.text,
+            review_request.business_type_uuid,
+            review_request.hotel_name,
+        )
         return ReviewClassifyResponse(
             business_type_id=result["business_type_id"],
             business_type=result["business_type"],
             hotel_name=review_request.hotel_name,
-            main_label=result["main_label"],
-            second_label=result["second_label"],
-            third_label=result["third_label"],
+            main_label=result.get("main_label") or "(none)",
+            second_label=result.get("second_label") or "(none)",
+            third_label=result.get("third_label") or "(none)",
             is_flagged=flag_result["is_flagged"],
             flag_reason=flag_result["reason"],
         )
-    else:
-        # ML classification for Hotel/Restaurant
-        try:
-            ml_result = ml_classify_review(
-                text=review_request.text,
-                business_type_uuid=review_request.business_type_uuid,
-                hotel_name=review_request.hotel_name,
-                verbose=False
-            )
-            
-            # Handle case where ML returns error or None labels
-            main_label = ml_result.get('main_label') or '(none)'
-            second_label = ml_result.get('second_label') or '(none)'
-            third_label = ml_result.get('third_label') or '(none)'
-            
-            # Map business_type_id to string UUID if needed
-            if ml_result.get('business_type') == 'Hotel':
-                business_type_id = BUSINESS_TYPE_UUIDS["hotel"]
-            elif ml_result.get('business_type') == 'Restaurant':
-                business_type_id = BUSINESS_TYPE_UUIDS["restaurant"]
-            else:
-                business_type_id = review_request.business_type_uuid
-            
-            return ReviewClassifyResponse(
-                business_type_id=business_type_id,
-                business_type=ml_result.get('business_type', 'Hotel'),
-                hotel_name=review_request.hotel_name,
-                main_label=main_label,
-                second_label=second_label,
-                third_label=third_label,
-                is_flagged=flag_result["is_flagged"],
-                flag_reason=flag_result["reason"],
-            )
-        except Exception:
-            logger.exception(
-                "ML review classification fallback triggered for business type %s",
-                review_request.business_type_uuid,
-            )
-            # Fallback on error - still return flags
-            return ReviewClassifyResponse(
-                business_type_id=review_request.business_type_uuid,
-                business_type="Hotel" if review_request.business_type_uuid == BUSINESS_TYPE_UUIDS["hotel"] else "Restaurant",
-                hotel_name=review_request.hotel_name,
-                main_label="(error)",
-                second_label="(error)",
-                third_label="(error)",
-                is_flagged=flag_result["is_flagged"],
-                flag_reason=flag_result["reason"],
-            )
+    except Exception:
+        logger.exception(
+            "ML review classification fallback triggered for business type %s",
+            review_request.business_type_uuid,
+        )
+        return ReviewClassifyResponse(
+            business_type_id=review_request.business_type_uuid,
+            business_type=fallback_business_type_name(review_request.business_type_uuid),
+            hotel_name=review_request.hotel_name,
+            main_label="(error)",
+            second_label="(error)",
+            third_label="(error)",
+            is_flagged=flag_result["is_flagged"],
+            flag_reason=flag_result["reason"],
+        )

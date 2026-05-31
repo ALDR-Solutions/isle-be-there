@@ -25,6 +25,7 @@ from app.modules.listings.schemas import ListingLocation
 from app.modules.listings.service import filter_by_availability, extract_lat_lng
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 from app.modules.users.models import User
+from app.shared.domain import get_owned_itinerary_or_404, get_user_or_404
 
 from .models import (
     Itinerary,
@@ -223,13 +224,7 @@ def list_saved_itineraries(
 def get_saved_itinerary(
     db: Session, user_id: UUID, itinerary_id: UUID
 ) -> SavedItineraryResponse:
-    itinerary = db.exec(
-        select(Itinerary)
-        .where(Itinerary.id == itinerary_id)
-        .where(Itinerary.user_id == user_id)
-    ).first()
-    if not itinerary:
-        raise HTTPException(status_code=404, detail="Itinerary not found")
+    itinerary = get_owned_itinerary_or_404(db, itinerary_id, user_id)
 
     items = db.exec(
         select(ItineraryItem)
@@ -291,13 +286,7 @@ def save_itinerary(
 
 
 def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> None:
-    itinerary = db.exec(
-        select(Itinerary)
-        .where(Itinerary.id == itinerary_id)
-        .where(Itinerary.user_id == user_id)
-    ).first()
-    if not itinerary:
-        raise HTTPException(status_code=404, detail="Itinerary not found")
+    itinerary = get_owned_itinerary_or_404(db, itinerary_id, user_id)
 
     try:
         db.delete(itinerary)
@@ -313,9 +302,7 @@ def send_saved_itinerary_email(
     itinerary_id: UUID,
     recipient_email: Optional[str] = None,
 ) -> str:
-    user = db.exec(select(User).where(User.id == user_id)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = get_user_or_404(db, user_id)
 
     saved_itinerary = get_saved_itinerary(db, user_id, itinerary_id)
     itinerary_preview = saved_itinerary_to_plan_response(saved_itinerary)
@@ -962,16 +949,7 @@ def create_itinerary(db: Session, user_id: UUID, data: dict) -> Itinerary:
 
 def get_itinerary_by_id(db: Session, itinerary_id: UUID, user_id: UUID) -> Itinerary:
     """Get an itinerary by ID with its items."""
-    itinerary = db.exec(
-        select(Itinerary)
-        .where(Itinerary.id == itinerary_id, Itinerary.user_id == user_id)
-        .options(selectinload(Itinerary.items))
-    ).first()
-
-    if not itinerary:
-        raise HTTPException(status_code=404, detail="Itinerary not found")
-
-    return itinerary
+    return get_owned_itinerary_or_404(db, itinerary_id, user_id, load_items=True)
 
 
 def confirm_itinerary(db: Session, itinerary_id: UUID, user_id: UUID) -> dict:

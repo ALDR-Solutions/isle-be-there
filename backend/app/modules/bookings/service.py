@@ -21,6 +21,10 @@ from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
 from app.modules.services.models import Service, StatusTypes
 from app.modules.stripe_payment.models import PaymentEvent
+from app.shared.domain import (
+    get_owned_itinerary_item_context_or_404,
+    get_service_or_404,
+)
 from .models import Booking, BookingStatus
 
 logger = logging.getLogger(__name__)
@@ -136,10 +140,7 @@ def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
 
 
 def _get_service_or_404(db: Session, service_id: UUID) -> Service:
-    service = db.get(Service, service_id)
-    if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
-    return service
+    return get_service_or_404(db, service_id)
 
 
 def _validate_booking_window(booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]) -> None:
@@ -161,15 +162,11 @@ def _validate_service_for_booking(
 
     itinerary_item = None
     if itinerary_item_id is not None:
-        itinerary_item = db.get(ItineraryItem, itinerary_item_id)
-        if not itinerary_item:
-            raise HTTPException(status_code=404, detail="Itinerary item not found")
-
-        itinerary = db.get(Itinerary, itinerary_item.itinerary_id)
-        if not itinerary:
-            raise HTTPException(status_code=404, detail="Itinerary not found")
-        if itinerary.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized for this itinerary")
+        itinerary_item, itinerary = get_owned_itinerary_item_context_or_404(
+            db,
+            itinerary_item_id,
+            user_id,
+        )
         if service.listing_id != itinerary_item.listing_id:
             raise HTTPException(
                 status_code=400,
@@ -223,17 +220,11 @@ def price_booking_from_itinerary_item(
     booking_from_time: Optional[datetime] = None,
     booking_to_time: Optional[datetime] = None,
 ) -> dict:
-    # 1. Get ItineraryItem by ID
-    itinerary_item = db.get(ItineraryItem, itinerary_item_id)
-    if not itinerary_item:
-        raise HTTPException(status_code=404, detail="Itinerary item not found")
-
-    # 2. Get Itinerary via itinerary_id and verify ownership
-    itinerary = db.get(Itinerary, itinerary_item.itinerary_id)
-    if not itinerary:
-        raise HTTPException(status_code=404, detail="Itinerary not found")
-    if itinerary.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized for this itinerary")
+    itinerary_item, itinerary = get_owned_itinerary_item_context_or_404(
+        db,
+        itinerary_item_id,
+        user_id,
+    )
 
     # 3. Get pricing via PricingService using the selected service
     price_info = calculate_display_price(db, service.listing_id, service.service_id)

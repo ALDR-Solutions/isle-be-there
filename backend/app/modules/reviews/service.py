@@ -10,8 +10,12 @@ from app.modules.listings.models import Listing
 from .models import Review
 from .schemas import ReviewCreate, ReviewUpdate
 
-from .keyword_classifier import BUSINESS_TYPE_UUIDS, check_flags, classify_with_keywords
-from .review_classifier import classify_review as ml_classify_review
+from .classification import (
+    BUSINESS_TYPE_UUIDS,
+    check_review_flags,
+    classify_review_text,
+    fallback_business_type_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,45 +112,29 @@ def submit_review(db: Session, user_id, review_request, business_type_uuid: str,
     text = review_request.comment or ""
     
     # Check flags (applies to ALL business types)
-    flag_result = check_flags(text)
+    flag_result = check_review_flags(text)
     is_flagged = flag_result["is_flagged"]
     flag_reason = flag_result["reason"]
-    
-    # Route to appropriate classifier
-    events_uuid = BUSINESS_TYPE_UUIDS["events"]
-    tours_uuid = BUSINESS_TYPE_UUIDS["tours"]
-    services_uuid = BUSINESS_TYPE_UUIDS["services"]
-    
-    if business_type_uuid in [events_uuid, tours_uuid, services_uuid]:
-        # Keyword-based classification
-        classification_result = classify_with_keywords(text, business_type_uuid)
-        main_label = classification_result.get("main_label", "")
-        second_label = classification_result.get("second_label", "")
-        third_label = classification_result.get("third_label", "")
+
+    try:
+        classification_result = classify_review_text(
+            text,
+            business_type_uuid,
+            hotel_name,
+        )
+        main_label = classification_result.get("main_label") or ""
+        second_label = classification_result.get("second_label") or ""
+        third_label = classification_result.get("third_label") or ""
         business_type = classification_result.get("business_type", "")
         classification_labels = json.dumps([main_label, second_label, third_label])
-    else:
-        # ML classification for Hotel/Restaurant
-        try:
-            ml_result = ml_classify_review(
-                text=text,
-                business_type_uuid=business_type_uuid,
-                hotel_name=hotel_name,
-                verbose=False
-            )
-            main_label = ml_result.get('main_label') or ""
-            second_label = ml_result.get('second_label') or ""
-            third_label = ml_result.get('third_label') or ""
-            business_type = ml_result.get('business_type', 'Hotel')
-            classification_labels = json.dumps([main_label, second_label, third_label])
-        except Exception:
-            logger.exception(
-                "ML review classification failed for listing %s",
-                review_request.listing_id,
-            )
-            main_label = second_label = third_label = ""
-            business_type = "Hotel" if business_type_uuid == BUSINESS_TYPE_UUIDS.get("hotel") else "Restaurant"
-            classification_labels = json.dumps([])
+    except Exception:
+        logger.exception(
+            "ML review classification failed for listing %s",
+            review_request.listing_id,
+        )
+        main_label = second_label = third_label = ""
+        business_type = fallback_business_type_name(business_type_uuid)
+        classification_labels = json.dumps([])
 
     # Create review with classification
     review = Review(
