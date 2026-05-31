@@ -1,6 +1,7 @@
 """Business logic for booking operations."""
 
 from datetime import datetime
+import logging
 from typing import List, Optional
 from uuid import UUID
 
@@ -19,12 +20,10 @@ from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
 from app.modules.services.models import Service, StatusTypes
-
-import stripe
-
-from app.modules.stripe_payment.service import create_payment_intent
 from app.modules.stripe_payment.models import PaymentEvent
 from .models import Booking, BookingStatus
+
+logger = logging.getLogger(__name__)
 
 
 def _is_hotel_service(db: Session, service: Service) -> bool:
@@ -437,9 +436,13 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
             booking = create_booking(db, booking_data, user_id)
             bookings.append(booking)
         return bookings
-    except Exception as e:
+    except HTTPException:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Bulk booking failed: {str(e)}")
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Unexpected failure while creating bulk bookings for user %s", user_id)
+        raise HTTPException(status_code=500, detail="Bulk booking failed")
 
 
 def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:

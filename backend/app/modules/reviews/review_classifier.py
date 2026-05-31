@@ -2,6 +2,7 @@ import os
 import pickle
 import warnings
 warnings.filterwarnings('ignore')
+import logging
 
 from typing import Optional, Tuple
 
@@ -40,6 +41,7 @@ SUPPORTED_LANGUAGES = ['en', 'fr', 'es', 'nl']
 # Cache
 _models_cache = None
 _embedding_model_cache = None
+logger = logging.getLogger(__name__)
 
 def detect_language(text: str) -> str:
     """Detect the language of a text."""
@@ -224,10 +226,13 @@ def classify_review(
     third_label = secondary_labels[1] if len(secondary_labels) > 1 else None
     
     if verbose:
-        print(f"Business Type: {business_type}")
-        print(f"Main Label: {main_label}")
-        print(f"Second Label: {second_label}")
-        print(f"Third Label: {third_label}")
+        logger.debug(
+            "Review classification result: business_type=%s main=%s second=%s third=%s",
+            business_type,
+            main_label,
+            second_label,
+            third_label,
+        )
     
     return {
         'business_type_id': business_type_id,

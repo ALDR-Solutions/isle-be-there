@@ -1,6 +1,5 @@
 """Router for stripe payment module."""
 
-import os
 from uuid import UUID
 
 import stripe
@@ -8,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.infrastructure.database import get_db
 from app.modules.bookings.models import Booking, BookingStatus, PaymentEvent
 from app.modules.users.models import User
@@ -24,9 +24,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    if not webhook_secret:
-        raise HTTPException(500, "Webhook secret not configured")
+    try:
+        webhook_secret = settings.require_stripe_webhook_secret()
+    except RuntimeError as exc:
+        raise HTTPException(500, "Webhook secret not configured") from exc
 
     try:
         event = stripe.Webhook.construct_event(

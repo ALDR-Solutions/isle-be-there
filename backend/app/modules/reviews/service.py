@@ -1,4 +1,6 @@
 from datetime import datetime
+import json
+import logging
 
 from fastapi import HTTPException
 from sqlmodel import Session, desc, select
@@ -8,9 +10,10 @@ from app.modules.listings.models import Listing
 from .models import Review
 from .schemas import ReviewCreate, ReviewUpdate
 
-import json
 from .keyword_classifier import BUSINESS_TYPE_UUIDS, check_flags, classify_with_keywords
 from .review_classifier import classify_review as ml_classify_review
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_review(review: Review, include_classification: bool = False) -> dict:
@@ -19,7 +22,7 @@ def serialize_review(review: Review, include_classification: bool = False) -> di
     if include_classification and review.classification_labels:
         try:
             data["classification_labels"] = json.loads(review.classification_labels)
-        except:
+        except json.JSONDecodeError:
             data["classification_labels"] = review.classification_labels
     return data
 
@@ -137,6 +140,10 @@ def submit_review(db: Session, user_id, review_request, business_type_uuid: str,
             business_type = ml_result.get('business_type', 'Hotel')
             classification_labels = json.dumps([main_label, second_label, third_label])
         except Exception:
+            logger.exception(
+                "ML review classification failed for listing %s",
+                review_request.listing_id,
+            )
             main_label = second_label = third_label = ""
             business_type = "Hotel" if business_type_uuid == BUSINESS_TYPE_UUIDS.get("hotel") else "Restaurant"
             classification_labels = json.dumps([])

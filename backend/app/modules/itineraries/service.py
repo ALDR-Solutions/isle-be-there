@@ -323,7 +323,7 @@ def send_saved_itinerary_email(
     if not resolved_email:
         raise HTTPException(status_code=400, detail="Recipient email is required")
 
-    view_url = f"{settings.FRONTEND_URL}/itinerary/{saved_itinerary.id}"
+    view_url = f"{settings.resolved_frontend_url}/itinerary/{saved_itinerary.id}"
 
     try:
         send_itinerary_email(

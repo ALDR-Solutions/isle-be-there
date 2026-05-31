@@ -33,7 +33,7 @@ def get_active_discounts(db: Session, discount_type: Optional[str | DiscountType
     if discount_type is not None:
         try:
             dtype = DiscountType(discount_type) if not isinstance(discount_type, DiscountType) else discount_type
-        except Exception:
+        except (TypeError, ValueError):
             dtype = discount_type  # Fallback to raw value
         if hasattr(Discount, "type"):
             stmt = stmt.where(Discount.type == dtype)

@@ -7,6 +7,20 @@ let getRefreshToken = () => null;
 let setTokens = () => {};
 let handleUnauthorized = async () => {};
 
+function setAuthorizationHeader(config, token) {
+  config.headers.Authorization = `Bearer ${token}`;
+  return config;
+}
+
+async function refreshAccessToken(refreshToken) {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+    refresh_token: refreshToken,
+  });
+  const { access_token, refresh_token } = response.data;
+  setTokens({ accessToken: access_token, refreshToken: refresh_token });
+  return access_token;
+}
+
 export function registerAuthSessionHandlers(handlers = {}) {
   if (handlers.getAccessToken) getAccessToken = handlers.getAccessToken;
   if (handlers.getRefreshToken) getRefreshToken = handlers.getRefreshToken;
@@ -29,7 +43,7 @@ api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      setAuthorizationHeader(config, token);
     }
     return config;
   },
@@ -48,17 +62,8 @@ api.interceptors.response.use(
       const refreshToken = getRefreshToken();
       if (refreshToken) {
         try {
-          const response = await axios.post(
-            `${API_BASE_URL}/api/auth/refresh`,
-            {
-              refresh_token: refreshToken,
-            },
-          );
-
-          const { access_token, refresh_token } = response.data;
-          setTokens({ accessToken: access_token, refreshToken: refresh_token });
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          const accessToken = await refreshAccessToken(refreshToken);
+          setAuthorizationHeader(originalRequest, accessToken);
           return api(originalRequest);
         } catch (refreshError) {
           await handleUnauthorized({ reason: "refresh_failed" });

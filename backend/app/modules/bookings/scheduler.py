@@ -1,4 +1,8 @@
-"""APScheduler configuration with SQLAlchemy job store for booking automation."""
+"""APScheduler configuration for booking automation."""
+
+from __future__ import annotations
+
+import logging
 
 from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -8,54 +12,57 @@ from app.infrastructure.database.engine import get_engine
 from app.infrastructure.database.session import get_db
 from app.modules.bookings.service import update_expired_bookings
 
+logger = logging.getLogger(__name__)
 
-# SQLAlchemy job store - uses its own tables in the same DB
-# APScheduler will auto-create the tables via `start()`
-jobstores = {
-    "default": SQLAlchemyJobStore(
-        engine=get_engine(),
-        tableschema="public",
-    )
-}
 
-# Scheduler instance with job store configured
+def _build_jobstores() -> dict[str, SQLAlchemyJobStore]:
+    return {
+        "default": SQLAlchemyJobStore(
+            engine=get_engine(),
+            tableschema="public",
+        )
+    }
+
+
 scheduler = BackgroundScheduler(
-    jobstores=jobstores,
     job_defaults={
-        "coalesce": True,  # Combine missed executions into one
-        "max_instances": 1,  # Only one instance of each job at a time
-        "misfire_grace_time": 60 * 15,  # 15 minutes grace time for missed runs
+        "coalesce": True,
+        "max_instances": 1,
+        "misfire_grace_time": 60 * 15,
     },
 )
 
 
-def _job_error_listener(event):
+def _job_error_listener(event) -> None:
     """Log job errors for monitoring."""
-    from datetime import datetime
-
     if event.exception:
-        print(
-            f"[{datetime.utcnow().isoformat()}] JOB ERROR - "
-            f"Job '{event.job_id}' failed with: {event.exception}"
+        logger.error(
+            "Scheduled job '%s' failed",
+            event.job_id,
+            exc_info=(
+                type(event.exception),
+                event.exception,
+                getattr(event, "traceback", None),
+            ),
         )
     else:
-        print(
-            f"[{datetime.utcnow().isoformat()}] JOB {event.job_id} executed successfully"
-        )
+        logger.info("Scheduled job '%s' executed successfully", event.job_id)
 
 
-# Register error listener
 scheduler.add_listener(_job_error_listener, EVENT_JOB_ERROR)
 
 
 def _run_update_expired_bookings() -> None:
-    """Wrapper to run update_expired_bookings with a db session."""
-    from datetime import datetime
-    print(f"[{datetime.utcnow().isoformat()}] Running update_expired_bookings job...")
+    """Run update_expired_bookings with a managed database session."""
+    logger.info("Running update_expired_bookings job")
     for db in get_db():
         try:
             result = update_expired_bookings(db)
-            print(f"[{datetime.utcnow().isoformat()}] Job completed: {result}")
+            logger.info("update_expired_bookings job completed: %s", result)
+            return
+        except Exception:
+            logger.exception("update_expired_bookings job failed")
+            raise
         finally:
             db.close()
 
@@ -63,14 +70,13 @@ def _run_update_expired_bookings() -> None:
 def init_scheduler() -> None:
     """Start the scheduler if not already running, and register jobs."""
     if not scheduler.running:
+        scheduler.configure(jobstores=_build_jobstores())
         scheduler.start()
 
-    # Register job to update expired bookings every 5 minutes
-    # replace_existing=True ensures trigger changes are applied on reload
     scheduler.add_job(
         _run_update_expired_bookings,
         trigger="cron",
-        minute="*/5",  # Every 5 minutes
+        minute="*/5",
         id="update_expired_bookings",
         name="Update expired booking statuses",
         replace_existing=True,

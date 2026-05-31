@@ -1,12 +1,12 @@
 """Service for stripe payment module."""
 
-import os
 from uuid import UUID
 
 import stripe
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.core.config import settings
 from app.modules.bookings.models import Booking, BookingStatus, PaymentEvent
 from app.modules.services.models import Service
 
@@ -68,9 +68,10 @@ def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
         raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
 
     # Get Stripe key
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
+    try:
+        stripe_secret_key = settings.require_stripe_secret_key()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail="Stripe is not configured") from exc
 
     # Create Stripe Payment Intent
     stripe.api_key = stripe_secret_key
@@ -124,9 +125,10 @@ def process_refund(db: Session, booking: Booking) -> dict:
         return {"success": True, "already_processed": True}
 
     # 2. Get Stripe key
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
+    try:
+        stripe_secret_key = settings.require_stripe_secret_key()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail="Stripe is not configured") from exc
 
     # 3. Create Stripe refund
     stripe.api_key = stripe_secret_key
@@ -150,7 +152,6 @@ def confirm_payment(db: Session, booking: "Booking") -> dict:
     Confirm payment was successful via Stripe API and update booking status.
     Used by bookings router to delegate payment confirmation to stripe_payment module.
     """
-    import os
     import stripe as stripe_lib
     from app.modules.bookings.models import BookingStatus
     from app.modules.stripe_payment.models import PaymentEvent
@@ -160,8 +161,9 @@ def confirm_payment(db: Session, booking: "Booking") -> dict:
         return {"success": False, "error": "No payment initiated for this booking. Call /payment-intent first."}
 
     # Get Stripe key and verify payment intent status
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_secret_key:
+    try:
+        stripe_secret_key = settings.require_stripe_secret_key()
+    except RuntimeError:
         return {"success": False, "error": "Stripe is not configured"}
 
     try:

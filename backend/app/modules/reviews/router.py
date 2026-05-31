@@ -1,4 +1,5 @@
 from uuid import UUID
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
@@ -14,6 +15,7 @@ from .schemas import ReviewClassifyRequest, ReviewClassifyResponse, ReviewCreate
 from .service import delete_review, get_review, list_reviews, submit_review, toggle_review_visibility, update_review
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=list[dict])
@@ -162,7 +164,11 @@ def classify_review_route(
                 is_flagged=flag_result["is_flagged"],
                 flag_reason=flag_result["reason"],
             )
-        except Exception as e:
+        except Exception:
+            logger.exception(
+                "ML review classification fallback triggered for business type %s",
+                review_request.business_type_uuid,
+            )
             # Fallback on error - still return flags
             return ReviewClassifyResponse(
                 business_type_id=review_request.business_type_uuid,

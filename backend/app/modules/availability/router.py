@@ -1,6 +1,7 @@
 """Router for availability module."""
 
 from datetime import date as date_class
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -21,6 +22,7 @@ from . import service as availability_service
 from .service import get_service_availability
 
 router = APIRouter(prefix="/api/availability", tags=["availability"])
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -126,4 +128,8 @@ def get_service_availability_endpoint(
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(404, "Service not found")
+        logger.exception(
+            "Unexpected failure while loading availability for service %s",
+            service_id,
+        )
+        raise HTTPException(500, "Unable to load service availability")

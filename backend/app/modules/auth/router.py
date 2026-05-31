@@ -1,10 +1,10 @@
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
-from app.core.security import decode_token
+from app.core.security import decode_token, oauth2_scheme
 from app.infrastructure.database import get_db
 from app.modules.users.schemas import (
     PasswordResetConfirm,
@@ -31,7 +31,6 @@ from .service import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def _require_subject(token: str) -> str:

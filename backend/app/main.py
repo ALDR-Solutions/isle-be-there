@@ -1,17 +1,14 @@
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from dotenv import load_dotenv
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-load_dotenv()
-
+from app.core.config import settings
 from app.infrastructure.storage import (
     delete_image_from_supabase,
     get_supabase_storage_object_path,
@@ -48,6 +45,7 @@ FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown events."""
+    settings.validate_runtime()
     # Startup: initialize scheduler
     init_scheduler()
     yield
@@ -68,25 +66,11 @@ app = FastAPI(
 class UploadCleanupRequest(BaseModel):
     urls: list[str]
 
-
-def get_allowed_origins() -> list[str]:
-    configured_origins = os.getenv("CORS_ALLOW_ORIGINS", "")
-    if configured_origins.strip():
-        return [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
-
-    return [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-    ]
-
-
 # CORS
 app.add_middleware(
     CORSMiddleware,
     # Explicit origins keep credentialed requests compatible across browsers.
-    allow_origins=get_allowed_origins(),
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

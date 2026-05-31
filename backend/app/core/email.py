@@ -8,10 +8,13 @@ import resend
 from app.core.config import settings
 from app.modules.itineraries.schemas import ItineraryPlanResponse
 
-resend.api_key = settings.RESEND_API_KEY
+
+def _configure_resend() -> None:
+    resend.api_key = settings.require_resend_api_key()
 
 
 def send_html_email(email: str, subject: str, html: str) -> None:
+    _configure_resend()
     params: resend.Emails.SendParams = {
         "from": settings.MAIL_FROM,
         "to": [email],
@@ -22,7 +25,7 @@ def send_html_email(email: str, subject: str, html: str) -> None:
 
 
 def send_verification_email(email: str, token: str) -> None:
-    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+    verification_url = f"{settings.resolved_frontend_url}/verify-email?token={token}"
     send_html_email(
         email,
         "Verify your Isle Be There account",
@@ -36,7 +39,7 @@ def send_verification_email(email: str, token: str) -> None:
 
 
 def send_password_reset_email(email: str, token: str) -> None:
-    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    reset_url = f"{settings.resolved_frontend_url}/reset-password?token={token}"
     send_html_email(
         email,
         "Reset your Isle Be There password",
@@ -56,7 +59,7 @@ def send_itinerary_email(
     *,
     country: Optional[str] = None,
     interests: Optional[list[str]] = None,
-    #   view_url: Optional[str] = None,
+    view_url: Optional[str] = None,
 ) -> None:
     subject_location = country or itinerary_title or "your trip"
     subject = f"Your Isle Be There itinerary for {subject_location}"
@@ -65,7 +68,7 @@ def send_itinerary_email(
         itinerary=itinerary,
         country=country,
         interests=interests or [],
-        # view_url=view_url,
+        view_url=view_url,
     )
     send_html_email(email, subject, html)
 
@@ -76,7 +79,7 @@ def build_itinerary_email_html(
     itinerary: ItineraryPlanResponse,
     country: Optional[str],
     interests: list[str],
-    # view_url: Optional[str],
+    view_url: Optional[str],
 ) -> str:
     title = escape(itinerary_title or "Your itinerary")
     location = escape(country or "Caribbean")
@@ -89,20 +92,20 @@ def build_itinerary_email_html(
         for interest in interests
     )
     day_sections = "".join(_render_day_section(day, index) for index, day in enumerate(itinerary.days))
-    # cta_html = (
-    #     f"""
-    #     <div style="margin-top: 24px;">
-    #       <a
-    #         href="{escape(view_url)}"
-    #         style="display:inline-block;background:#0891b2;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;"
-    #       >
-    #         View itinerary in app
-    #       </a>
-    #     </div>
-    #     """
-    #     if view_url
-    #     else ""
-    # )
+    cta_html = (
+        f"""
+        <div style="margin-top: 24px;">
+          <a
+            href="{escape(view_url)}"
+            style="display:inline-block;background:#0891b2;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:16px;font-weight:700;font-size:14px;"
+          >
+            View itinerary in app
+          </a>
+        </div>
+        """
+        if view_url
+        else ""
+    )
 
     return f"""
     <!DOCTYPE html>
@@ -377,6 +380,7 @@ def build_itinerary_email_html(
 
                   <div class="section-padding" style="padding:0 24px 32px;background:#ffffff;">
                     {day_sections or '<div style="padding:28px;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;color:#64748b;">No itinerary stops are available yet.</div>'}
+                    {cta_html}
                   </div>
                 </div>
               </td>
