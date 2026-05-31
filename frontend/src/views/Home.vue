@@ -331,7 +331,7 @@
       </div>
     </section>
 
-    <section class="px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
+    <section class="px-4 py-10 sm:px-6W lg:px-8">
       <div class="mx-auto max-w-7xl">
         <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 text-white shadow-2xl shadow-slate-900/10">
           <div class="bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.18),_transparent_35%),linear-gradient(135deg,_rgba(15,23,42,1),_rgba(30,41,59,0.98))] px-6 py-14 sm:px-8 lg:px-10">

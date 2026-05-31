@@ -47,7 +47,7 @@
                 id="desktop-navbar-search"
                 v-model="searchInput"
                 type="text"
-                placeholder="Search . . . ."
+                placeholder="Search"
                 class="w-full min-w-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"/>
               
             </div>
