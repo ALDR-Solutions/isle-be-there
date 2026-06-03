@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, text
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -49,8 +49,8 @@ class InterestCategory(SQLModel, table=True):
             server_default=text("gen_random_uuid()"),
         )
     )
-    name: str = Field(sa_column=Column(String, unique=True, nullable=False))
-    description: str = Field(sa_column=Column(String, nullable=False))
+    name: str = Field(sa_column=Column(Text, unique=True, nullable=False))
+    description: str = Field(sa_column=Column(Text, nullable=False))
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
