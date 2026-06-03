@@ -1,7 +1,7 @@
 <template>
   <div class="bg-slate-50 text-slate-900">
     <section
-      class="relative -mt-20 flex min-h-screen w-full items-center overflow-hidden pt-20"
+      class="hero-premium relative -mt-20 flex min-h-screen w-full items-center overflow-hidden pt-20"
     >
       <template v-if="showVideoHero">
         <video
@@ -24,32 +24,44 @@
       ></div>
       <div class="absolute inset-0 bg-slate-950/60"></div>
       <div
-        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.2),_transparent_40%)]"
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_40%)]"
+      ></div>
+      <div
+        class="hero-gradient-overlay absolute inset-0"
+      ></div>
+      <div
+        class="hero-glow hero-glow-aqua absolute left-[-10%] top-[12%] h-[24rem] w-[24rem] rounded-full"
+      ></div>
+      <div
+        class="hero-glow hero-glow-sand absolute right-[-8%] top-[18%] h-[20rem] w-[20rem] rounded-full"
+      ></div>
+      <div
+        class="hero-glow hero-glow-lagoon absolute bottom-[-8%] left-[12%] h-[18rem] w-[18rem] rounded-full"
       ></div>
 
       <div
         class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div class="flex max-w-3xl flex-col items-center text-center">
+        <div class="hero-copy-shell flex max-w-3xl flex-col items-center text-center">
           <p
-            class="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-300 sm:text-sm">
+            class="hero-reveal hero-reveal-1 hero-kicker inline-flex items-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.32em] text-cyan-100 backdrop-blur-md sm:text-sm">
             Caribbean travel, Simplified for you
           </p>
           <h1
-            class="mt-5 text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
+            class="hero-reveal hero-reveal-2 hero-title mt-5 text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
             Plan Your Island Adventure Trip Today.
           </h1>
 
           <p
-            class="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+            class="hero-reveal hero-reveal-3 mt-6 max-w-2xl text-base leading-7 text-slate-100/90 sm:text-lg">
             Search stays and experiences, then shape them into a trip that
             feels clear from the first idea to the final booking.
           </p>
 
-          <div class="mt-10 w-full max-w-4xl">
+          <div class="hero-reveal hero-reveal-4 mt-10 w-full max-w-4xl">
             <div
-              class="flex flex-col gap-4 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:flex-row sm:items-center">
+              class="hero-search-panel flex flex-col gap-4 rounded-[2rem] border border-white/20 bg-white/[0.12] p-3 shadow-[0_28px_80px_rgba(15,23,42,0.3)] backdrop-blur-2xl sm:flex-row sm:items-center">
               <div
-                class="flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white">
+                class="hero-search-input-wrap flex min-w-0 flex-1 items-center gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/20 px-4 py-3 text-white">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5 shrink-0 text-cyan-300"
@@ -75,13 +87,13 @@
                 <button
                   type="button"
                   @click="submitSearch"
-                  class="inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4">
+                  class="hero-primary-cta inline-flex flex-1 items-center justify-center rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:flex-none sm:px-7 sm:py-4">
                   Search stays
                 </button>
 
                 <router-link
                   :to="{ name: 'ItineraryPlanner' }"
-                  class="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4">
+                  class="hero-secondary-cta inline-flex flex-1 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/15 sm:flex-none sm:px-8 sm:py-4">
                   Build itinerary
                 </router-link>
               </div>
@@ -702,5 +714,230 @@ function onTouchEnd(e) {
 <style scoped>
 input::placeholder {
   letter-spacing: 0.01em;
+}
+
+.hero-premium {
+  isolation: isolate;
+}
+
+.hero-gradient-overlay {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(94, 234, 212, 0.14), transparent 28%),
+    radial-gradient(circle at 80% 22%, rgba(251, 191, 153, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.1) 0%, rgba(15, 23, 42, 0.45) 100%);
+}
+
+.hero-glow {
+  pointer-events: none;
+  opacity: 0.38;
+  filter: blur(22px);
+  mix-blend-mode: screen;
+}
+
+.hero-glow-aqua {
+  background: radial-gradient(circle, rgba(110, 231, 255, 0.32) 0%, rgba(110, 231, 255, 0.08) 42%, transparent 72%);
+  animation: heroGlowDriftA 18s ease-in-out infinite;
+}
+
+.hero-glow-sand {
+  background: radial-gradient(circle, rgba(253, 186, 116, 0.26) 0%, rgba(253, 186, 116, 0.06) 40%, transparent 74%);
+  animation: heroGlowDriftB 22s ease-in-out infinite;
+}
+
+.hero-glow-lagoon {
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.18) 0%, rgba(45, 212, 191, 0.05) 46%, transparent 74%);
+  animation: heroGlowDriftC 20s ease-in-out infinite;
+}
+
+.hero-copy-shell {
+  position: relative;
+  animation: heroFloat 14s ease-in-out 1.3s infinite;
+}
+
+.hero-kicker {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.hero-title {
+  text-wrap: balance;
+  text-shadow: 0 18px 40px rgba(15, 23, 42, 0.3);
+}
+
+.hero-reveal {
+  opacity: 0;
+  transform: translateY(24px) scale(0.985);
+  filter: blur(10px);
+  animation: heroReveal 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform, filter;
+}
+
+.hero-reveal-1 {
+  animation-delay: 0.12s;
+}
+
+.hero-reveal-2 {
+  animation-delay: 0.26s;
+}
+
+.hero-reveal-3 {
+  animation-delay: 0.42s;
+}
+
+.hero-reveal-4 {
+  animation-delay: 0.56s;
+}
+
+.hero-search-panel {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 30px 70px rgba(15, 23, 42, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition:
+    transform 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.hero-search-panel::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(2rem - 1px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 45%, rgba(56, 189, 248, 0.08) 100%);
+  pointer-events: none;
+}
+
+.hero-search-panel:hover,
+.hero-search-panel:focus-within {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 34px 90px rgba(15, 23, 42, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.hero-search-input-wrap {
+  position: relative;
+  z-index: 1;
+  transition:
+    border-color 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.hero-search-input-wrap:focus-within {
+  border-color: rgba(165, 243, 252, 0.45);
+  background: rgba(15, 23, 42, 0.3);
+  box-shadow: 0 0 0 1px rgba(165, 243, 252, 0.18);
+}
+
+.hero-primary-cta,
+.hero-secondary-cta {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-primary-cta {
+  overflow: hidden;
+}
+
+.hero-primary-cta::after {
+  content: "";
+  position: absolute;
+  inset: -120% auto -120% -35%;
+  width: 40%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transition: transform 520ms ease;
+}
+
+.hero-primary-cta:hover::after,
+.hero-primary-cta:focus-visible::after {
+  transform: translateX(240%) rotate(18deg);
+}
+
+.hero-secondary-cta:hover,
+.hero-secondary-cta:focus-visible {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes heroReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+    filter: blur(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes heroFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes heroGlowDriftA {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(18px, -14px, 0) scale(1.06);
+  }
+}
+
+@keyframes heroGlowDriftB {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-22px, 16px, 0) scale(1.08);
+  }
+}
+
+@keyframes heroGlowDriftC {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(12px, -18px, 0) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-reveal,
+  .hero-copy-shell,
+  .hero-glow-aqua,
+  .hero-glow-sand,
+  .hero-glow-lagoon {
+    animation: none;
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-search-panel,
+  .hero-search-input-wrap,
+  .hero-primary-cta::after {
+    transition: none;
+  }
 }
 </style>
