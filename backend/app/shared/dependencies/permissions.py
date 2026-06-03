@@ -99,7 +99,7 @@ def require_booking_owner(
 
 
 def require_review_owner(
-    review_id: int,
+    review_id: UUID,
     user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
@@ -139,7 +139,9 @@ def require_listing_owner(
     if not listing.business_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    business = db.exec(select(Business).where(Business.id == listing.business_id)).first()
+    business = db.exec(
+        select(Business).where(Business.id == listing.business_id)
+    ).first()
     if not business or str(business.user_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     return listing
@@ -151,9 +153,7 @@ def require_service_access(
     db: Session = Depends(get_db),
 ) -> Service:
 
-    service = db.exec(
-        select(Service).where(Service.service_id == service_id)
-    ).first()
+    service = db.exec(select(Service).where(Service.service_id == service_id)).first()
 
     if not service:
         raise HTTPException(404, "Service not found")
@@ -161,9 +161,7 @@ def require_service_access(
     if user.user_type == "admin":
         return service
 
-    listing = db.exec(
-        select(Listing).where(Listing.id == service.listing_id)
-    ).first()
+    listing = db.exec(select(Listing).where(Listing.id == service.listing_id)).first()
 
     if not listing:
         raise HTTPException(404, "Listing not found")
@@ -189,6 +187,7 @@ def require_service_access(
         return service
 
     raise HTTPException(403, "Not authorized")
+
 
 __all__ = [
     "get_current_user",
