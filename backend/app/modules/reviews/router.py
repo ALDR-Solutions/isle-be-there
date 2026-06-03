@@ -7,9 +7,26 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_roles
 
-from .models import Review
-from .schemas import ReviewCreate, ReviewResponse, ReviewSubmitResponse, ReviewUpdate
-from .service import submit_review, delete_review, list_reviews, update_review
+from .models import Review, BusinessReply
+from .schemas import (
+    ReviewCreate,
+    ReviewResponse,
+    ReviewSubmitResponse,
+    ReviewUpdate,
+    BusinessReplyCreate,
+    BusinessReplyUpdate,
+    BusinessReplyResponse,
+)
+from .service import (
+    submit_review,
+    delete_review,
+    list_reviews,
+    update_review,
+    create_business_reply,
+    get_business_reply,
+    update_business_reply,
+    delete_business_reply,
+)
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 
@@ -172,3 +189,109 @@ def delete_review_route(
     db.commit()
 
     return {"detail": "Review deleted"}
+
+
+@router.post(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse,
+    status_code=201,
+    responses={
+        201: {"description": "Business reply created"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to reply to this review"},
+        404: {"description": "Review not found"},
+        409: {"description": "Reply already exists for this review"},
+    },
+)
+def create_reply_route(
+    review_id: UUID,
+    description: str = Form(..., max_length=2000),
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Create a business reply to a review (business/employee only)."""
+    from app.modules.businesses.models import Business
+
+    business = db.exec(
+        select(Business).where(Business.user_id == current_user.id)
+    ).first()
+    if not business:
+        raise HTTPException(
+            status_code=403, detail="No business associated with this user"
+        )
+
+    reply = create_business_reply(
+        db=db,
+        review_id=review_id,
+        business_id=business.id,
+        user_id=current_user.id,
+        description=description,
+    )
+    reply["user_name"] = current_user.username
+    return reply
+
+
+@router.get(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse | None,
+    responses={
+        200: {"description": "Get business reply for a review"},
+        404: {"description": "Reply not found"},
+    },
+)
+def get_reply_route(
+    review_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Get business reply for a review."""
+    return get_business_reply(db, review_id)
+
+
+@router.put(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse,
+    responses={
+        200: {"description": "Business reply updated"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to update this reply"},
+        404: {"description": "Reply not found"},
+    },
+)
+def update_reply_route(
+    review_id: UUID,
+    description: str = Form(..., max_length=2000),
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Update a business reply (owner or admin only)."""
+    reply = update_business_reply(
+        db=db,
+        review_id=review_id,
+        user_id=current_user.id,
+        description=description,
+    )
+    return reply
+
+
+@router.delete(
+    "/{review_id}/reply",
+    status_code=204,
+    responses={
+        204: {"description": "Business reply deleted"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to delete this reply"},
+        404: {"description": "Reply not found"},
+    },
+)
+def delete_reply_route(
+    review_id: UUID,
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Delete a business reply (owner or admin only)."""
+    delete_business_reply(
+        db=db,
+        review_id=review_id,
+        user_id=current_user.id,
+    )
+    return {"detail": "Reply deleted"}

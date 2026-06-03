@@ -202,31 +202,56 @@
         </div>
 
         <div class="mt-10">
-          <div class="mb-6">
-            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">Guest Feedback</p>
-            <h2 class="mt-2 text-2xl font-bold text-slate-900">Reviews</h2>
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-600">Guest Feedback</p>
+              <h2 class="mt-2 text-2xl font-bold text-slate-900">Reviews</h2>
+            </div>
+            <div v-if="listing.avg_rating" class="flex items-center gap-2">
+              <span class="text-2xl font-bold text-slate-900">{{ listing.avg_rating.toFixed(1) }}</span>
+              <span class="text-sm text-slate-400">({{ listing.review_count }} {{ listing.review_count === 1 ? 'review' : 'reviews' }})</span>
+            </div>
+          </div>
+
+          <button
+            v-if="canWriteReview"
+            @click="openSubmitModal"
+            class="mt-4 rounded-2xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+          >
+            Write a Review
+          </button>
+
+          <div v-if="reviews.length > 0" class="mt-4 flex gap-4">
+            <select v-model="reviewFilters.rating" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <option :value="null">All Ratings</option>
+              <option v-for="n in 5" :key="n" :value="n">{{ n }} star{{ n > 1 ? 's' : '' }}</option>
+            </select>
+            <select v-model="reviewFilters.mainLabel" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <option :value="null">All Categories</option>
+              <option v-for="label in availableLabels" :key="label" :value="label">{{ label }}</option>
+            </select>
           </div>
 
           <div
             v-if="reviews.length === 0"
-            class="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+            class="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p class="text-base font-medium text-slate-500">No reviews yet.</p>
             <p class="mt-1 text-sm text-slate-400">Be the first to share your experience.</p>
           </div>
 
-          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div v-else class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div
-              v-for="review in reviews"
+              v-for="review in filteredReviews"
               :key="review.id"
               class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
             >
               <div class="flex items-start justify-between gap-4">
                 <div class="flex items-center gap-3">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-sm font-bold text-cyan-700">
-                    {{ reviewAuthorInitial(review) }}
+                    {{ review.user_name?.charAt(0).toUpperCase() || 'G' }}
                   </div>
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ reviewAuthorLabel(review) }}</p>
+                    <p class="text-sm font-semibold text-slate-900">{{ review.user_name || 'Guest' }}</p>
                     <p class="text-xs text-slate-400">{{ new Date(review.created_at).toLocaleDateString() }}</p>
                   </div>
                 </div>
@@ -243,12 +268,63 @@
                   </svg>
                 </div>
               </div>
-              <p v-if="review.comment" class="mt-4 text-sm leading-6 text-slate-600">
+
+              <div v-if="review.main_label && review.main_label !== '(none)'" class="mt-3">
+                <span class="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-800">
+                  {{ review.main_label }}
+                </span>
+              </div>
+
+              <p v-if="review.comment" class="mt-3 text-sm leading-6 text-slate-600">
                 {{ review.comment }}
               </p>
+
+              <div v-if="review.business_reply" class="mt-4 rounded-lg bg-slate-50 p-4 border border-slate-100">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Business Response</span>
+                </div>
+                <p class="text-sm text-slate-700">{{ review.business_reply.description }}</p>
+                <p class="text-xs text-slate-400 mt-2">— {{ review.business_reply.user_name || 'Business' }}</p>
+                <div v-if="isReplyOwner(review.business_reply)" class="mt-3 flex gap-3 border-t border-slate-200 pt-3">
+                  <button @click="openEditReplyModal(review)" class="text-xs text-cyan-600 hover:text-cyan-700">Edit</button>
+                  <button @click="confirmDeleteReply(review)" class="text-xs text-red-600 hover:text-red-700">Delete</button>
+                </div>
+              </div>
+
+              <div v-else-if="canReply && !review.business_reply" class="mt-4">
+                <button @click="openReplyModal(review)" class="text-sm text-cyan-600 hover:text-cyan-700">
+                  Respond as Business
+                </button>
+              </div>
+
+              <div v-if="isOwner(review)" class="mt-4 flex gap-3 border-t border-slate-100 pt-4">
+                <button @click="openEditModal(review)" class="text-sm text-cyan-600 hover:text-cyan-700">Edit</button>
+                <button @click="confirmDelete(review)" class="text-sm text-red-600 hover:text-red-700">Delete</button>
+              </div>
             </div>
           </div>
         </div>
+
+        <ReviewModal
+          v-if="showReviewModal"
+          :mode="editingReview ? 'edit' : 'submit'"
+          :review="editingReview"
+          :listing-id="listing.id"
+          @close="showReviewModal = false"
+          @success="handleReviewSuccess"
+        />
+
+        <BusinessReplyModal
+          v-if="showReplyModal"
+          :mode="editingReply ? 'edit' : 'submit'"
+          :review-id="replyingToReview?.id"
+          :reply="editingReply"
+          @close="showReplyModal = false"
+          @success="handleReplySuccess"
+        />
 
       </div>
     </div>
@@ -258,14 +334,22 @@
 
 <script setup>
 import { ref, computed, onMounted} from 'vue';
-import {useRoute } from 'vue-router';
-import { listingsAPI, reviewsAPI } from '../services/api';
+import {useRoute, useRouter} from 'vue-router';
+import { listingsAPI, reviewsAPI, businessReplyAPI } from '../services/api';
+import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
+import ReviewModal from '../components/ReviewModal.vue';
+import BusinessReplyModal from '../components/BusinessReplyModal.vue';
 import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
 import RestaurantDetailSection from '../components/listings/detail-sections/RestaurantDetailSection.vue'
 import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
 import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
 
 const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const toastStore = useToastStore();
+
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
@@ -273,6 +357,123 @@ const showBooking = ref(false);
 const currentImageIndex = ref(0);
 const brokenImages = ref(new Set());
 let heroInterval = null;
+
+const showReviewModal = ref(false);
+const editingReview = ref(null);
+const reviewFilters = ref({ rating: null, mainLabel: null });
+const showReplyModal = ref(false);
+const editingReply = ref(null);
+const replyingToReview = ref(null);
+
+const isLoggedIn = computed(() => authStore.isAuthenticated);
+const currentUser = computed(() => authStore.user);
+const userRole = computed(() => authStore.role);
+
+const userReview = computed(() => {
+  if (!currentUser.value) return null;
+  return reviews.value.find(r => r.user_id === currentUser.value.id) || null;
+});
+
+const canWriteReview = computed(() => isLoggedIn.value && !userReview.value);
+
+const canReply = computed(() => {
+  const role = userRole.value;
+  return (role === 'business' || role === 'employee');
+});
+
+const isOwner = (review) => {
+  return currentUser.value && review.user_id === currentUser.value.id;
+};
+
+const isReplyOwner = (reply) => {
+  if (!reply || !currentUser.value) return false;
+  return reply.user_id === currentUser.value.id;
+};
+
+const openSubmitModal = () => {
+  editingReview.value = null;
+  showReviewModal.value = true;
+};
+
+const openEditModal = (review) => {
+  editingReview.value = { ...review };
+  showReviewModal.value = true;
+};
+
+const handleReviewSuccess = (message) => {
+  showReviewModal.value = false;
+  toastStore.show(message, 'success');
+  fetchListings();
+};
+
+const confirmDelete = async (review) => {
+  if (confirm('Are you sure you want to delete this review?')) {
+    try {
+      await reviewsAPI.delete(review.id);
+      toastStore.show('Review deleted', 'success');
+      fetchListings();
+    } catch (err) {
+      console.error('Failed to delete review', err);
+      toastStore.show('Failed to delete review', 'error');
+    }
+  }
+};
+
+const handleWriteReviewClick = () => {
+  if (!isLoggedIn.value) {
+    toastStore.show('Sign in to write a review.', 'info');
+    router.push({ name: 'Login', query: { redirect: route.fullPath } });
+    return;
+  }
+  openSubmitModal();
+};
+
+const openReplyModal = (review) => {
+  replyingToReview.value = review;
+  editingReply.value = review.business_reply || null;
+  showReplyModal.value = true;
+};
+
+const openEditReplyModal = (review) => {
+  replyingToReview.value = review;
+  editingReply.value = review.business_reply;
+  showReplyModal.value = true;
+};
+
+const handleReplySuccess = (message) => {
+  showReplyModal.value = false;
+  toastStore.show(message, 'success');
+  fetchListings();
+};
+
+const confirmDeleteReply = async (review) => {
+  if (confirm('Are you sure you want to delete your response?')) {
+    try {
+      await businessReplyAPI.delete(review.id);
+      toastStore.show('Response deleted', 'success');
+      fetchListings();
+    } catch (err) {
+      console.error('Failed to delete reply:', err);
+      toastStore.show('Failed to delete response', 'error');
+    }
+  }
+};
+
+const filteredReviews = computed(() => {
+  let result = reviews.value;
+  if (reviewFilters.value.rating) {
+    result = result.filter(r => r.rating === reviewFilters.value.rating);
+  }
+  if (reviewFilters.value.mainLabel) {
+    result = result.filter(r => r.main_label === reviewFilters.value.mainLabel);
+  }
+  return result;
+});
+
+const availableLabels = computed(() => {
+  const labels = reviews.value.map(r => r.main_label).filter(Boolean);
+  return [...new Set(labels)];
+});
 
 const detailsComponent = computed(() => {
   switch (listing.value?.business_type_name) {
@@ -382,9 +583,6 @@ const handleImageError = (event) => {
     </div>
   `;
 };
-
-const reviewAuthorLabel = () => 'Guest';
-const reviewAuthorInitial = () => 'G';
 
 onMounted(() => {
   fetchListings();

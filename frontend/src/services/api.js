@@ -19,9 +19,6 @@ export function registerUnauthorizedHandler(handler) {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // Request interceptor to add auth token
@@ -131,10 +128,18 @@ export const calendarAPI = {
 
 // Reviews API
 export const reviewsAPI = {
-  getAll: (params) => api.get("/api/reviews", { params }),
+  getAll: (params) => api.get(`/api/reviews/${params.listing_id}/`),
   create: (data) => api.post("/api/reviews/submit", data),
   update: (id, data) => api.put(`/api/reviews/${id}`, data),
   delete: (id) => api.delete(`/api/reviews/${id}`),
+};
+
+// Business Reply API
+export const businessReplyAPI = {
+  get: (reviewId) => api.get(`/api/reviews/${reviewId}/reply`),
+  create: (reviewId, data) => api.post(`/api/reviews/${reviewId}/reply`, data),
+  update: (reviewId, data) => api.put(`/api/reviews/${reviewId}/reply`, data),
+  delete: (reviewId) => api.delete(`/api/reviews/${reviewId}/reply`),
 };
 
 // Favourites API

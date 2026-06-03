@@ -8,6 +8,7 @@ from sqlmodel import Session, desc, select
 
 from app.modules.listings.models import Listing, Statuses
 from app.modules.businesses.models import BusinessType
+from app.modules.users.models import User
 
 from .classifiers.keyword_classifier import (
     BUSINESS_TYPE_UUIDS,
@@ -19,7 +20,7 @@ from .classifiers.ml_classifier import (
     _load_models,
     _get_embedding_model_with_timeout,
 )
-from .models import Review
+from .models import Review, BusinessReply
 from .schemas import ReviewCreate, ReviewUpdate
 
 import json
@@ -108,6 +109,8 @@ def classify_review_text(
 
 
 def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
+    from app.modules.users.models import User
+
     listing_status = db.exec(
         select(Listing.status).where(Listing.id == listing_id)
     ).first()
@@ -117,24 +120,42 @@ def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
     if listing_status != Statuses.active:
         raise HTTPException(status_code=400, detail="Listing is not active")
 
-    reviews = db.exec(
+    reviews_list = db.exec(
         select(Review)
         .where(Review.listing_id == listing_id)
         .order_by(desc(Review.created_at))
     ).all()
 
-    return [
-        {
-            "id": r.id,
-            "listing_id": r.listing_id,
-            "user_id": r.user_id,
-            "rating": r.rating,
-            "comment": r.comment,
-            "classification_labels": r.classification_labels,
-            "created_at": r.created_at,
-        }
-        for r in reviews
-    ]
+    reviews = []
+    for r in reviews_list:
+        user = db.exec(select(User).where(User.id == r.user_id)).first()
+        username = user.username if user else None
+
+        reply = get_business_reply(db, r.id)
+
+        labels = json.loads(r.classification_labels or '["(none)", "(none)", "(none)"]')
+        classification_method = "keyword"
+        if r.translated_comment:
+            classification_method = "ml"
+
+        reviews.append(
+            {
+                "id": r.id,
+                "listing_id": r.listing_id,
+                "user_id": r.user_id,
+                "user_name": username,
+                "rating": r.rating,
+                "comment": r.comment,
+                "main_label": labels[0] if len(labels) > 0 else "(none)",
+                "second_label": labels[1] if len(labels) > 1 else "(none)",
+                "third_label": labels[2] if len(labels) > 2 else "(none)",
+                "classification_labels": r.classification_labels,
+                "classification_method": classification_method,
+                "created_at": r.created_at,
+                "business_reply": reply,
+            }
+        )
+    return reviews
 
 
 def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> dict:
@@ -282,6 +303,128 @@ def update_review(db: Session, review: Review, review_request: ReviewUpdate) -> 
     response["third_label"] = labels[2] if len(labels) > 2 else "(none)"
 
     return response
+
+
+def create_business_reply(
+    db: Session, review_id: UUID, business_id: UUID, user_id: UUID, description: str
+) -> dict:
+    review = db.exec(select(Review).where(Review.id == review_id)).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    from app.modules.listings.models import Listing
+
+    listing = db.exec(select(Listing).where(Listing.id == review.listing_id)).first()
+    if not listing or str(listing.business_id) != str(business_id):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to reply to this review"
+        )
+
+    existing = db.exec(
+        select(BusinessReply).where(BusinessReply.review_id == review_id)
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=409, detail="Reply already exists for this review"
+        )
+
+    reply = BusinessReply(
+        review_id=review_id,
+        business_id=business_id,
+        user_id=user_id,
+        description=description,
+    )
+    db.add(reply)
+    db.commit()
+    db.refresh(reply)
+
+    return {
+        "id": reply.id,
+        "review_id": reply.review_id,
+        "business_id": reply.business_id,
+        "user_id": reply.user_id,
+        "description": reply.description,
+        "created_at": reply.created_at,
+        "updated_at": reply.updated_at,
+    }
+
+
+def get_business_reply(db: Session, review_id: UUID) -> dict | None:
+    result = db.exec(
+        select(BusinessReply, User.username)
+        .join(User, BusinessReply.user_id == User.id)
+        .where(BusinessReply.review_id == review_id)
+    ).first()
+
+    if not result:
+        return None
+
+    reply, username = result
+    return {
+        "id": reply.id,
+        "review_id": reply.review_id,
+        "business_id": reply.business_id,
+        "user_id": reply.user_id,
+        "user_name": username,
+        "description": reply.description,
+        "created_at": reply.created_at,
+        "updated_at": reply.updated_at,
+    }
+
+
+def update_business_reply(
+    db: Session,
+    review_id: UUID,
+    user_id: UUID,
+    description: str,
+    is_admin: bool = False,
+) -> dict:
+    reply = db.exec(
+        select(BusinessReply).where(BusinessReply.review_id == review_id)
+    ).first()
+
+    if not reply:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
+    if not is_admin and str(reply.user_id) != str(user_id):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to update this reply"
+        )
+
+    reply.description = description
+    reply.updated_at = datetime.utcnow()
+    db.add(reply)
+    db.commit()
+    db.refresh(reply)
+
+    return {
+        "id": reply.id,
+        "review_id": reply.review_id,
+        "business_id": reply.business_id,
+        "user_id": reply.user_id,
+        "description": reply.description,
+        "created_at": reply.created_at,
+        "updated_at": reply.updated_at,
+    }
+
+
+def delete_business_reply(
+    db: Session, review_id: UUID, user_id: UUID, is_admin: bool = False
+) -> None:
+    reply = db.exec(
+        select(BusinessReply).where(BusinessReply.review_id == review_id)
+    ).first()
+
+    if not reply:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
+    if not is_admin and str(reply.user_id) != str(user_id):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this reply"
+        )
+
+    db.delete(reply)
+    db.commit()
 
 
 def delete_review(db: Session, review: Review) -> None:
