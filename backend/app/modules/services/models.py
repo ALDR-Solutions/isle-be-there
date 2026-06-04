@@ -3,7 +3,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import Column, Float, DateTime, ForeignKey, Text, Identity, text, Boolean, SmallInteger
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PGUUID
 from sqlmodel import Enum as SAEnum, Field, Relationship, SQLModel
 from enum import Enum
 
@@ -64,6 +64,10 @@ class Service(SQLModel, table=True):
             ForeignKey("listings.id", onupdate="CASCADE", ondelete="CASCADE"),
             nullable=True,
         ),
+    )
+    image_urls: Optional[list[str]] = Field(
+        default=None,
+        sa_column=Column(ARRAY(Text), nullable=True),
     )
     # listing_rel: Optional["Listing"] = Relationship(back_populates="services")
     service_slots: list["ServiceSlots"] = Relationship(back_populates="service_rel")

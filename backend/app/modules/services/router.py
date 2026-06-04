@@ -72,7 +72,7 @@ def update_service_endpoint(
     return update_service(
         db,
         service.service_id,
-        data.model_dump(exclude_unset=True),
+        data,
     )
 
 

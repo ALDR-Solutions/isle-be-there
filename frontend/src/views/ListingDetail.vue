@@ -630,16 +630,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
-import { listingsAPI, reviewsAPI, businessReplyAPI } from '../services/api';
-import { useAuthStore } from '../stores/auth';
-import { useToastStore } from '../stores/toast';
+
+
 import ReviewModal from '../components/ReviewModal.vue';
 import BusinessReplyModal from '../components/BusinessReplyModal.vue';
 import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI } from '../services/api'
+import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI, businessReplyAPI} from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import HotelDetailSection from '../components/listings/detail-sections/HotelDetailSection.vue'
