@@ -117,7 +117,7 @@ def require_booking_owner(
 
 
 def require_review_owner(
-    review_id: int,
+    review_id: UUID,
     user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ) -> Review:
@@ -139,8 +139,22 @@ def require_listing_owner(
     user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ) -> Listing:
-    listing = get_listing_or_404(db, listing_id)
-    return ensure_listing_owner(db, user, listing)
+    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    if user.user_type == "admin":
+        return listing
+
+    if not listing.business_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    business = db.exec(
+        select(Business).where(Business.id == listing.business_id)
+    ).first()
+    if not business or str(business.user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return listing
 
 
 def require_service_access(
@@ -148,8 +162,42 @@ def require_service_access(
     user: User = Depends(require_roles("business", "employee", "admin")),
     db: Session = Depends(get_db),
 ) -> Service:
-    service = get_service_or_404(db, service_id)
-    return ensure_service_access(db, user, service)
+
+    service = db.exec(select(Service).where(Service.service_id == service_id)).first()
+
+    if not service:
+        raise HTTPException(404, "Service not found")
+
+    if user.user_type == "admin":
+        return service
+
+    listing = db.exec(select(Listing).where(Listing.id == service.listing_id)).first()
+
+    if not listing:
+        raise HTTPException(404, "Listing not found")
+
+    # business owner
+    if listing.business_id:
+        business = db.exec(
+            select(Business).where(Business.id == listing.business_id)
+        ).first()
+
+        if business and str(business.user_id) == str(user.id):
+            return service
+
+    # employee access
+    assignment = db.exec(
+        select(EmployeeListings).where(
+            EmployeeListings.listing_id == listing.id,
+            EmployeeListings.employee_id == user.id,
+        )
+    ).first()
+
+    if assignment:
+        return service
+
+    raise HTTPException(403, "Not authorized")
+
 
 __all__ = [
     "get_current_user",

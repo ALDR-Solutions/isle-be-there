@@ -1,149 +1,299 @@
 from uuid import UUID
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlmodel import Session, select
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_review_owner, require_roles
+from app.shared.dependencies.permissions import require_roles
 
-from .classification import (
-    BUSINESS_TYPE_UUIDS,
-    check_review_flags,
-    classify_review_text,
-    fallback_business_type_name,
+from .models import Review, BusinessReply
+from .schemas import (
+    ReviewCreate,
+    ReviewResponse,
+    ReviewSubmitResponse,
+    ReviewUpdate,
+    BusinessReplyCreate,
+    BusinessReplyUpdate,
+    BusinessReplyResponse,
 )
-from .models import Review
-from .schemas import ReviewClassifyRequest, ReviewClassifyResponse, ReviewCreate, ReviewUpdate, ReviewSubmitRequest, ReviewSubmitResponse, ReviewVisibilityUpdate
-from .service import delete_review, get_review, list_reviews, submit_review, toggle_review_visibility, update_review
+from .service import (
+    submit_review,
+    delete_review,
+    list_reviews,
+    update_review,
+    create_business_reply,
+    get_business_reply,
+    update_business_reply,
+    delete_business_reply,
+)
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("", response_model=list[dict])
-def get_reviews(
-    listing_id: UUID | None = Query(default=None),
+@router.get(
+    "/{listing_id}/",
+    response_model=list[ReviewResponse],
+    responses={
+        200: {
+            "description": "Reviews for Sunset Eats (listing_id: ff62dcdf-5ce0-42af-a5fd-4785b586636c)"
+        },
+        400: {"description": "Listing is not active"},
+        404: {"description": "Listing not found"},
+    },
+)
+def get_reviews_for_listing_route(
+    listing_id: UUID,
     db: Session = Depends(get_db),
 ):
-    return list_reviews(db, listing_id)
+    """Get all reviews for a specific listing."""
+    reviews = list_reviews(db, listing_id)
+    return reviews
 
 
-@router.post("/submit", response_model=ReviewSubmitResponse, status_code=201)
+@router.post(
+    "/submit",
+    response_model=ReviewSubmitResponse,
+    status_code=201,
+    responses={
+        201: {
+            "description": "Review submitted and classified",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        "listing_id": "ff62dcdf-5ce0-42af-a5fd-4785b586636c",
+                        "user_id": "f9826077-3237-406b-9857-847564313890",
+                        "rating": 4,
+                        "comment": "Great food and atmosphere!",
+                        "detected_language": "en",
+                        "classification_labels": '["food_quality", "service_quality", "ambiance"]',
+                        "main_label": "food_quality",
+                        "second_label": "service_quality",
+                        "third_label": "ambiance",
+                        "classification_method": "ml",
+                        "created_at": "2026-05-19T10:30:00Z",
+                        "detail": "Review submitted and classified",
+                    }
+                }
+            },
+        },
+        400: {"description": "Listing is not active"},
+        401: {"description": "Not authorized"},
+        404: {"description": "Listing not found"},
+        409: {"description": "You already reviewed this listing"},
+        500: {"description": "Review could not be classified"},
+    },
+)
 def submit_review_route(
-    review_request: ReviewSubmitRequest,
+    listing_id: UUID = Form(...),
+    rating: int = Form(..., ge=1, le=5),
+    comment: str | None = Form(default=None),
     current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    """Submit a review with automatic classification.
-    
-    - Classifies the review text using keyword-based (Events/Tours/Services)
-      or ML-based (Hotel/Restaurant) classification
-    - Checks for inappropriate content (profanity, hate speech, spam, personal attacks)
-    - Returns review with classification labels and flag status
-    """
-    # Build a ReviewCreate-compatible object from review_request
-    review_create_payload = ReviewCreate(
-        listing_id=review_request.listing_id,
-        rating=review_request.rating,
-        comment=review_request.comment,
+    """Submit a new review for a listing."""
+    review_create = ReviewCreate(
+        listing_id=listing_id,
+        rating=rating,
+        comment=comment,
     )
-    
     return submit_review(
         db=db,
         user_id=current_user.id,
-        review_request=review_create_payload,
-        business_type_uuid=review_request.business_type_uuid,
-        hotel_name=review_request.hotel_name,
+        review_request=review_create,
     )
 
 
-@router.put("/{review_id}", response_model=dict)
+@router.put(
+    "/{review_id}",
+    response_model=ReviewSubmitResponse,
+    responses={
+        200: {
+            "description": "Review updated with re-classification",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "d3b16653-8629-4af0-b621-7b17e8373195",
+                        "listing_id": "ff62dcdf-5ce0-42af-a5fd-4785b586636c",
+                        "user_id": "f9826077-3237-406b-9857-847564313890",
+                        "rating": 4,
+                        "comment": "Good atmosphere but bad service",
+                        "detected_language": "en",
+                        "classification_labels": '["ambiance", "service_quality", "(none)"]',
+                        "main_label": "ambiance",
+                        "second_label": "service_quality",
+                        "third_label": "(none)",
+                        "classification_method": "keyword",
+                        "created_at": "2026-05-21T01:25:06.342237Z",
+                        "detail": "Review updated",
+                    }
+                }
+            },
+        },
+        401: {"description": "Not authorized to update this review"},
+        404: {"description": "Review not found"},
+        422: {"description": "Validation error"},
+    },
+)
 def update_review_route(
-    review_id: int,
-    review_request: ReviewUpdate,
-    review: Review = Depends(require_review_owner),
+    review_id: UUID,
+    rating: int | None = Form(default=None, ge=1, le=5),
+    comment: str | None = Form(default=None),
+    current_user: User = Depends(require_roles("regular", "admin")),
     db: Session = Depends(get_db),
 ):
-    return update_review(db, review, review_request)
-
-
-@router.delete("/{review_id}", status_code=204)
-def delete_review_route(
-    review_id: int,
-    review: Review = Depends(require_review_owner),
-    db: Session = Depends(get_db),
-):
-    delete_review(db, review)
-    return None
-
-
-@router.patch("/{review_id}/visibility", response_model=dict)
-def toggle_review_visibility_route(
-    review_id: int,
-    review_request: ReviewVisibilityUpdate,
-    current_user: User = Depends(require_roles("admin")),  # Admin only
-    db: Session = Depends(get_db),
-):
-    """Toggle review visibility (admin only).
-    
-    Allows admins to hide/show flagged reviews.
-    """
-    # Get review (must exist)
+    """Update an existing review (owner only). Re-classifies if comment changes."""
     review = db.exec(select(Review).where(Review.id == review_id)).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    
-    return toggle_review_visibility(
-        db=db,
-        review=review,
-        is_visible=review_request.is_visible,
-    )
+    if (
+        str(review.user_id) != str(current_user.id)
+        and current_user.user_type != "admin"
+    ):
+        raise HTTPException(
+            status_code=401, detail="Not authorized to update this review"
+        )
+
+    review_update = ReviewUpdate(rating=rating, comment=comment)
+    return update_review(db, review, review_update)
 
 
-@router.post("/classify", response_model=ReviewClassifyResponse)
-def classify_review_route(
-    review_request: ReviewClassifyRequest,
+@router.delete(
+    "/{review_id}",
+    status_code=204,
+    responses={
+        204: {"description": "Review deleted"},
+        401: {"description": "Not authorized to delete this review"},
+        404: {"description": "Review not found"},
+    },
+)
+def delete_review_route(
+    review_id: UUID,
+    current_user: User = Depends(require_roles("regular", "admin")),
+    db: Session = Depends(get_db),
 ):
-    """Classify a review text using keyword-based or ML-based classification.
+    """Delete a review (owner or admin only)."""
+    review = db.exec(select(Review).where(Review.id == review_id)).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    if (
+        str(review.user_id) != str(current_user.id)
+        and current_user.user_type != "admin"
+    ):
+        raise HTTPException(
+            status_code=401, detail="Not authorized to delete this review"
+        )
 
-    - Events/Tours/Services: Uses keyword-based classification
-    - Hotel/Restaurant: ML-based classification (placeholder - returns not implemented)
+    db.delete(review)
+    db.commit()
 
-    All reviews are checked for inappropriate content (profanity, hate speech, spam, personal attacks).
-    """
-    # First check for flags (applies to ALL business types)
-    flag_result = check_review_flags(review_request.text)
+    return {"detail": "Review deleted"}
 
-    try:
-        result = classify_review_text(
-            review_request.text,
-            review_request.business_type_uuid,
-            review_request.hotel_name,
+
+@router.post(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse,
+    status_code=201,
+    responses={
+        201: {"description": "Business reply created"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to reply to this review"},
+        404: {"description": "Review not found"},
+        409: {"description": "Reply already exists for this review"},
+    },
+)
+def create_reply_route(
+    review_id: UUID,
+    description: str = Form(..., max_length=2000),
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Create a business reply to a review (business/employee only)."""
+    from app.modules.businesses.models import Business
+
+    business = db.exec(
+        select(Business).where(Business.user_id == current_user.id)
+    ).first()
+    if not business:
+        raise HTTPException(
+            status_code=403, detail="No business associated with this user"
         )
-        return ReviewClassifyResponse(
-            business_type_id=result["business_type_id"],
-            business_type=result["business_type"],
-            hotel_name=review_request.hotel_name,
-            main_label=result.get("main_label") or "(none)",
-            second_label=result.get("second_label") or "(none)",
-            third_label=result.get("third_label") or "(none)",
-            is_flagged=flag_result["is_flagged"],
-            flag_reason=flag_result["reason"],
-        )
-    except Exception:
-        logger.exception(
-            "ML review classification fallback triggered for business type %s",
-            review_request.business_type_uuid,
-        )
-        return ReviewClassifyResponse(
-            business_type_id=review_request.business_type_uuid,
-            business_type=fallback_business_type_name(review_request.business_type_uuid),
-            hotel_name=review_request.hotel_name,
-            main_label="(error)",
-            second_label="(error)",
-            third_label="(error)",
-            is_flagged=flag_result["is_flagged"],
-            flag_reason=flag_result["reason"],
-        )
+
+    reply = create_business_reply(
+        db=db,
+        review_id=review_id,
+        business_id=business.id,
+        user_id=current_user.id,
+        description=description,
+    )
+    reply["user_name"] = current_user.username
+    return reply
+
+
+@router.get(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse | None,
+    responses={
+        200: {"description": "Get business reply for a review"},
+        404: {"description": "Reply not found"},
+    },
+)
+def get_reply_route(
+    review_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Get business reply for a review."""
+    return get_business_reply(db, review_id)
+
+
+@router.put(
+    "/{review_id}/reply",
+    response_model=BusinessReplyResponse,
+    responses={
+        200: {"description": "Business reply updated"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to update this reply"},
+        404: {"description": "Reply not found"},
+    },
+)
+def update_reply_route(
+    review_id: UUID,
+    description: str = Form(..., max_length=2000),
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Update a business reply (owner or admin only)."""
+    reply = update_business_reply(
+        db=db,
+        review_id=review_id,
+        user_id=current_user.id,
+        description=description,
+    )
+    return reply
+
+
+@router.delete(
+    "/{review_id}/reply",
+    status_code=204,
+    responses={
+        204: {"description": "Business reply deleted"},
+        401: {"description": "Not authorized"},
+        403: {"description": "Not authorized to delete this reply"},
+        404: {"description": "Reply not found"},
+    },
+)
+def delete_reply_route(
+    review_id: UUID,
+    current_user: User = Depends(require_roles("business", "employee")),
+    db: Session = Depends(get_db),
+):
+    """Delete a business reply (owner or admin only)."""
+    delete_business_reply(
+        db=db,
+        review_id=review_id,
+        user_id=current_user.id,
+    )
+    return {"detail": "Reply deleted"}
