@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.shared.sanitization import sanitize_html
 
 
 class ReviewCreate(BaseModel):
@@ -9,11 +11,21 @@ class ReviewCreate(BaseModel):
     rating: int = Field(ge=1, le=5)
     comment: str | None = Field(default=None, max_length=5000)
 
+    @field_validator("comment", mode="before")
+    @classmethod
+    def strip_html(cls, v):
+        return sanitize_html(v)
+
 
 class ReviewUpdate(BaseModel):
     rating: int | None = Field(default=None, ge=1, le=5)
     comment: str | None = Field(default=None, max_length=5000)
     user_id: UUID | None = None
+
+    @field_validator("comment", mode="before")
+    @classmethod
+    def strip_html(cls, v):
+        return sanitize_html(v)
 
 
 class ReviewResponse(BaseModel):
@@ -38,9 +50,19 @@ class BusinessReplyCreate(BaseModel):
     review_id: UUID
     description: str = Field(max_length=2000)
 
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_html(cls, v):
+        return sanitize_html(v)
+
 
 class BusinessReplyUpdate(BaseModel):
     description: str = Field(max_length=2000)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_html(cls, v):
+        return sanitize_html(v)
 
 
 class BusinessReplyResponse(BaseModel):

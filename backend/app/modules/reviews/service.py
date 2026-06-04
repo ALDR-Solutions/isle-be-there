@@ -20,6 +20,8 @@ from .classifiers.ml_classifier import (
     _load_models,
     _get_embedding_model_with_timeout,
 )
+from app.shared.sanitization import sanitize_html
+
 from .models import Review, BusinessReply
 from .schemas import ReviewCreate, ReviewUpdate
 
@@ -185,7 +187,7 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
     business_type_name = business_type.name
     business_type_uuid = str(listing.business_type)
 
-    text = review_request.comment or ""
+    text = sanitize_html(review_request.comment) or ""
     original_comment = text
 
     if text and len(text) > 5000:
@@ -248,7 +250,7 @@ def update_review(db: Session, review: Review, review_request: ReviewUpdate) -> 
     if review_request.rating is not None:
         review.rating = review_request.rating
     if review_request.comment is not None:
-        review.comment = review_request.comment
+        review.comment = sanitize_html(review_request.comment)
 
     classification_method = None
     if review_request.comment is not None:
@@ -332,7 +334,7 @@ def create_business_reply(
         review_id=review_id,
         business_id=business_id,
         user_id=user_id,
-        description=description,
+        description=sanitize_html(description),
     )
     db.add(reply)
     db.commit()
@@ -391,7 +393,7 @@ def update_business_reply(
             status_code=403, detail="Not authorized to update this reply"
         )
 
-    reply.description = description
+    reply.description = sanitize_html(description)
     reply.updated_at = datetime.utcnow()
     db.add(reply)
     db.commit()
