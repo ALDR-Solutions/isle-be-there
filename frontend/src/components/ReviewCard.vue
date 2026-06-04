@@ -22,17 +22,22 @@
         </svg>
       </div>
     </div>
-    <p v-if="review.comment" class="mt-4 text-gray-600">{{ review.comment }}</p>
+    <p v-if="displayComment" class="mt-4 text-gray-600">{{ displayComment }}</p>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+import { getPublicReviewComment } from '../utils/reviews';
+
+const props = defineProps({
   review: {
     type: Object,
     required: true
   }
 });
+
+const displayComment = computed(() => getPublicReviewComment(props.review));
 
 const getInitial = (name) => {
   return name ? name.charAt(0).toUpperCase() : '?';

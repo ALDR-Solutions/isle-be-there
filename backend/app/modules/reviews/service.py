@@ -204,9 +204,6 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
     translated_text = classification_result["translated_text"]
     classification_method = classification_result["classification_method"]
 
-    if main_label == "(none)" and second_label == "(none)" and third_label == "(none)":
-        raise HTTPException(status_code=500, detail="Review could not be classified")
-
     review = Review(
         listing_id=review_request.listing_id,
         user_id=user_id,

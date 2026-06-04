@@ -362,8 +362,8 @@
                 </span>
               </div>
 
-              <p v-if="review.comment" class="mt-3 text-sm leading-6 text-slate-600">
-                {{ review.comment }}
+              <p v-if="getPublicReviewComment(review)" class="mt-3 text-sm leading-6 text-slate-600">
+                {{ getPublicReviewComment(review) }}
               </p>
 
               <div v-if="review.business_reply" class="mt-4 rounded-lg bg-slate-50 p-4 border border-slate-100">
@@ -709,6 +709,7 @@ import RestaurantDetailSection from '../components/listings/detail-sections/Rest
 import TourDetailSection from '../components/listings/detail-sections/TourDetailSection.vue'
 import ActivityDetailSection from '../components/listings/detail-sections/ActivityDetailSection.vue'
 import ListingBookingServiceCarousel from '../components/listings/ListingBookingServiceCarousel.vue'
+import { getPublicReviewComment } from '../utils/reviews'
 
 const route = useRoute();
 const router = useRouter();
