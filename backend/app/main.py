@@ -1,16 +1,14 @@
-import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from dotenv import load_dotenv
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-load_dotenv()
-
+from app.core.config import settings
 from app.infrastructure.storage import (
     delete_image_from_supabase,
     get_supabase_storage_object_path,
@@ -23,6 +21,7 @@ from app.modules.pricing.router import router as pricing_router
 from app.modules.discounts.router import router as discounts_router
 from app.modules.itineraries.router import router as itineraries_router
 from app.modules.bookings.router import router as bookings_router
+from app.modules.bookings.scheduler import init_scheduler
 from app.modules.businesses.router import router as businesses_router
 from app.modules.users.models import User
 from app.modules.favourites.router import router as favourites_router
@@ -34,6 +33,8 @@ from app.modules.reviews.router import router as reviews_router
 from app.modules.users.router import router as profile_router
 from app.modules.employees.router import router as employees_router
 from app.modules.services.router import router as services_router
+from app.modules.availability.router import router as availability_router
+from app.modules.stripe_payment.router import router as stripe_payment_router
 from app.shared.dependencies.permissions import get_current_user
 
 # Paths
@@ -41,35 +42,35 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup/shutdown events."""
+    settings.validate_runtime()
+    # Startup: initialize scheduler
+    init_scheduler()
+    yield
+    # Shutdown: shut down scheduler gracefully
+    from app.modules.bookings.scheduler import scheduler
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+
+
 app = FastAPI(
     title="Isle Be There API",
     description="Travel platform API with AI recommendations",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
 class UploadCleanupRequest(BaseModel):
     urls: list[str]
 
-
-def get_allowed_origins() -> list[str]:
-    configured_origins = os.getenv("CORS_ALLOW_ORIGINS", "")
-    if configured_origins.strip():
-        return [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
-
-    return [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-    ]
-
-
 # CORS
 app.add_middleware(
     CORSMiddleware,
     # Explicit origins keep credentialed requests compatible across browsers.
-    allow_origins=get_allowed_origins(),
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,6 +96,8 @@ app.include_router(employees_router)
 app.include_router(services_router)
 app.include_router(pricing_router)
 app.include_router(discounts_router)
+app.include_router(availability_router)
+app.include_router(stripe_payment_router)
 
 
 @app.get("/health")

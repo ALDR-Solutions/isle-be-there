@@ -7,6 +7,20 @@ let getRefreshToken = () => null;
 let setTokens = () => {};
 let handleUnauthorized = async () => {};
 
+function setAuthorizationHeader(config, token) {
+  config.headers.Authorization = `Bearer ${token}`;
+  return config;
+}
+
+async function refreshAccessToken(refreshToken) {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+    refresh_token: refreshToken,
+  });
+  const { access_token, refresh_token } = response.data;
+  setTokens({ accessToken: access_token, refreshToken: refresh_token });
+  return access_token;
+}
+
 export function registerAuthSessionHandlers(handlers = {}) {
   if (handlers.getAccessToken) getAccessToken = handlers.getAccessToken;
   if (handlers.getRefreshToken) getRefreshToken = handlers.getRefreshToken;
@@ -26,7 +40,7 @@ api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      setAuthorizationHeader(config, token);
     }
     return config;
   },
@@ -45,17 +59,8 @@ api.interceptors.response.use(
       const refreshToken = getRefreshToken();
       if (refreshToken) {
         try {
-          const response = await axios.post(
-            `${API_BASE_URL}/api/auth/refresh`,
-            {
-              refresh_token: refreshToken,
-            },
-          );
-
-          const { access_token, refresh_token } = response.data;
-          setTokens({ accessToken: access_token, refreshToken: refresh_token });
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          const accessToken = await refreshAccessToken(refreshToken);
+          setAuthorizationHeader(originalRequest, accessToken);
           return api(originalRequest);
         } catch (refreshError) {
           await handleUnauthorized({ reason: "refresh_failed" });
@@ -109,9 +114,12 @@ export const listingsAPI = {
 export const bookingsAPI = {
   getAll: (params) => api.get("/api/bookings", { params }),
   getById: (id) => api.get(`/api/bookings/${id}`),
+  getPrice: (id) => api.get(`/api/bookings/${id}/price`),
   create: (data) => api.post("/api/bookings", data),
+  createBulk: (data) => api.post("/api/bookings/bulk", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
+  delete: (id) => api.delete(`/api/bookings/${id}`),
 };
 
 export const itinerariesAPI = {
@@ -119,6 +127,8 @@ export const itinerariesAPI = {
   getAll: () => api.get('/api/itineraries'),
   getById: (id) => api.get(`/api/itineraries/${id}`),
   save: (data) => api.post('/api/itineraries', data),
+  sendEmail: (id, data = {}) => api.post(`/api/itineraries/${id}/email`, data),
+  sendUnsavedEmail: (data) => api.post('/api/itineraries/email', data),
   delete: (id) => api.delete(`/api/itineraries/${id}`),
 };
 
@@ -227,6 +237,27 @@ export const uploadsAPI = {
     });
   },
   deleteImages: (urls) => api.delete("/api/upload", { data: { urls } }),
+};
+
+// Discounts API
+export const discountsAPI = {
+  getPackageDiscounts: () => api.get("/api/discounts", { params: { discount_type: "package" } }),
+};
+
+// Availability API
+export const availabilityAPI = {
+  // ListingHours
+  getListingHours: (listingId) => api.get(`/api/availability/listings/${listingId}/hours`),
+  createListingHours: (listingId, data) => api.post(`/api/availability/listings/${listingId}/hours`, data),
+  updateListingHours: (listingId, day, data) => api.put(`/api/availability/listings/${listingId}/hours/${day}`, data),
+  deleteListingHours: (listingId, day) => api.delete(`/api/availability/listings/${listingId}/hours/${day}`),
+  // ServiceSlots
+  getServiceSlots: (serviceId) => api.get(`/api/availability/services/${serviceId}/slots`),
+  createServiceSlot: (serviceId, data) => api.post(`/api/availability/services/${serviceId}/slots`, data),
+  deleteServiceSlot: (serviceId, slotId) => api.delete(`/api/availability/services/${serviceId}/slots/${slotId}`),
+  // Service Availability
+  getServiceAvailability: (serviceId, date, people = 1) =>
+    api.get(`/api/availability/services/${serviceId}/available`, { params: { date_param: date, people } }),
 };
 
 export default api;

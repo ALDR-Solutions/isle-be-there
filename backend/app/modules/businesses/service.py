@@ -7,6 +7,13 @@ from app.modules.listings.models import EmployeeListings, Listing
 from app.modules.users.models import User
 from app.modules.users.schemas import UserCreate
 from app.modules.users.service import create_user
+from app.shared.domain import (
+    get_business_by_user_id as lookup_business_by_user_id,
+    get_business_employee_link_or_404,
+    get_business_or_404,
+    get_listing_for_business_or_404,
+    get_owned_business_or_404,
+)
 
 from app.modules.employees.models import Business_Employee
 
@@ -26,14 +33,12 @@ def list_businesses(
 
 
 def get_business_by_id(db: Session, business_id: UUID) -> Business | None:
-    business = db.exec(select(Business).where(Business.id == business_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found")
+    business = get_business_or_404(db, business_id)
     return business.model_dump()
 
 
 def get_business_by_user_id(db: Session, user_id: UUID) -> Business | None:
-    return db.exec(select(Business).where(Business.user_id == user_id)).first()
+    return lookup_business_by_user_id(db, user_id)
 
 
 def list_business_types(db: Session):
@@ -60,9 +65,7 @@ def update_business(
     user_id: str,
     is_admin: bool = False,
 ):
-    business = db.exec(select(Business).where(Business.id == business_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found")
+    business = get_business_or_404(db, business_id)
     if not is_admin and str(business.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -104,9 +107,7 @@ def add_business_employee(
     last_name: str | None = None,
     phone: str | None = None,
 ) -> dict:
-    business = db.exec(select(Business).where(Business.user_id == business_owner_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found for this user")
+    business = get_owned_business_or_404(db, business_owner_id)
 
     existing_user = db.exec(select(User).where(User.email == email)).first()
     if existing_user:
@@ -172,19 +173,8 @@ def update_business_employee(
     last_name: str | None = None,
     phone: str | None = None,
 ) -> dict:
-    business = db.exec(select(Business).where(Business.user_id == business_owner_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found for this user")
-
-    employee_link = db.exec(
-        select(Business_Employee).where(
-            Business_Employee.business_id == business.id,
-            Business_Employee.employee_id == employee_id,
-        )
-    ).first()
-    
-    if not employee_link:
-        raise HTTPException(status_code=404, detail="Employee not found for this business")
+    business = get_owned_business_or_404(db, business_owner_id)
+    employee_link = get_business_employee_link_or_404(db, business.id, employee_id)
 
     user = db.exec(select(User).where(User.id == employee_link.employee_id)).first()
     if not user:
@@ -228,24 +218,9 @@ def add_employee_to_listing(
     employee_id: UUID,
     listing_id: UUID,
 ) -> dict:
-    business = db.exec(select(Business).where(Business.user_id == business_owner_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found for this user")
-
-    employee_link = db.exec(
-        select(Business_Employee).where(
-            Business_Employee.business_id == business.id,
-            Business_Employee.employee_id == employee_id,
-        )
-    ).first()
-    if not employee_link:
-        raise HTTPException(status_code=404, detail="Employee not found for this business")
-
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if str(listing.business_id) != str(business.id):
-        raise HTTPException(status_code=403, detail="Listing does not belong to this business")
+    business = get_owned_business_or_404(db, business_owner_id)
+    get_business_employee_link_or_404(db, business.id, employee_id)
+    listing = get_listing_for_business_or_404(db, business.id, listing_id)
 
     existing_assignment = db.exec(
         select(EmployeeListings).where(
@@ -279,23 +254,9 @@ def remove_employee_from_listing(
     employee_id: UUID,
     listing_id: UUID,
 ) -> dict:
-    business = db.exec(select(Business).where(Business.user_id == business_owner_id)).first()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found for this user")
-    employee_link = db.exec(
-        select(Business_Employee).where(
-            Business_Employee.business_id == business.id,
-            Business_Employee.employee_id == employee_id,
-        )
-    ).first()
-    if not employee_link:
-        raise HTTPException(status_code=404, detail="Employee not found for this business")
-
-    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if str(listing.business_id) != str(business.id):
-        raise HTTPException(status_code=403, detail="Listing does not belong to this business")
+    business = get_owned_business_or_404(db, business_owner_id)
+    get_business_employee_link_or_404(db, business.id, employee_id)
+    listing = get_listing_for_business_or_404(db, business.id, listing_id)
 
     assignment = db.exec(
         select(EmployeeListings).where(

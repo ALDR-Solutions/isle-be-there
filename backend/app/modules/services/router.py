@@ -6,6 +6,7 @@ from uuid import UUID
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import (
+    get_optional_current_user,
     require_roles,
     require_service_access
 )
@@ -28,9 +29,16 @@ router = APIRouter(prefix="/api/services", tags=["Services"])
 @router.get("", response_model=List[ServiceResponse])
 def get_services_endpoint(
     listing_id: UUID | None = None,
-    user: User = Depends(require_roles("regular", "business", "admin", "employee")),
+    user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
+    if user is None:
+        if listing_id is None:
+            return get_services(db)
+        return get_services_by_listing(db, listing_id, "regular")
+
+    if listing_id is None:
+        return get_services(db) if user.user_type == "regular" else get_services_by_listing(db, listing_id, user.user_type)
 
     return get_services_by_listing(db, listing_id, user.user_type)
 

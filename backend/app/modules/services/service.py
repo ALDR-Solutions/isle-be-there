@@ -6,28 +6,11 @@ from fastapi import HTTPException
 
 from app.modules.services.models import Service, StatusTypes
 from app.modules.services.schemas import ServiceCreate, ServiceUpdate
-from app.modules.listings.models import Listing
-
-
-
-
-def _get_service(db: Session, service_id: UUID) -> Service | None:
-    return db.exec(
-        select(Service).where(Service.service_id == service_id)
-    ).scalars().first()
-
-
-def _get_listing(db: Session, listing_id: UUID) -> Listing | None:
-    return db.exec(
-        select(Listing).where(Listing.id == listing_id)
-    ).scalars().first()
+from app.shared.domain import get_listing_or_404, get_service_or_404
 
 
 def get_service_by_id(db: Session, service_id: UUID) -> Service:
-    service = _get_service(db, service_id)
-    if not service:
-        raise HTTPException(404, "Service not found")
-    return service
+    return get_service_or_404(db, service_id)
 
 
 def get_services(db: Session) -> list[Service]:
@@ -54,9 +37,7 @@ def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
     if not data.listing_id:
         raise HTTPException(400, "listing_id is required")
 
-    listing = _get_listing(db, data.listing_id)
-    if not listing:
-        raise HTTPException(404, "Listing not found")
+    get_listing_or_404(db, data.listing_id)
 
     service = Service(**data.model_dump(), user_id=user_id)
 
@@ -67,9 +48,7 @@ def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
 
 
 def update_service(db: Session, service_id: UUID, data: ServiceUpdate) -> Service:
-    service = _get_service(db, service_id)
-    if not service:
-        raise HTTPException(404, "Service not found")
+    service = get_service_or_404(db, service_id)
 
     for k, v in data.model_dump(exclude_unset=True).items():
         setattr(service, k, v)
@@ -81,9 +60,7 @@ def update_service(db: Session, service_id: UUID, data: ServiceUpdate) -> Servic
 
 
 def delete_service(db: Session, service_id: UUID) -> Service:
-    service = _get_service(db, service_id)
-    if not service:
-        raise HTTPException(404, "Service not found")
+    service = get_service_or_404(db, service_id)
 
     service.status = StatusTypes.deleted
     service.updated_at = func.now()
@@ -94,9 +71,7 @@ def delete_service(db: Session, service_id: UUID) -> Service:
 
 
 def deactivate_service(db: Session, service_id: UUID) -> Service:
-    service = _get_service(db, service_id)
-    if not service:
-        raise HTTPException(404, "Service not found")
+    service = get_service_or_404(db, service_id)
 
     service.status = StatusTypes.inactive
     service.updated_at = func.now()

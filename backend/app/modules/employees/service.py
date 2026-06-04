@@ -6,18 +6,19 @@ from sqlmodel import Session, select
 
 from app.modules.businesses.models import Business
 from app.modules.listings.models import EmployeeListings, Listing
-from app.modules.listings.service import _serialize_listings
+from app.modules.listings.service import serialize_listings
 from app.modules.users.models import User
+from app.shared.domain import (
+    get_employee_business_link_or_404,
+    get_listing_for_business_or_404,
+    get_owned_business_or_404,
+)
 
 from .models import Business_Employee
 
 
 def get_employee_listings(db: Session, employee_id: UUID):
-    employee_link = db.exec(
-        select(Business_Employee).where(Business_Employee.employee_id == employee_id)
-    ).first()
-    if not employee_link:
-        raise HTTPException(status_code=404, detail="Employee not found")
+    get_employee_business_link_or_404(db, employee_id)
 
     listings = db.exec(
         select(Listing)
@@ -26,24 +27,18 @@ def get_employee_listings(db: Session, employee_id: UUID):
         .options(selectinload(Listing.business_type_rel))
     ).all()
 
-    return _serialize_listings(db, listings)
+    return serialize_listings(db, listings)
 
 
 def get_employees_for_listing(db: Session, listing_id: UUID, business_owner_id: UUID):
-    # Verify listing exists and belongs to a business owned by the requester
-    result = db.exec(
-        select(Listing, Business)
-        .join(Business, Business.id == Listing.business_id)
-        .where(
-            Listing.id == listing_id,
-            Business.user_id == business_owner_id,
-        )
-    ).first()
-
-    if not result:
-        raise HTTPException(status_code=404, detail="Listing not found or access denied")
-
-    _, business = result
+    business = get_owned_business_or_404(db, business_owner_id)
+    get_listing_for_business_or_404(
+        db,
+        business.id,
+        listing_id,
+        detail="Listing not found or access denied",
+        ownership_detail="Listing not found or access denied",
+    )
 
     employees = db.exec(
         select(Business_Employee, User)

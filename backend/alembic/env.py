@@ -23,6 +23,8 @@ from app.modules.services.models import Service
 from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.discounts.models import Discount
 from app.modules.pricing.models import PlatformPricingConfig
+from app.modules.employees.models import Business_Employee
+from app.modules.availability.models import ListingHours, ServiceSlots
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

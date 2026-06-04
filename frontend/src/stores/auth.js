@@ -4,11 +4,13 @@ import {
   authAPI,
   registerAuthSessionHandlers,
 } from '../services/api';
+import { readStoredTokens, writeStoredTokens } from '../services/authSession';
 import { useFavouritesStore } from './favourites';
 
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref(localStorage.getItem('access_token'));
-  const refreshToken = ref(localStorage.getItem('refresh_token'));
+  const storedTokens = readStoredTokens();
+  const accessToken = ref(storedTokens.accessToken);
+  const refreshToken = ref(storedTokens.refreshToken);
   const user = ref(null);
   const loading = ref(false);
   const error = ref(null);
@@ -32,17 +34,10 @@ export const useAuthStore = defineStore('auth', () => {
   );
 
   function syncTokensToStorage() {
-    if (accessToken.value) {
-      localStorage.setItem('access_token', accessToken.value);
-    } else {
-      localStorage.removeItem('access_token');
-    }
-
-    if (refreshToken.value) {
-      localStorage.setItem('refresh_token', refreshToken.value);
-    } else {
-      localStorage.removeItem('refresh_token');
-    }
+    writeStoredTokens({
+      accessToken: accessToken.value,
+      refreshToken: refreshToken.value,
+    });
   }
 
   function setTokens({ accessToken: nextAccessToken = null, refreshToken: nextRefreshToken = null } = {}) {

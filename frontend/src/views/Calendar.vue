@@ -135,11 +135,12 @@
               </p>
               <div class="mt-2 flex flex-wrap gap-2">
                 <span
-                  v-for="tag in selectedEvent.details.reason_tags"
-                  :key="tag"
-                  class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                  v-for="tag in normalizeItineraryTags(selectedEvent.details.reason_tags)"
+                  :key="tag.key"
+                  class="rounded-full px-3 py-1 text-xs font-medium "
+                  :class="getTagToneClasses(tag.tone)"
                 >
-                  {{ tag }}
+                  {{ tag.label}}
                 </span>
               </div>
             </div>
@@ -221,6 +222,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import { normalizeItineraryTags, getTagToneClasses } from "../utils/itineraryTags";
 
 import { calendarAPI, itinerariesAPI } from "../services/api";
 

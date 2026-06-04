@@ -1,4 +1,5 @@
 from uuid import UUID
+import logging
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlmodel import Session, select
@@ -29,6 +30,7 @@ from .service import (
 )
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
+logger = logging.getLogger(__name__)
 
 
 @router.get(

@@ -9,9 +9,18 @@ class InterestResponse(BaseModel):
     id: UUID
     name: str
     category: str
+    category_id: UUID
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+
+class InterestCategoryResponse(BaseModel):
+    name: str
+    description: str
+
+
+class ItineraryInterestsResponse(BaseModel):
+    categories: list[InterestCategoryResponse]
+    interests: list[InterestResponse]
 
 
 class UserInterestsUpdate(BaseModel):
@@ -34,5 +43,3 @@ class BusinessTypeInterestUpdate(BaseModel):
 
 class BusinessTypeInterestResponse(BusinessTypeInterestBase):
     created_at: datetime
-
-    model_config = {"from_attributes": True}

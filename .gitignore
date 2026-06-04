@@ -159,3 +159,6 @@ node_modules/
 
 .sisyphus/
 alembic/versions/
+.playwright-mcp/
+solution_models/*
+backend/temp_classification_tester.py
