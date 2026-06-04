@@ -35,6 +35,9 @@ class ReviewResponse(BaseModel):
     user_name: str | None = None
     rating: int
     comment: str | None = None
+    censored_comment: str | None = None
+    detected_language: str | None = None
+    translated_comment: str | None = None
     main_label: str | None = None
     second_label: str | None = None
     third_label: str | None = None
@@ -87,6 +90,7 @@ class ReviewSubmitResponse(BaseModel):
     user_id: UUID
     rating: int
     comment: str | None = None
+    censored_comment: str | None = None
     detected_language: str | None = None
     classification_labels: str | None = None
     main_label: str | None = None

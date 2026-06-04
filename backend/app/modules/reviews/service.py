@@ -10,6 +10,7 @@ from app.modules.listings.models import Listing, Statuses
 from app.modules.businesses.models import BusinessType
 from app.modules.users.models import User
 
+from .profanity import censor_text
 from .classifiers.keyword_classifier import (
     BUSINESS_TYPE_UUIDS,
     classify_with_keywords,
@@ -148,6 +149,9 @@ def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
                 "user_name": username,
                 "rating": r.rating,
                 "comment": r.comment,
+                "censored_comment": r.censored_comment,
+                "detected_language": r.detected_language,
+                "translated_comment": r.translated_comment,
                 "main_label": labels[0] if len(labels) > 0 else "(none)",
                 "second_label": labels[1] if len(labels) > 1 else "(none)",
                 "third_label": labels[2] if len(labels) > 2 else "(none)",
@@ -170,14 +174,6 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
     if listing.status != Statuses.active:
         raise HTTPException(status_code=400, detail="Listing is not active")
 
-    existing = db.exec(
-        select(Review)
-        .where(Review.listing_id == review_request.listing_id)
-        .where(Review.user_id == user_id)
-    ).first()
-    if existing:
-        raise HTTPException(status_code=409, detail="You already reviewed this listing")
-
     business_type = db.exec(
         select(BusinessType).where(BusinessType.id == listing.business_type)
     ).first()
@@ -189,6 +185,7 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
 
     text = sanitize_html(review_request.comment) or ""
     original_comment = text
+    censored_comment = censor_text(text) if text else None
 
     if text and len(text) > 5000:
         raise HTTPException(
@@ -219,6 +216,7 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         classified_at=datetime.utcnow(),
         detected_language=detected_lang,
         translated_comment=translated_text if translated_text else None,
+        censored_comment=censored_comment,
     )
 
     try:
@@ -236,6 +234,8 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         "rating": review.rating,
         "comment": review.comment,
         "detected_language": detected_lang,
+        "translated_comment": review.translated_comment,
+        "censored_comment": review.censored_comment,
         "classification_labels": classification_labels,
         "main_label": main_label,
         "second_label": second_label,
@@ -251,6 +251,7 @@ def update_review(db: Session, review: Review, review_request: ReviewUpdate) -> 
         review.rating = review_request.rating
     if review_request.comment is not None:
         review.comment = sanitize_html(review_request.comment)
+        review.censored_comment = censor_text(review_request.comment)
 
     classification_method = None
     if review_request.comment is not None:
@@ -289,6 +290,8 @@ def update_review(db: Session, review: Review, review_request: ReviewUpdate) -> 
         "rating": review.rating,
         "comment": review.comment,
         "detected_language": review.detected_language,
+        "translated_comment": review.translated_comment,
+        "censored_comment": review.censored_comment,
         "classification_labels": review.classification_labels,
         "created_at": review.created_at,
         "detail": "Review updated",
