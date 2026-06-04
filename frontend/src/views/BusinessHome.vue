@@ -1111,7 +1111,6 @@ import {
   businessesAPI,
   interestsAPI,
   listingsAPI,
-  uploadsAPI,
   employeesAPI,
 } from "../services/api";
 import { useToastStore } from "../stores/toast";
@@ -1125,6 +1124,7 @@ import RestaurantDetailForm from "../components/listings/detail-forms/Restaurant
 import TourDetailForm from "../components/listings/detail-forms/TourDetailForm.vue";
 import ActivityDetailForm from "../components/listings/detail-forms/ActivityDetailForm.vue";
 import ListingServicesSection from "../components/services/ListingServicesSection.vue";
+import { useImageManager } from "../composables/useImageManager";
 
 const toastStore = useToastStore();
 const businessStore = useBusinessStore();
@@ -1188,7 +1188,6 @@ function canRestoreListing(listing) {
 }
 
 const showFormModal = ref(false);
-const showRemoveImageConfirmation = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const formSubmitting = ref(false);
@@ -1215,14 +1214,7 @@ const blankForm = () => ({
 
 const form = ref(blankForm());
 const formErrors = ref({});
-const pendingImages = ref([]);
-const imagePendingRemoval = ref(null);
-const originalImageUrls = ref([]);
-const originalListingPayload = ref(null);
-const showImagePreviewModal = ref(false);
-const previewImageIndex = ref(0);
 const mapContainerRef = ref(null);
-let pendingImageId = 0;
 let leafletLoadPromise = null;
 let leafletApi = null;
 let listingMap = null;
@@ -1241,30 +1233,47 @@ const selectedTypeName = computed(
     businessTypes.value.find((t) => t.id === form.value.business_type)?.name,
 );
 const availableTypeInterests = computed(() => typeInterests.value ?? []);
-const displayImages = computed(() => [
-  ...form.value.image_urls
-    .filter((url) => url)
-    .map((url, index) => ({
-      key: `existing-${index}-${url}`,
-      url,
-      index,
-      isPending: false,
-    })),
-  ...pendingImages.value.map((image) => ({
-    key: `pending-${image.id}`,
-    url: image.previewUrl,
-    id: image.id,
-    isPending: true,
-  })),
-]);
-const activePreviewImage = computed(
-  () => displayImages.value[previewImageIndex.value] ?? null,
-);
 const canGeocodeAddress = computed(() =>
   [form.value.street, form.value.city, form.value.country].some((value) =>
     String(value ?? "").trim(),
   ),
 );
+
+const {
+  fileInputRef,
+  isDragging,
+  uploadingCount,
+  pendingImages,
+  imagePendingRemoval,
+  originalImageUrls,
+  originalPayload: originalListingPayload,
+  showImagePreviewModal,
+  showRemoveImageConfirmation,
+  displayImages,
+  activePreviewImage,
+  clearPendingImages,
+  clearOriginalState,
+  resetImageUi,
+  setOriginalState,
+  onFileChange,
+  onDrop,
+  uploadPendingImages,
+  cleanupUploadedImages,
+  deleteImagesOrThrow,
+  getMergedImageUrls,
+  getRemovedOriginalUrls,
+  openImagePreview,
+  closeImagePreview,
+  showPreviousImage,
+  showNextImage,
+  showRemoveConfirmation,
+  cancelRemoveImage,
+  confirmRemoveImage,
+} = useImageManager({
+  form,
+  imageField: "image_urls",
+  folder: "listings",
+});
 
 const availableParishes = computed(() => {
   const details = COUNTRY_DETAILS[form.value.country?.trim()];
@@ -1377,11 +1386,9 @@ function toggleInterestSelection(interestId) {
 function openCreateModal() {
   isEditing.value = false;
   editingId.value = null;
-  clearPendingImages();
-  closeImagePreview();
+  resetImageUi();
   destroyListingMap();
-  originalImageUrls.value = [];
-  originalListingPayload.value = null;
+  clearOriginalState();
   typeInterests.value = [];
   form.value = blankForm();
   formErrors.value = {};
@@ -1391,36 +1398,37 @@ function openCreateModal() {
 function openEditModal(item) {
   isEditing.value = true;
   editingId.value = item.id;
-  clearPendingImages();
-  closeImagePreview();
+  resetImageUi();
   destroyListingMap();
-  originalImageUrls.value = item.image_urls?.length ? [...item.image_urls] : [];
-  originalListingPayload.value = {
-    title: item.title ?? "",
-    business_type: item.business_type ?? "",
-    description: item.description ?? "",
-    base_price: Number(item.base_price ?? 0),
-    address: {
-      street: item.address?.street ?? null,
-      city: item.address?.city ?? "",
-      state: item.address?.state ?? null,
-      postal_code: item.address?.postal_code ?? null,
-      country: item.address?.country ?? "",
+  setOriginalState({
+    imageUrls: item.image_urls?.length ? [...item.image_urls] : [],
+    payload: {
+      title: item.title ?? "",
+      business_type: item.business_type ?? "",
+      description: item.description ?? "",
+      base_price: Number(item.base_price ?? 0),
+      address: {
+        street: item.address?.street ?? null,
+        city: item.address?.city ?? "",
+        state: item.address?.state ?? null,
+        postal_code: item.address?.postal_code ?? null,
+        country: item.address?.country ?? "",
+      },
+      phone_number: item.phone_number ?? null,
+      email_address: item.email_address ?? null,
+      interest_ids: item.interest_ids?.length
+        ? [...normalizeInterestIds(item.interest_ids)]
+        : [],
+      location: item.location
+        ? {
+            lat: item.location.lat,
+            lng: item.location.lng,
+          }
+        : null,
+      image_urls: item.image_urls?.length ? [...item.image_urls] : [],
+      details: item.details ? { ...item.details } : null,
     },
-    phone_number: item.phone_number ?? null,
-    email_address: item.email_address ?? null,
-    interest_ids: item.interest_ids?.length
-      ? [...normalizeInterestIds(item.interest_ids)]
-      : [],
-    location: item.location
-      ? {
-          lat: item.location.lat,
-          lng: item.location.lng,
-        }
-      : null,
-    image_urls: item.image_urls?.length ? [...item.image_urls] : [],
-    details: item.details ? { ...item.details } : null,
-  };
+  });
   form.value = {
     title: item.title ?? "",
     business_type: item.business_type ?? "",
@@ -1447,72 +1455,11 @@ function openEditModal(item) {
 }
 
 function closeFormModal() {
-  clearPendingImages();
-  closeImagePreview();
-  cancelRemoveImage();
+  resetImageUi();
   destroyListingMap();
-  originalImageUrls.value = [];
-  originalListingPayload.value = null;
+  clearOriginalState();
   typeInterests.value = [];
   showFormModal.value = false;
-}
-
-const fileInputRef = ref(null);
-const isDragging = ref(false);
-const uploadingCount = ref(0);
-
-function clearPendingImages() {
-  for (const image of pendingImages.value) {
-    URL.revokeObjectURL(image.previewUrl);
-  }
-  pendingImages.value = [];
-}
-
-function stageFiles(files) {
-  for (const file of files) {
-    if (!file.type.startsWith("image/")) continue;
-    pendingImageId += 1;
-    pendingImages.value.push({
-      id: pendingImageId,
-      file,
-      previewUrl: URL.createObjectURL(file),
-    });
-  }
-}
-
-async function uploadPendingImages() {
-  const uploadedUrls = [];
-
-  try {
-    for (const image of pendingImages.value) {
-      uploadingCount.value++;
-      try {
-        const formData = new FormData();
-        formData.append("file", image.file);
-        const res = await uploadsAPI.uploadImage(formData, {
-          folder: "listings",
-        });
-        uploadedUrls.push(res.data.url);
-      } finally {
-        uploadingCount.value--;
-      }
-    }
-  } catch (error) {
-    error.uploadedUrls = uploadedUrls;
-    throw error;
-  }
-
-  return uploadedUrls;
-}
-
-async function cleanupUploadedImages(urls) {
-  if (!urls.length) return;
-
-  try {
-    await uploadsAPI.deleteImages(urls);
-  } catch (error) {
-    console.error("Failed to clean up uploaded images", error);
-  }
 }
 
 function normalizeCoordinate(value) {
@@ -1713,11 +1660,6 @@ function syncMapToManualCoordinates() {
   updateListingMarker({ centerMap: true });
 }
 
-async function deleteImagesOrThrow(urls) {
-  if (!urls.length) return;
-  await uploadsAPI.deleteImages(urls);
-}
-
 async function rollbackListingUpdate() {
   if (!editingId.value || !originalListingPayload.value) return;
   const rollbackResponse = await listingsAPI.update(
@@ -1725,81 +1667,6 @@ async function rollbackListingUpdate() {
     originalListingPayload.value,
   );
   businessStore.updateListing(rollbackResponse.data);
-}
-
-function openImagePreview(imageKey) {
-  const nextIndex = displayImages.value.findIndex(
-    (image) => image.key === imageKey,
-  );
-  if (nextIndex === -1) return;
-  previewImageIndex.value = nextIndex;
-  showImagePreviewModal.value = true;
-}
-
-function closeImagePreview() {
-  showImagePreviewModal.value = false;
-  previewImageIndex.value = 0;
-}
-
-function showPreviousImage() {
-  if (!displayImages.value.length) return;
-  previewImageIndex.value =
-    (previewImageIndex.value - 1 + displayImages.value.length) %
-    displayImages.value.length;
-}
-
-function showNextImage() {
-  if (!displayImages.value.length) return;
-  previewImageIndex.value =
-    (previewImageIndex.value + 1) % displayImages.value.length;
-}
-
-function onFileChange(e) {
-  stageFiles(Array.from(e.target.files));
-  e.target.value = "";
-}
-
-function onDrop(e) {
-  isDragging.value = false;
-  stageFiles(Array.from(e.dataTransfer.files));
-}
-
-function showRemoveConfirmation(image) {
-  if (image.isPending) {
-    removeImage(image);
-  } else {
-    imagePendingRemoval.value = image;
-    showRemoveImageConfirmation.value = true;
-  }
-}
-
-function cancelRemoveImage() {
-  imagePendingRemoval.value = null;
-  showRemoveImageConfirmation.value = false;
-}
-
-function confirmRemoveImage() {
-  if (!imagePendingRemoval.value) return;
-  removeImage(imagePendingRemoval.value);
-  cancelRemoveImage();
-}
-
-function removeImage(image) {
-  if (image.isPending) {
-    const index = pendingImages.value.findIndex((item) => item.id === image.id);
-    if (index === -1) return;
-    const [removed] = pendingImages.value.splice(index, 1);
-    URL.revokeObjectURL(removed.previewUrl);
-    if (!displayImages.value.length) closeImagePreview();
-    return;
-  }
-
-  form.value.image_urls.splice(image.index, 1);
-  if (!displayImages.value.length) {
-    closeImagePreview();
-  } else if (previewImageIndex.value >= displayImages.value.length) {
-    previewImageIndex.value = displayImages.value.length - 1;
-  }
 }
 
 function validateForm() {
@@ -1840,16 +1707,14 @@ async function submitForm() {
       phone_number: form.value.phone_number.trim() || null,
       email_address: form.value.email_address.trim() || null,
       location: buildLocationPayload(),
-      image_urls: [...form.value.image_urls, ...uploadedUrls],
+      image_urls: getMergedImageUrls(uploadedUrls),
       details: Object.keys(form.value.details).length
         ? form.value.details
         : null,
     };
 
     if (isEditing.value) {
-      const removedOriginalUrls = originalImageUrls.value.filter(
-        (url) => !payload.image_urls.includes(url),
-      );
+      const removedOriginalUrls = getRemovedOriginalUrls(payload.image_urls);
       const response = await listingsAPI.update(editingId.value, payload);
       try {
         await deleteImagesOrThrow(removedOriginalUrls);
@@ -1965,6 +1830,7 @@ watch([() => form.value.latitude, () => form.value.longitude], () => {
 });
 
 onBeforeUnmount(() => {
+  resetImageUi();
   destroyListingMap();
 });
 </script>

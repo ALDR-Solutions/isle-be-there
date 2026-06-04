@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.services.models import StatusTypes
 
@@ -25,6 +25,7 @@ class ServiceBase(BaseModel):
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[ServiceTypeData] = None
     listing_id: Optional[UUID] = None
+    image_urls: Optional[List[str]] = None
 
 
 class ServiceCreate(ServiceBase):
@@ -40,10 +41,13 @@ class ServiceUpdate(BaseModel):
     capacity: Optional[int] = None
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[Dict[str, Any]] = None
+    image_urls: Optional[List[str]] = None
 
 
 class ServiceResponse(ServiceBase):
     service_id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 

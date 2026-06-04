@@ -52,8 +52,8 @@
         :class="{ 'opacity-60': service.status === 'inactive' }"
       >
         <img
-          v-if="service.type_data?.image_url"
-          :src="service.type_data.image_url"
+          v-if="service.image_urls?.length"
+          :src="service.image_urls[0]"
           alt="Service image"
           class="mb-4 h-40 w-full rounded-2xl object-cover"
         />
@@ -165,27 +165,97 @@
           </div>
 
           <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Service Image</label>
-            <input ref="serviceImageInputRef" type="file" accept="image/*" class="hidden" @change="onServiceImageChange" />
-            <div class="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                :disabled="serviceImageUploading"
-                @click="openServiceImagePicker"
-                class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Service Images</label>
+            <div
+              class="relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition"
+              :class="serviceImageDragging
+                ? 'border-cyan-400 bg-cyan-50'
+                : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'"
+              @dragover.prevent="serviceImageDragging = true"
+              @dragleave.prevent="serviceImageDragging = false"
+              @drop.prevent="onServiceImageDrop"
+              @click="openServiceImagePicker"
+            >
+              <input
+                ref="serviceImageInputRef"
+                type="file"
+                accept="image/*"
+                multiple
+                class="hidden"
+                @change="onServiceImageChange"
+              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="mb-3 h-10 w-10 text-slate-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                {{ serviceImageUploading ? 'Uploading...' : 'Upload Image' }}
-              </button>
-              <button
-                v-if="serviceForm.image_url"
-                type="button"
-                @click="serviceForm.image_url = ''"
-                class="rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <p class="text-sm font-semibold text-slate-600">Drag & drop images here</p>
+              <p class="mt-1 text-xs text-slate-400">or click to browse files</p>
+              <p
+                v-if="serviceImageUploadingCount > 0"
+                class="mt-2 text-xs font-semibold text-cyan-600"
               >
-                Remove
-              </button>
+                Uploading {{ serviceImageUploadingCount }} file{{ serviceImageUploadingCount > 1 ? 's' : '' }}...
+              </p>
             </div>
-            <img v-if="serviceForm.image_url" :src="serviceForm.image_url" alt="Service preview" class="mt-3 h-36 w-full rounded-2xl object-cover" />
+            <p
+              v-if="pendingServiceImages.length > 0"
+              class="mt-2 text-xs font-semibold text-cyan-600"
+            >
+              {{ pendingServiceImages.length }} new image{{ pendingServiceImages.length > 1 ? 's' : '' }}
+              ready to upload when you save.
+            </p>
+            <div
+              v-if="serviceDisplayImages.length"
+              class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4"
+            >
+              <div
+                v-for="image in serviceDisplayImages"
+                :key="image.key"
+                class="group relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"
+              >
+                <img
+                  :src="image.url"
+                  class="h-full w-full cursor-zoom-in object-cover"
+                  @click="openServiceImagePreview(image.key)"
+                />
+                <div
+                  v-if="image.isPending"
+                  class="absolute left-1.5 top-1.5 rounded-full bg-cyan-500/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
+                >
+                  New
+                </div>
+                <button
+                  type="button"
+                  @click.stop="showServiceRemoveConfirmation(image)"
+                  class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-white opacity-0 transition group-hover:opacity-100"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-3 w-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-3">
@@ -442,13 +512,109 @@
         </form>
       </div>
     </div>
+
+    <div
+      v-if="showServiceImagePreviewModal && activeServicePreviewImage"
+      class="fixed inset-0 z-[60] flex items-center justify-center px-4"
+      @click.self="closeServiceImagePreview"
+    >
+      <div class="absolute inset-0 bg-slate-950/85 backdrop-blur-sm"></div>
+      <div class="relative flex w-full max-w-5xl items-center justify-center">
+        <button
+          type="button"
+          @click="closeServiceImagePreview"
+          class="absolute right-0 top-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/70 text-white transition hover:bg-slate-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <button
+          v-if="serviceDisplayImages.length > 1"
+          type="button"
+          @click.stop="showPreviousServiceImage"
+          class="absolute left-0 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900/70 text-white transition hover:bg-slate-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <img
+          :src="activeServicePreviewImage.url"
+          class="max-h-[85vh] max-w-full rounded-3xl object-contain shadow-2xl"
+        />
+
+        <button
+          v-if="serviceDisplayImages.length > 1"
+          type="button"
+          @click.stop="showNextServiceImage"
+          class="absolute right-0 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900/70 text-white transition hover:bg-slate-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div
+      v-if="showServiceRemoveImageConfirmation && serviceImagePendingRemoval"
+      class="fixed inset-0 z-[70] flex items-center justify-center px-4"
+      @click.self="cancelServiceRemoveImage"
+    >
+      <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-2xl">
+        <div class="px-6 py-6 sm:px-7">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500/10 sm:mx-0 sm:h-10 sm:w-10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                />
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+              <h3 class="text-base font-semibold text-slate-900">Remove image?</h3>
+              <div class="mt-2 space-y-2">
+                <p class="text-sm text-slate-600">This image will be removed from the service now.</p>
+                <p class="text-sm text-slate-500">
+                  If you save this edit, the image will be permanently deleted from storage. If you cancel the edit instead, the image will stay.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-7">
+          <button
+            type="button"
+            @click="confirmServiceRemoveImage"
+            class="inline-flex w-full justify-center rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-400 sm:ml-3 sm:w-auto"
+          >
+            Remove Image
+          </button>
+          <button
+            type="button"
+            @click="cancelServiceRemoveImage"
+            class="mt-3 inline-flex w-full justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:mt-0 sm:w-auto"
+          >
+            Keep Image
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { servicesAPI, uploadsAPI, availabilityAPI } from '../../services/api'
+import { servicesAPI, availabilityAPI } from '../../services/api'
+import { useImageManager } from '../../composables/useImageManager'
 import { useToastStore } from '../../stores/toast'
 
 const props = defineProps({
@@ -476,8 +642,6 @@ const modalSubmitting = ref(false)
 const actionServiceId = ref(null)
 const serviceErrors = ref({})
 const roomAmenityInput = ref('')
-const serviceImageInputRef = ref(null)
-const serviceImageUploading = ref(false)
 const serviceSlots = ref([])
 const loadingSlots = ref(false)
 const slotDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -501,10 +665,44 @@ const blankServiceForm = () => ({
   availability_notes: '',
   room_type: '',
   room_amenities: [],
-  image_url: '',
+  image_urls: [],
 })
 
 const serviceForm = ref(blankServiceForm())
+const {
+  fileInputRef: serviceImageInputRef,
+  isDragging: serviceImageDragging,
+  uploadingCount: serviceImageUploadingCount,
+  pendingImages: pendingServiceImages,
+  imagePendingRemoval: serviceImagePendingRemoval,
+  originalPayload: originalServicePayload,
+  showImagePreviewModal: showServiceImagePreviewModal,
+  showRemoveImageConfirmation: showServiceRemoveImageConfirmation,
+  displayImages: serviceDisplayImages,
+  activePreviewImage: activeServicePreviewImage,
+  resetImageUi: resetServiceImageUi,
+  setOriginalState: setOriginalServiceState,
+  clearOriginalState: clearOriginalServiceState,
+  onFileChange: onServiceImageChange,
+  onDrop: onServiceImageDrop,
+  uploadPendingImages: uploadPendingServiceImages,
+  cleanupUploadedImages: cleanupUploadedServiceImages,
+  deleteImagesOrThrow: deleteServiceImagesOrThrow,
+  getMergedImageUrls: getMergedServiceImageUrls,
+  getRemovedOriginalUrls: getRemovedOriginalServiceImageUrls,
+  openFilePicker: openServiceImagePicker,
+  openImagePreview: openServiceImagePreview,
+  closeImagePreview: closeServiceImagePreview,
+  showPreviousImage: showPreviousServiceImage,
+  showNextImage: showNextServiceImage,
+  showRemoveConfirmation: showServiceRemoveConfirmation,
+  cancelRemoveImage: cancelServiceRemoveImage,
+  confirmRemoveImage: confirmServiceRemoveImage,
+} = useImageManager({
+  form: serviceForm,
+  imageField: 'image_urls',
+  folder: 'services',
+})
 
 function setServices(nextServices) {
   services.value = nextServices
@@ -542,7 +740,7 @@ function mapServiceToForm(service) {
     availability_notes: availability.notes ?? '',
     room_type: typeData.room_type ?? '',
     room_amenities: normalizeStringArray(typeData.room_amenities),
-    image_url: typeData.image_url ?? '',
+    image_urls: Array.isArray(service.image_urls) ? service.image_urls.filter(Boolean) : [],
   }
 }
 
@@ -557,25 +755,21 @@ function buildAvailabilityPayload() {
 }
 
 function buildTypeDataPayload() {
-  const image_url = serviceForm.value.image_url.trim()
-
   if (isHotelType.value) {
     const room_type = serviceForm.value.room_type.trim()
     const room_amenities = normalizeStringArray(serviceForm.value.room_amenities)
-    if (!room_type && !room_amenities.length && !image_url) return null
+    if (!room_type && !room_amenities.length) return null
     return {
       room_type: room_type || null,
       room_amenities,
-      image_url: image_url || null,
     }
   }
 
-  if (!image_url) return null
-  return { image_url }
+  return null
 }
 
-function buildServicePayload() {
-  return {
+function buildServicePayload(uploadedUrls = [], { includeListingId = true } = {}) {
+  const payload = {
     name: serviceForm.value.name.trim(),
     description: serviceForm.value.description.trim() || null,
     price: Number(serviceForm.value.price),
@@ -584,8 +778,14 @@ function buildServicePayload() {
     status: serviceForm.value.status,
     availability: buildAvailabilityPayload(),
     type_data: buildTypeDataPayload(),
-    listing_id: props.listing.id,
+    image_urls: getMergedServiceImageUrls(uploadedUrls),
   }
+
+  if (includeListingId) {
+    payload.listing_id = props.listing.id
+  }
+
+  return payload
 }
 
 function validateServiceForm() {
@@ -645,9 +845,14 @@ function openServiceModal(service = null) {
   if (!props.listing?.id || readOnly.value) return
   editingService.value = service
   serviceForm.value = service ? mapServiceToForm(service) : blankServiceForm()
+  resetServiceImageUi()
   serviceErrors.value = {}
   roomAmenityInput.value = ''
   showServiceModal.value = true
+  setOriginalServiceState({
+    imageUrls: serviceForm.value.image_urls,
+    payload: service ? buildServicePayload([], { includeListingId: false }) : null,
+  })
 
   if (service) {
     loadingSlots.value = true
@@ -660,33 +865,26 @@ function openServiceModal(service = null) {
   }
 }
 
-function openServiceImagePicker() {
-  serviceImageInputRef.value?.click()
-}
-
-async function onServiceImageChange(event) {
-  const file = event.target?.files?.[0]
-  if (!file) return
-
-  serviceImageUploading.value = true
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await uploadsAPI.uploadImage(formData, { folder: 'services' })
-    serviceForm.value.image_url = response.data.url
-  } catch (error) {
-    toastStore.show(error.response?.data?.detail || 'Failed to upload service image.', 'error')
-  } finally {
-    serviceImageUploading.value = false
-    event.target.value = ''
-  }
-}
-
 function closeServiceModal() {
+  resetServiceImageUi()
+  clearOriginalServiceState()
   showServiceModal.value = false
   editingService.value = null
   serviceErrors.value = {}
   roomAmenityInput.value = ''
+}
+
+async function rollbackServiceUpdate() {
+  if (!editingService.value?.service_id || !originalServicePayload.value) return
+  const rollbackResponse = await servicesAPI.update(
+    editingService.value.service_id,
+    originalServicePayload.value,
+  )
+  setServices(
+    services.value.map((service) =>
+      service.service_id === rollbackResponse.data.service_id ? rollbackResponse.data : service
+    )
+  )
 }
 
 async function submitService() {
@@ -694,12 +892,23 @@ async function submitService() {
 
   modalSubmitting.value = true
   serviceErrors.value = {}
+  let uploadedUrls = []
 
   try {
-    const payload = buildServicePayload()
+    uploadedUrls = await uploadPendingServiceImages()
+    const payload = buildServicePayload(uploadedUrls)
 
     if (editingService.value) {
+      const removedOriginalUrls = getRemovedOriginalServiceImageUrls(payload.image_urls)
       const response = await servicesAPI.update(editingService.value.service_id, payload)
+      try {
+        await deleteServiceImagesOrThrow(removedOriginalUrls)
+      } catch (deleteError) {
+        await rollbackServiceUpdate()
+        await cleanupUploadedServiceImages(uploadedUrls)
+        uploadedUrls = []
+        throw deleteError
+      }
       setServices(
         services.value.map((service) =>
           service.service_id === response.data.service_id ? response.data : service
@@ -715,6 +924,8 @@ async function submitService() {
     closeServiceModal()
   } catch (error) {
     console.error('Failed to save service', error)
+    const urlsToCleanup = uploadedUrls.length ? uploadedUrls : (error.uploadedUrls ?? [])
+    await cleanupUploadedServiceImages(urlsToCleanup)
     serviceErrors.value.submit = error.response?.data?.detail || 'Failed to save service. Please try again.'
     toastStore.show('Failed to save service.', 'error')
   } finally {
@@ -920,6 +1131,10 @@ function typeSummary(service) {
 
   return ''
 }
+
+onBeforeUnmount(() => {
+  resetServiceImageUi()
+})
 </script>
 
 <style scoped>

@@ -68,6 +68,22 @@
           : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm'"
         @click="$emit('select', service.service_id)"
       >
+        <div v-if="service.image_urls?.length" class="mb-4 overflow-hidden rounded-2xl bg-slate-100">
+          <img
+            :src="service.image_urls[0]"
+            :alt="service.name || 'Service image'"
+            class="h-40 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+        <div
+          v-else
+          class="mb-4 flex h-40 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-slate-300"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="truncate text-lg font-bold text-slate-900">{{ service.name || 'Unnamed service' }}</p>

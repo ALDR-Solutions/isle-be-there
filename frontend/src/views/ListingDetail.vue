@@ -185,6 +185,71 @@
           </div>
 
           <div class="lg:col-span-1">
+            <div
+              v-if="selectedServiceImages.length"
+              class="mb-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-600">Service Gallery</p>
+                  <p class="mt-2 text-lg font-bold text-slate-900">{{ selectedService?.name }}</p>
+                </div>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                  {{ selectedServiceImages.length }} image{{ selectedServiceImages.length > 1 ? 's' : '' }}
+                </span>
+              </div>
+
+              <div class="relative mt-4 overflow-hidden rounded-2xl bg-slate-100">
+                <img
+                  :src="selectedServiceCurrentImage"
+                  :alt="selectedService?.name || 'Selected service image'"
+                  class="h-64 w-full object-cover"
+                />
+
+                <button
+                  v-if="selectedServiceImages.length > 1"
+                  type="button"
+                  @click="showPreviousSelectedServiceImage"
+                  class="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-950/55 text-white backdrop-blur-sm transition hover:bg-slate-950/75"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <button
+                  v-if="selectedServiceImages.length > 1"
+                  type="button"
+                  @click="showNextSelectedServiceImage"
+                  class="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-950/55 text-white backdrop-blur-sm transition hover:bg-slate-950/75"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              <div
+                v-if="selectedServiceImages.length > 1"
+                class="mt-3 grid grid-cols-4 gap-2"
+              >
+                <button
+                  v-for="(image, index) in selectedServiceImages"
+                  :key="`${image}-${index}`"
+                  type="button"
+                  @click="goToSelectedServiceImage(index)"
+                  class="overflow-hidden rounded-2xl border-2 transition"
+                  :class="selectedServiceImageIndex === index ? 'border-cyan-500' : 'border-transparent hover:border-slate-200'"
+                >
+                  <img
+                    :src="image"
+                    :alt="`${selectedService?.name || 'Service'} thumbnail ${index + 1}`"
+                    class="h-16 w-full object-cover"
+                  />
+                </button>
+              </div>
+            </div>
+
             <div class="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
                 {{ isRestaurantType ? 'Average spend' : selectedService ? 'Selected service' : 'Starting from' }}
@@ -665,6 +730,7 @@ const bookingLoadingAvailability = ref(false);
 const bookingAvailabilityError = ref('');
 const bookingSelectedDate = ref('');
 const currentImageIndex = ref(0);
+const selectedServiceImageIndex = ref(0);
 const brokenImages = ref(new Set());
 let heroInterval = null;
 const bookingForm = reactive({
@@ -852,6 +918,18 @@ const selectedService = computed(() => {
   return bookingServices.value.find((service) => String(service.service_id) === String(selectedServiceId.value)) || null
 })
 
+const selectedServiceImages = computed(() => (
+  Array.isArray(selectedService.value?.image_urls)
+    ? selectedService.value.image_urls.filter(Boolean)
+    : []
+))
+
+const selectedServiceCurrentImage = computed(() => (
+  selectedServiceImages.value[selectedServiceImageIndex.value]
+    ?? selectedServiceImages.value[0]
+    ?? null
+))
+
 const selectedServicePrice = computed(() => {
   const price = Number(selectedService.value?.price)
   return Number.isFinite(price) ? price.toFixed(2) : '0.00'
@@ -926,6 +1004,24 @@ const currentImage = computed(() => {
 
 });
 
+watch(
+  selectedServiceImages,
+  (nextImages) => {
+    if (!nextImages.length) {
+      selectedServiceImageIndex.value = 0
+      return
+    }
+    if (selectedServiceImageIndex.value >= nextImages.length) {
+      selectedServiceImageIndex.value = 0
+    }
+  },
+  { immediate: true },
+)
+
+watch(selectedServiceId, () => {
+  selectedServiceImageIndex.value = 0
+})
+
 const SERVICE_FEE_PERCENT = 0.10;
 
 const receiptSubtotal = computed(() => {
@@ -978,6 +1074,23 @@ const prevImage = () => {
   currentImageIndex.value = 
     (currentImageIndex.value - 1 + images.value.length) % images.value.length;
 };
+
+const showPreviousSelectedServiceImage = () => {
+  if (!selectedServiceImages.value.length) return
+  selectedServiceImageIndex.value =
+    (selectedServiceImageIndex.value - 1 + selectedServiceImages.value.length) %
+    selectedServiceImages.value.length
+}
+
+const showNextSelectedServiceImage = () => {
+  if (!selectedServiceImages.value.length) return
+  selectedServiceImageIndex.value =
+    (selectedServiceImageIndex.value + 1) % selectedServiceImages.value.length
+}
+
+const goToSelectedServiceImage = (index) => {
+  selectedServiceImageIndex.value = index
+}
 
 const goToImage = (index) => {
   currentImageIndex.value = index;
