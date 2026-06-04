@@ -20,9 +20,6 @@ class Review(SQLModel, table=True):
     __tablename__ = "reviews"
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="check_rating_range"),
-        UniqueConstraint(
-            "listing_id", "user_id", name="unique_review_per_user_per_listing"
-        ),
     )
 
     id: UUID = Field(

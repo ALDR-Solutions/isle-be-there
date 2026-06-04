@@ -44,3 +44,6 @@ scikit-learn==1.8.0
 sentence-transformers==5.2.3
 langdetect
 deep-translator
+
+# Profanity filtering
+better-profanity==0.7.0
