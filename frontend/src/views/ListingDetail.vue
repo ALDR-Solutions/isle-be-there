@@ -772,6 +772,7 @@ const showReplyModal = ref(false);
 const editingReply = ref(null);
 const replyingToReview = ref(null);
 let activeListingRequestToken = 0;
+let activeBookingAvailabilityRequestKey = '';
 
 const isLoggedIn = computed(() => authStore.isAuthenticated);
 const currentUser = computed(() => authStore.user);
@@ -1040,6 +1041,43 @@ watch(selectedServiceId, () => {
   selectedServiceImageIndex.value = 0
 })
 
+function getBookingAvailabilityRequestKey() {
+  return [
+    showBooking.value ? 'open' : 'closed',
+    selectedServiceId.value || '',
+    bookingDateValue.value || '',
+    bookingForm.amount_of_people || 1,
+    isHotelType.value ? 'hotel' : 'timed',
+  ].join(':')
+}
+
+function shouldFetchBookingAvailability() {
+  return (
+    showBooking.value
+    && !isHotelType.value
+    && !!selectedServiceId.value
+    && !!bookingDateValue.value
+  )
+}
+
+function refreshBookingAvailability() {
+  const requestKey = getBookingAvailabilityRequestKey()
+  activeBookingAvailabilityRequestKey = requestKey
+
+  if (isHotelType.value) {
+    clearAvailabilityState()
+    return
+  }
+
+  if (!shouldFetchBookingAvailability()) {
+    clearAvailabilityState()
+    clearSelectedBookingSlot()
+    return
+  }
+
+  fetchBookingAvailability()
+}
+
 const SERVICE_FEE_PERCENT = 0.10;
 
 const receiptSubtotal = computed(() => {
@@ -1153,14 +1191,18 @@ function clearAvailabilityState() {
   bookingLoadingAvailability.value = false;
 }
 
+function clearSelectedBookingSlot() {
+  bookingForm.booking_from_time = '';
+  bookingForm.booking_to_time = '';
+  bookingForm._selectedSlotId = '';
+}
+
 function resetBookingForm() {
   bookingForm.service_id = selectedServiceId.value || '';
   bookingForm.bookers_name = getUserFullName();
   bookingForm.amount_of_people = 1;
-  bookingForm.booking_from_time = '';
-  bookingForm.booking_to_time = '';
+  clearSelectedBookingSlot();
   bookingForm.special_requests = '';
-  bookingForm._selectedSlotId = '';
   bookingSelectedDate.value = '';
   bookingError.value = '';
   clearAvailabilityState();
@@ -1364,6 +1406,8 @@ async function handleOpenBooking() {
 function handleCloseBooking() {
   showBooking.value = false;
   bookingError.value = '';
+  activeBookingAvailabilityRequestKey = getBookingAvailabilityRequestKey();
+  clearAvailabilityState();
 }
 
 function updateHotelCheckIn(date) {
@@ -1414,19 +1458,19 @@ function selectBookingSlot(slotId) {
 
 function updateBookingDate(date) {
   bookingSelectedDate.value = date || ''
-  bookingForm.booking_from_time = ''
-  bookingForm.booking_to_time = ''
-  bookingForm._selectedSlotId = ''
+  clearSelectedBookingSlot()
   bookingAvailability.value = null
   bookingAvailableSlots.value = []
   bookingAvailabilityError.value = ''
 }
 
 async function fetchBookingAvailability() {
+  const requestKey = getBookingAvailabilityRequestKey()
+  activeBookingAvailabilityRequestKey = requestKey
   const serviceId = selectedServiceId.value
   const date = bookingDateValue.value
   const people = bookingForm.amount_of_people || 1
-  if (!serviceId || !date || isHotelType.value) {
+  if (!shouldFetchBookingAvailability()) {
     clearAvailabilityState()
     return
   }
@@ -1434,23 +1478,43 @@ async function fetchBookingAvailability() {
   bookingAvailabilityError.value = ''
   try {
     const response = await availabilityAPI.getServiceAvailability(serviceId, date, people)
+    if (activeBookingAvailabilityRequestKey !== requestKey) {
+      return
+    }
+
     bookingAvailability.value = response.data
     bookingAvailableSlots.value = (response.data?.slots || []).filter(s => s.is_available)
     if (
       bookingForm._selectedSlotId
       && (!selectedSlot.value || selectedSlot.value.remaining_capacity < people)
     ) {
-      bookingForm._selectedSlotId = ''
-      bookingForm.booking_from_time = ''
-      bookingForm.booking_to_time = ''
+      clearSelectedBookingSlot()
     }
   } catch (err) {
+    if (activeBookingAvailabilityRequestKey !== requestKey) {
+      return
+    }
+
     bookingAvailabilityError.value = 'Unable to load availability. Please try again.'
     bookingAvailableSlots.value = []
   } finally {
-    bookingLoadingAvailability.value = false
+    if (activeBookingAvailabilityRequestKey === requestKey) {
+      bookingLoadingAvailability.value = false
+    }
   }
 }
+
+watch(
+  [
+    showBooking,
+    selectedServiceId,
+    bookingDateValue,
+    () => bookingForm.amount_of_people,
+  ],
+  () => {
+    refreshBookingAvailability()
+  },
+)
 
 function validateListingBooking() {
   bookingError.value = '';
