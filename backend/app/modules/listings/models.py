@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.modules.businesses.models import Business, BusinessType
     from app.modules.itineraries.models import ItineraryItem
     from app.modules.interests.models import Interests
+    from app.modules.availability.models import ListingHours
 
 
 class Statuses(str, Enum):
