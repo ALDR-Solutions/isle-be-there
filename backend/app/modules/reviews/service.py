@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, desc, select
 
 from app.modules.listings.models import Listing, Statuses
@@ -19,9 +20,25 @@ from .schemas import ReviewCreate, ReviewUpdate
 import json
 
 
-def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
-    from app.modules.users.models import User
+def _build_business_reply_payload(
+    reply: BusinessReply | None, reply_username: str | None
+) -> dict | None:
+    if not reply:
+        return None
 
+    return {
+        "id": reply.id,
+        "review_id": reply.review_id,
+        "business_id": reply.business_id,
+        "user_id": reply.user_id,
+        "user_name": reply_username,
+        "description": reply.description,
+        "created_at": reply.created_at,
+        "updated_at": reply.updated_at,
+    }
+
+
+def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
     listing_status = db.exec(
         select(Listing.status).where(Listing.id == listing_id)
     ).first()
@@ -31,42 +48,46 @@ def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
     if listing_status != Statuses.active:
         raise HTTPException(status_code=400, detail="Listing is not active")
 
-    reviews_list = db.exec(
-        select(Review)
+    review_author = aliased(User)
+    reply_author = aliased(User)
+
+    review_rows = db.exec(
+        select(Review, review_author.username, BusinessReply, reply_author.username)
+        .select_from(Review)
+        .outerjoin(review_author, Review.user_id == review_author.id)
+        .outerjoin(BusinessReply, BusinessReply.review_id == Review.id)
+        .outerjoin(reply_author, BusinessReply.user_id == reply_author.id)
         .where(Review.listing_id == listing_id)
         .order_by(desc(Review.created_at))
     ).all()
 
     reviews = []
-    for r in reviews_list:
-        user = db.exec(select(User).where(User.id == r.user_id)).first()
-        username = user.username if user else None
-
-        reply = get_business_reply(db, r.id)
-
-        labels = json.loads(r.classification_labels or '["(none)", "(none)", "(none)"]')
+    for review, username, reply, reply_username in review_rows:
+        labels = json.loads(
+            review.classification_labels or '["(none)", "(none)", "(none)"]'
+        )
         classification_method = "keyword"
-        if r.translated_comment:
+        if review.translated_comment:
             classification_method = "ml"
 
         reviews.append(
             {
-                "id": r.id,
-                "listing_id": r.listing_id,
-                "user_id": r.user_id,
+                "id": review.id,
+                "listing_id": review.listing_id,
+                "user_id": review.user_id,
                 "user_name": username,
-                "rating": r.rating,
-                "comment": r.comment,
-                "censored_comment": r.censored_comment,
-                "detected_language": r.detected_language,
-                "translated_comment": r.translated_comment,
+                "rating": review.rating,
+                "comment": review.comment,
+                "censored_comment": review.censored_comment,
+                "detected_language": review.detected_language,
+                "translated_comment": review.translated_comment,
                 "main_label": labels[0] if len(labels) > 0 else "(none)",
                 "second_label": labels[1] if len(labels) > 1 else "(none)",
                 "third_label": labels[2] if len(labels) > 2 else "(none)",
-                "classification_labels": r.classification_labels,
+                "classification_labels": review.classification_labels,
                 "classification_method": classification_method,
-                "created_at": r.created_at,
-                "business_reply": reply,
+                "created_at": review.created_at,
+                "business_reply": _build_business_reply_payload(reply, reply_username),
             }
         )
     return reviews

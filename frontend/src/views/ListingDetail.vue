@@ -308,7 +308,7 @@
             Write a Review
           </button>
 
-          <div v-if="reviews.length > 0" class="mt-4 flex gap-4">
+          <div v-if="!reviewsLoading && !reviewsError && reviews.length > 0" class="mt-4 flex gap-4">
             <select v-model="reviewFilters.rating" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
               <option :value="null">All Ratings</option>
               <option v-for="n in 5" :key="n" :value="n">{{ n }} star{{ n > 1 ? 's' : '' }}</option>
@@ -320,7 +320,21 @@
           </div>
 
           <div
-            v-if="reviews.length === 0"
+            v-if="reviewsLoading"
+            class="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+            <p class="text-base font-medium text-slate-500">Loading reviews...</p>
+            <p class="mt-1 text-sm text-slate-400">Guest feedback is on the way.</p>
+          </div>
+
+          <div
+            v-else-if="reviewsError"
+            class="mt-6 rounded-3xl border border-rose-200 bg-white px-6 py-12 text-center shadow-sm">
+            <p class="text-base font-medium text-slate-700">{{ reviewsError }}</p>
+            <p class="mt-1 text-sm text-slate-400">Please try refreshing the page in a moment.</p>
+          </div>
+
+          <div
+            v-else-if="reviews.length === 0"
             class="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p class="text-base font-medium text-slate-500">No reviews yet.</p>
             <p class="mt-1 text-sm text-slate-400">Be the first to share your experience.</p>
@@ -699,7 +713,7 @@
 
 import ReviewModal from '../components/ReviewModal.vue';
 import BusinessReplyModal from '../components/BusinessReplyModal.vue';
-import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI, businessReplyAPI} from '../services/api'
 import { useAuthStore } from '../stores/auth'
@@ -719,6 +733,8 @@ const toastStore = useToastStore();
 const listing = ref(null)
 const reviews = ref([]);
 const loading = ref(true);
+const reviewsLoading = ref(false);
+const reviewsError = ref('');
 const showBooking = ref(false);
 const bookingServices = ref([]);
 const selectedServiceId = ref('');
@@ -755,6 +771,7 @@ const reviewFilters = ref({ rating: null, mainLabel: null });
 const showReplyModal = ref(false);
 const editingReply = ref(null);
 const replyingToReview = ref(null);
+let activeListingRequestToken = 0;
 
 const isLoggedIn = computed(() => authStore.isAuthenticated);
 const currentUser = computed(() => authStore.user);
@@ -794,7 +811,7 @@ const openEditModal = (review) => {
 const handleReviewSuccess = (message) => {
   showReviewModal.value = false;
   toastStore.show(message, 'success');
-  fetchListings();
+  refreshListingSummaryAndReviews();
 };
 
 const confirmDelete = async (review) => {
@@ -802,7 +819,7 @@ const confirmDelete = async (review) => {
     try {
       await reviewsAPI.delete(review.id);
       toastStore.show('Review deleted', 'success');
-      fetchListings();
+      refreshListingSummaryAndReviews();
     } catch (err) {
       console.error('Failed to delete review', err);
       toastStore.show('Failed to delete review', 'error');
@@ -834,7 +851,7 @@ const openEditReplyModal = (review) => {
 const handleReplySuccess = (message) => {
   showReplyModal.value = false;
   toastStore.show(message, 'success');
-  fetchListings();
+  refreshListingSummaryAndReviews();
 };
 
 const confirmDeleteReply = async (review) => {
@@ -842,7 +859,7 @@ const confirmDeleteReply = async (review) => {
     try {
       await businessReplyAPI.delete(review.id);
       toastStore.show('Response deleted', 'success');
-      fetchListings();
+      refreshListingSummaryAndReviews();
     } catch (err) {
       console.error('Failed to delete reply:', err);
       toastStore.show('Failed to delete response', 'error');
@@ -1166,27 +1183,155 @@ function applyServiceSelectionFallback() {
   bookingForm.service_id = selectedServiceId.value;
 }
 
-async function loadBookingServices() {
-  if (!listing.value?.id) {
+function isCurrentListingRequest(listingId, requestToken) {
+  return (
+    requestToken === activeListingRequestToken
+    && String(route.params.id) === String(listingId)
+  );
+}
+
+function resetListingRouteState() {
+  stopSlideshow();
+  listing.value = null;
+  reviews.value = [];
+  reviewsLoading.value = false;
+  reviewsError.value = '';
+  bookingServices.value = [];
+  bookingServicesLoading.value = false;
+  selectedServiceId.value = '';
+  currentImageIndex.value = 0;
+  selectedServiceImageIndex.value = 0;
+  brokenImages.value = new Set();
+  reviewFilters.value = { rating: null, mainLabel: null };
+  showBooking.value = false;
+  showReceiptModal.value = false;
+  pendingBookingData.value = null;
+  receiptError.value = '';
+  bookingSubmitting.value = false;
+  confirming.value = false;
+  resetBookingForm();
+}
+
+async function fetchListingCore(listingId, { requestToken, showPageLoader = true } = {}) {
+  if (showPageLoader && isCurrentListingRequest(listingId, requestToken)) {
+    loading.value = true;
+  }
+
+  try {
+    const response = await listingsAPI.getById(listingId);
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return null;
+    }
+
+    listing.value = response.data;
+    return response.data;
+  } catch (err) {
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return null;
+    }
+
+    listing.value = null;
+    console.error('Failed to load listing', err);
+    return null;
+  } finally {
+    if (showPageLoader && isCurrentListingRequest(listingId, requestToken)) {
+      loading.value = false;
+    }
+  }
+}
+
+async function fetchListingReviews(listingId, { requestToken } = {}) {
+  if (isCurrentListingRequest(listingId, requestToken)) {
+    reviewsLoading.value = true;
+    reviewsError.value = '';
+  }
+
+  try {
+    const response = await reviewsAPI.getAll({ listing_id: listingId });
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return [];
+    }
+
+    reviews.value = Array.isArray(response.data) ? response.data : [];
+    return reviews.value;
+  } catch (err) {
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return [];
+    }
+
+    reviews.value = [];
+    reviewsError.value = 'Failed to load reviews for this listing.';
+    console.error('Failed to load reviews', err);
+    return [];
+  } finally {
+    if (isCurrentListingRequest(listingId, requestToken)) {
+      reviewsLoading.value = false;
+    }
+  }
+}
+
+async function fetchBookingServices(listingId, { requestToken = activeListingRequestToken } = {}) {
+  if (!listingId) {
     bookingServices.value = [];
     selectedServiceId.value = '';
+    bookingServicesLoading.value = false;
     return;
   }
 
   bookingServicesLoading.value = true;
   bookingError.value = '';
   try {
-    const response = await servicesAPI.getAll({ listing_id: listing.value.id });
+    const response = await servicesAPI.getAll({ listing_id: listingId });
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return [];
+    }
+
     bookingServices.value = Array.isArray(response.data) ? response.data : [];
     applyServiceSelectionFallback();
+    return bookingServices.value;
   } catch (err) {
+    if (!isCurrentListingRequest(listingId, requestToken)) {
+      return [];
+    }
+
     console.error('Failed to load active services for listing detail', err);
     bookingServices.value = [];
     selectedServiceId.value = '';
     bookingError.value = 'Failed to load active services for this listing.';
+    return [];
   } finally {
-    bookingServicesLoading.value = false;
+    if (isCurrentListingRequest(listingId, requestToken)) {
+      bookingServicesLoading.value = false;
+    }
   }
+}
+
+function loadListingDetail(listingId) {
+  if (!listingId) {
+    loading.value = false;
+    listing.value = null;
+    return;
+  }
+
+  activeListingRequestToken += 1;
+  const requestToken = activeListingRequestToken;
+  resetListingRouteState();
+
+  fetchListingCore(listingId, { requestToken });
+  fetchListingReviews(listingId, { requestToken });
+  fetchBookingServices(listingId, { requestToken });
+}
+
+function refreshListingSummaryAndReviews() {
+  const listingId = route.params.id;
+  const requestToken = activeListingRequestToken;
+
+  if (!listingId) {
+    return;
+  }
+
+  fetchListingCore(listingId, { requestToken, showPageLoader: false });
+  fetchListingReviews(listingId, { requestToken });
 }
 
 function handleSelectService(serviceId) {
@@ -1204,7 +1349,7 @@ async function handleOpenBooking() {
   }
 
   if (!bookingServices.value.length && !bookingServicesLoading.value) {
-    await loadBookingServices();
+    await fetchBookingServices(route.params.id);
   }
 
   if (!selectedService.value) {
@@ -1429,27 +1574,6 @@ function handleBackToForm() {
   receiptError.value = '';
 }
 
-const fetchListings = async () => {
-  loading.value = true;
-  try {
-    const listingResponse = await listingsAPI.getById(route.params.id);
-    listing.value = listingResponse.data;
-    await loadBookingServices();
-
-    try {
-      const reviewResponse = await reviewsAPI.getAll({ listing_id: route.params.id });
-      reviews.value = reviewResponse.data;
-    } catch (reviewError) {
-      reviews.value = [];
-      console.error('Failed to load reviews', reviewError);
-    }
-  }catch (err){
-    console.error('Failed to load listing', err);
-  }finally{
-    loading.value = false;
-  }
-};
-
 const handleImageError = (event) => {
   event.target.style.display = 'none';
   event.target.parentElement.innerHTML = `
@@ -1461,9 +1585,13 @@ const handleImageError = (event) => {
   `;
 };
 
-onMounted(() => {
-  fetchListings();
-});
+watch(
+  () => route.params.id,
+  (listingId) => {
+    loadListingDetail(listingId);
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   stopSlideshow();
