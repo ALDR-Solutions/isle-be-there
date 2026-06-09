@@ -85,11 +85,17 @@ def create_listing_endpoint(
 def update_listing_endpoint(
     listing_data: ListingUpdate,
     listing: Listing = Depends(require_listing_owner),
+    current_user: User = Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
     update_data = listing_data.model_dump(exclude_unset=True)
 
-    return update_listing(db, listing, update_data)
+    return update_listing(
+        db,
+        listing,
+        update_data,
+        is_admin=current_user.user_type == "admin",
+    )
 
 
 @router.delete("/{listing_id}", status_code=204)

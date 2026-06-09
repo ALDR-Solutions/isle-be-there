@@ -4,8 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from .models import Statuses
 from app.shared.schemas import Location
+
+from .models import Statuses
 
 
 class _StrictDetailsBase(BaseModel):
@@ -91,7 +92,44 @@ def validate_details(business_type_name: str, details: dict) -> dict:
     return validated.model_dump(exclude_none=True)
 
 
-class ListingBase(BaseModel):
+class ListingWriteBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    description: Optional[str] = None
+    address: Optional[Dict[str, Any]] = None
+    base_price: Optional[float] = None
+    business_type: Optional[UUID] = None
+    image_urls: Optional[List[str]] = None
+    status: Optional[Statuses] = None
+    phone_number: Optional[str] = None
+    email_address: Optional[str] = None
+    interest_ids: Optional[List[UUID]] = None
+    details: Optional[Dict[str, Any]] = None
+    location: Optional[Location] = None
+
+
+class ListingCreate(ListingWriteBase):
+    status: Statuses = Statuses.pending
+
+
+class ListingUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: Optional[str] = None
+    description: Optional[str] = None
+    address: Optional[Dict[str, Any]] = None
+    base_price: Optional[float] = None
+    image_urls: Optional[List[str]] = None
+    status: Optional[Statuses] = None
+    phone_number: Optional[str] = None
+    email_address: Optional[str] = None
+    interest_ids: Optional[List[UUID]] = None
+    details: Optional[Dict[str, Any]] = None
+    location: Optional[Location] = None
+
+
+class ListingResponse(BaseModel):
     business_id: Optional[UUID] = None
     title: str
     description: Optional[str] = None
@@ -107,26 +145,6 @@ class ListingBase(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     location: Optional[Location] = None
-
-class ListingCreate(ListingBase):
-    status: Statuses = Statuses.pending
-
-
-class ListingUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    address: Optional[Dict[str, Any]] = None
-    base_price: Optional[float] = None
-    image_urls: Optional[List[str]] = None
-    status: Optional[Statuses] = None
-    phone_number: Optional[str] = None
-    email_address: Optional[str] = None
-    interest_ids: Optional[List[UUID]] = None
-    details: Optional[Dict[str, Any]] = None
-    location: Optional[Location] = None
-
-
-class ListingResponse(ListingBase):
     id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None

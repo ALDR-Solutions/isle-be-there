@@ -2,29 +2,20 @@
 
 from datetime import datetime
 import random
-from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from geoalchemy2.elements import WKBElement
-from geoalchemy2.shape import from_shape
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from shapely.geometry import Point
 from sqlmodel import Session, asc, col, desc, select
 
 from app.modules.bookings.models import Booking, BookingStatus
-from app.modules.interests.models import ListingInterest, UserInterest, BusinessTypeInterest
-from app.modules.interests.models import ListingInterest, UserInterest
+from app.modules.interests.models import BusinessTypeInterest, ListingInterest, UserInterest
 from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
-from app.shared.domain import (
-    ensure_listing_belongs_to_business,
-    get_business_by_user_id,
-    get_listing_or_404,
-)
-from app.shared.services import extract_lat_lng, build_location
+from app.shared.domain import get_business_by_user_id
+from app.shared.services import build_location, extract_lat_lng
 
 from .models import Listing, Statuses
 
@@ -289,12 +280,20 @@ def get_listing_by_id(db: Session, listing_id: str):
 
 
 def create_listing(db: Session, data: ListingCreate, user_id: str):
+    business = get_business_by_user_id(db, user_id)
+    if not business:
+        raise HTTPException(
+            status_code=400,
+            detail="Create your business profile first.",
+        )
+
     validated_interest_ids = validate_interest_ids_for_business_type(
         db,
         data.business_type,
         data.interest_ids,
     )
     listing = Listing(
+        business_id=business.id,
         **data.model_dump(exclude={"location", "interest_ids"})
     )
 
@@ -313,21 +312,11 @@ def create_listing(db: Session, data: ListingCreate, user_id: str):
 
 def update_listing(
     db: Session,
-    listing_id: str,
+    listing: Listing,
     update_data: dict,
-    user_id: str,
     is_admin: bool = False,
 ):
-    listing = get_listing_or_404(db, listing_id)
     if not is_admin:
-        business = get_business_by_user_id(db, user_id)
-        if not business:
-            raise HTTPException(status_code=403, detail="Not authorized")
-        ensure_listing_belongs_to_business(
-            listing,
-            business,
-            detail="Not authorized",
-        )
         if listing.status == Statuses.suspended:
             raise HTTPException(
                 status_code=403,
