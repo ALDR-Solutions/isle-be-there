@@ -14,8 +14,15 @@ from app.shared.domain import (
     get_listing_for_business_or_404,
     get_owned_business_or_404,
 )
+from app.shared.services import build_location, extract_lat_lng
 
 from app.modules.employees.models import Business_Employee
+
+
+def serialize_business(business: Business) -> dict:
+    data = business.model_dump(exclude={"location"})
+    data["location"] = extract_lat_lng(business.location)
+    return data
 
 
 def list_businesses(
@@ -29,12 +36,12 @@ def list_businesses(
         query = query.where(Business.is_verified == True)
 
     businesses = db.exec(query.order_by(Business.business_name).offset(skip).limit(limit)).all()
-    return [business.model_dump() for business in businesses]
+    return [serialize_business(business) for business in businesses]
 
 
 def get_business_by_id(db: Session, business_id: UUID) -> Business | None:
     business = get_business_or_404(db, business_id)
-    return business.model_dump()
+    return serialize_business(business)
 
 
 def get_business_by_user_id(db: Session, user_id: UUID) -> Business | None:
@@ -50,12 +57,15 @@ def create_business(db: Session, data: dict, user_id: UUID):
     if existing:
         raise HTTPException(status_code=400, detail="User already has a business")
 
+    location_data = data.pop("location", None)
     data["user_id"] = user_id
     business = Business(**data)
+    if location_data:
+        business.location = build_location(location_data)
     db.add(business)
     db.commit()
     db.refresh(business)
-    return business.model_dump()
+    return serialize_business(business)
 
 
 def update_business(
@@ -69,11 +79,14 @@ def update_business(
     if not is_admin and str(business.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    if "location" in update_data:
+        business.location = build_location(update_data.pop("location"))
+
     for key, value in update_data.items():
         setattr(business, key, value)
     db.commit()
     db.refresh(business)
-    return business.model_dump()
+    return serialize_business(business)
 
 def get_business_employees(db: Session, user_id: UUID) -> list[dict]:
     business = db.exec(select(Business).where(Business.user_id == user_id)).first()

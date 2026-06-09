@@ -15,6 +15,7 @@ from .service import (
     get_business_by_user_id,
     list_business_types,
     list_businesses,
+    serialize_business,
     update_business,
 )
 
@@ -44,7 +45,7 @@ def get_my_business(
     business = get_business_by_user_id(db, current_user.id)
     if not business:
         raise HTTPException(status_code=404, detail="No business found for this user")
-    return business.model_dump()
+    return serialize_business(business)
 
 
 @router.get("/listings", response_model=List[dict])

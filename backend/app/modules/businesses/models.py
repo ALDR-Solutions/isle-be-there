@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
-
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, String, Text, text
+from geoalchemy2 import Geography
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -46,8 +46,10 @@ class Business(SQLModel, table=True):
             nullable=True,
         ),
     )
-    latitude: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
-    longitude: Optional[float] = Field(default=None, sa_column=Column(Float, nullable=True))
+    location: Optional[Any] = Field(
+        default=None,
+        sa_column=Column(Geography, nullable=True),
+    )
 
     listings: list["Listing"] = Relationship(back_populates="business_rel")
 

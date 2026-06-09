@@ -1198,8 +1198,7 @@ function mapSavedItineraryToPreview(saved) {
       listing_id: item.listing_id || item.id,
       title: item.title,
       description: item.description || "",
-      business_type_name:
-        item.extra_metadata?.business_type_name || item.item_type,
+      business_type_name: item.extra_metadata?.business_type_name,
       address: item.address_snapshot || {},
       estimated_cost: estimatedCost,
       estimated_duration_hours: estimatedDuration,

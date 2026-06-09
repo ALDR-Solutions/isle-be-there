@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.shared.schemas.location import Location
+
 
 class BusinessBase(BaseModel):
     business_name: str
@@ -14,8 +16,7 @@ class BusinessBase(BaseModel):
     logo_url: Optional[str] = None
     is_verified: Optional[bool] = False
     user_id: Optional[UUID] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    location: Optional[Location] = None
 
 
 class BusinessCreate(BusinessBase):
@@ -31,9 +32,7 @@ class BusinessUpdate(BaseModel):
     website: Optional[str] = None
     logo_url: Optional[str] = None
     is_verified: Optional[bool] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-
+    location: Optional[Location] = None
 
 class BusinessResponse(BusinessBase):
     id: UUID

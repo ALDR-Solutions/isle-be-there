@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from .models import Statuses
+from app.shared.schemas import Location
 
 
 class _StrictDetailsBase(BaseModel):
@@ -105,15 +106,9 @@ class ListingBase(BaseModel):
     details: Optional[Dict[str, Any]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-
-
-class ListingLocation(BaseModel):
-    lat: float
-    lng: float
-
+    location: Optional[Location] = None
 
 class ListingCreate(ListingBase):
-    location: Optional[ListingLocation] = None
     status: Statuses = Statuses.pending
 
 
@@ -128,14 +123,13 @@ class ListingUpdate(BaseModel):
     email_address: Optional[str] = None
     interest_ids: Optional[List[UUID]] = None
     details: Optional[Dict[str, Any]] = None
-    location: Optional[ListingLocation] = None
+    location: Optional[Location] = None
 
 
 class ListingResponse(ListingBase):
     id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
-    location: Optional[ListingLocation] = None
     avg_rating: Optional[float] = None
     review_count: int = 0
     business_type_name: Optional[str] = None

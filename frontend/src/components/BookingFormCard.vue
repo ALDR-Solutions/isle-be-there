@@ -12,7 +12,7 @@
             class="inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize"
             :class="businessTypeBadgeClass"
           >
-            {{ item.business_type_name || item.item_type }}
+            {{ item.business_type_name }}
           </span>
           <p class="text-sm font-bold text-slate-950">
             ${{ item.estimated_cost?.toFixed(2) || '0.00' }}
@@ -336,7 +336,7 @@ const timeEndValue = computed(() => {
 
 // Business type badge classes
 const businessTypeBadgeClass = computed(() => {
-  const type = (props.item?.business_type_name || props.item?.item_type || '').toLowerCase()
+  const type = (props.item?.business_type_name || '').toLowerCase()
   const classes = {
     hotel: 'bg-blue-100 text-blue-700',
     restaurant: 'bg-orange-100 text-orange-700',

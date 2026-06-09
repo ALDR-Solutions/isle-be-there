@@ -356,7 +356,7 @@ const someVisibleSelected = computed(() => filteredItems.value.some((item) => se
 const selectedItems = computed(() => bookableItems.value.filter((item) => selectedItemsIds.value.has(item._key)));
 
 // --- Helpers ---
-const isHotelItem = (item) => item.item_type?.toLowerCase() === 'hotel' || item.extra_metadata?.business_type_name?.toLowerCase() === 'hotel';
+const isHotelItem = (item) => item.extra_metadata?.business_type_name?.toLowerCase() === 'hotel';
 
 const getServicesForItem = (item) => servicesByListing.value[item.listing_id] || [];
 const isServicesLoading = (item) => Boolean(servicesLoadingByListing.value[item.listing_id]);

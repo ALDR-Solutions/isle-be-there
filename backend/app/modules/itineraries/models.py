@@ -110,7 +110,6 @@ class ItineraryItem(SQLModel, table=True):
     itinerary_id: UUID = Field(foreign_key="itineraries.id")
     listing_id: UUID = Field(foreign_key="listings.id")
     linked_booking_id: Optional[UUID] = Field(default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True))
-    item_type: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     title: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     day_date: Optional[date] = Field(default=None, sa_column=Column(Date, nullable=True))

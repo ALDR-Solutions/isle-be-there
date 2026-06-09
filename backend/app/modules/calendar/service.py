@@ -136,7 +136,6 @@ def _load_itinerary_events(
                 itinerary_item_id=item.id,
                 details={
                     "itinerary_title": itinerary.title,
-                    "item_type": item.item_type,
                     "estimated_cost": float(item.estimated_cost or 0),
                     "reason_tags": list(item.reason_tags or []),
                     "address_snapshot": item.address_snapshot,

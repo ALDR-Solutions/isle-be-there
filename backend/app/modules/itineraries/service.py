@@ -21,11 +21,12 @@ from app.modules.discounts.service import (
 )
 from app.modules.interests.models import Interests, UserInterest
 from app.modules.listings.models import Listing, Statuses
-from app.modules.listings.schemas import ListingLocation
-from app.modules.listings.service import filter_by_availability, extract_lat_lng
+from app.modules.listings.service import filter_by_availability
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
 from app.modules.users.models import User
 from app.shared.domain import get_owned_itinerary_or_404, get_user_or_404
+from app.shared.schemas import Location
+from app.shared.services import extract_lat_lng
 
 from .models import (
     Itinerary,
@@ -64,7 +65,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Candidate:
     listing: Listing
-    location: Optional[ListingLocation]
+    location: Optional[Location]
     business_type_name: str
     estimated_cost: float
     estimated_duration_hours: float
@@ -430,7 +431,7 @@ def to_candidate(listing: Listing, budget_level: BudgetLevel) -> Candidate:
     location = extract_lat_lng(listing.location)
     return Candidate(
         listing=listing,
-        location=ListingLocation(**location) if location is not None else None,
+        location=Location(**location) if location is not None else None,
         business_type_name=business_type_name,
         estimated_cost=estimate_cost(listing, business_type_name, budget_level),
         estimated_duration_hours=estimate_duration_hours(listing, business_type_name),
@@ -745,7 +746,6 @@ def build_items_for_saved_itinerary(
                 ItineraryItem(
                     itinerary_id=itinerary_id,
                     listing_id=stop.listing_id,
-                    item_type="stop",
                     title=stop.title,
                     description=stop.description,
                     day_date=day.date,
@@ -797,7 +797,6 @@ def serialize_saved_itinerary(
                 "itinerary_id": item.itinerary_id,
                 "listing_id": item.listing_id,
                 "linked_booking_id": item.linked_booking_id,
-                "item_type": item.item_type,
                 "title": item.title,
                 "description": item.description,
                 "day_date": item.day_date,
@@ -848,7 +847,6 @@ def saved_itinerary_to_plan_response(
                 business_type_name=dict_or_attr_value(
                     extra_metadata,
                     "business_type_name",
-                    item_value(item, "item_type", "stop"),
                 ),
                 address=item_value(item, "address_snapshot", {}) or {},
                 estimated_cost=estimated_cost,

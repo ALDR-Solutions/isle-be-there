@@ -7,55 +7,28 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKBElement
-from geoalchemy2.shape import from_shape, to_shape
+from geoalchemy2.shape import from_shape
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from shapely.geometry import Point
 from sqlmodel import Session, asc, col, desc, select
 
 from app.modules.bookings.models import Booking, BookingStatus
-from app.modules.businesses.models import Business
 from app.modules.interests.models import ListingInterest, UserInterest, BusinessTypeInterest
-from app.modules.availability.service import get_booked_count
 from app.modules.interests.models import ListingInterest, UserInterest
 from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
-from app.modules.users.models import User
 from app.shared.domain import (
     ensure_listing_belongs_to_business,
     get_business_by_user_id,
     get_listing_or_404,
 )
+from app.shared.services import extract_lat_lng, build_location
 
 from .models import Listing, Statuses
 
 ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
-
-
-def build_location(location_data):
-    if not location_data:
-        return None
-
-    try:
-        if isinstance(location_data, dict):
-            lat = float(location_data.get("lat"))
-            lng = float(location_data.get("lng"))
-        else:
-            # Pydantic object
-            lat = float(location_data.lat)
-            lng = float(location_data.lng)
-
-    except (AttributeError, TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Invalid location payload")
-
-    if lat is None or lng is None:
-        raise HTTPException(status_code=400, detail="lat and lng are required")
-
-    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-        raise HTTPException(status_code=400, detail="Location coordinates are out of range")
-
-    return from_shape(Point(lng, lat), srid=4326)
 
 
 def batch_review_stats(db: Session, listing_ids: list) -> dict:
@@ -614,8 +587,3 @@ def filter_by_availability(
 
     return [l for l in listings if l.id in available_listing_ids]
 
-def extract_lat_lng(location) -> Optional[dict]:
-    if isinstance(location, WKBElement):
-        point = to_shape(location)
-        return {"lat": float(point.y), "lng": float(point.x)}
-    return None

@@ -104,7 +104,6 @@ class ItineraryItemResponse(BaseModel):
     itinerary_id: UUID
     listing_id: Optional[UUID] = None
     linked_booking_id: Optional[UUID] = None
-    item_type: str
     title: str
     description: Optional[str] = None
     day_date: date
