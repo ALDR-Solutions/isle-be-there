@@ -6,8 +6,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import DefaultLayout from './layouts/DefaultLayout.vue';
 import AuthLayout from './layouts/AuthLayout.vue';
@@ -17,11 +17,54 @@ import AdminLayout from './layouts/AdminLayout.vue';
 import EmployeeLayout from './layouts/EmployeeLayout.vue';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 
-onMounted(async () => {
-  await authStore.initialize();
-});
+function getRoleRedirect() {
+  if (authStore.role === 'admin') return { name: 'AdminHome' };
+  if (authStore.role === 'business') return { name: 'BusinessHome' };
+  if (authStore.role === 'employee') return { name: 'EmployeeHome' };
+  return { name: 'Home' };
+}
+
+watch(
+  () => [authStore.authResolved, authStore.isAuthenticated, authStore.role, route.fullPath],
+  async ([authResolved, isAuthenticated]) => {
+    if (!authResolved) {
+      return;
+    }
+
+    if (route.meta?.guest && isAuthenticated) {
+      const target = getRoleRedirect();
+      if (target.name !== route.name) {
+        await router.replace(target);
+      }
+      return;
+    }
+
+    if (!(route.meta?.requiresAuth || route.meta?.role)) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      if (route.name !== 'Login') {
+        await router.replace({
+          name: 'Login',
+          query: { redirect: route.fullPath },
+        });
+      }
+      return;
+    }
+
+    if (route.meta?.role && route.meta.role !== authStore.role) {
+      const target = getRoleRedirect();
+      if (target.name !== route.name) {
+        await router.replace(target);
+      }
+    }
+  },
+  { immediate: true },
+);
 
 const layoutComponent = computed(() => {
   const layout = route.meta.layout || 'default';

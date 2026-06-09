@@ -475,6 +475,7 @@ import {
 import { useRouter } from "vue-router";
 import { listingsAPI } from "../services/api";
 import { useAuthStore } from "../stores/auth";
+import { useFavouritesStore } from "../stores/favourites";
 import DestinationCard from "../components/DestinationCard.vue";
 import InterestsModal from "../components/interestsModal.vue";
 import beachImage from "../../images/beach-bkg.jpg";
@@ -482,6 +483,7 @@ import promoBannerImage from "../../images/home-promo-banner.jpg";
 import droneBeachHeroVideo from "../../clips/drone_beach.mp4";
 
 const authStore = useAuthStore();
+const favouritesStore = useFavouritesStore();
 const router = useRouter();
 
 const heroPosterImage = beachImage;
@@ -591,6 +593,18 @@ watch(
       fetchPersonalizedListings();
     }
   },
+);
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated && !favouritesStore.loaded) {
+      favouritesStore.fetchAll().catch((err) => {
+        console.error("Failed to load favourites", err);
+      });
+    }
+  },
+  { immediate: true },
 );
 
 watch(

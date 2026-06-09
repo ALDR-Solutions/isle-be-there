@@ -583,6 +583,8 @@
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { businessesAPI, listingsAPI } from "../services/api";
+import { useAuthStore } from "../stores/auth";
+import { useFavouritesStore } from "../stores/favourites";
 import DestinationCard from "../components/DestinationCard.vue";
 import {
   Dialog,
@@ -618,6 +620,8 @@ const minPriceInput = ref("");
 const maxPriceInput = ref("");
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const favouritesStore = useFavouritesStore();
 const viewMode = ref("list");
 const CATEGORY_SLUG_TO_TYPE_NAME = {
   hotel: "Hotel",
@@ -983,6 +987,18 @@ watch(
     selectedFilters.value = nextSelections;
   },
   { deep: true },
+);
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated && !favouritesStore.loaded) {
+      favouritesStore.fetchAll().catch((err) => {
+        console.error("Failed to load favourites", err);
+      });
+    }
+  },
+  { immediate: true },
 );
 
 // Re-fetch listings whenever the search query changes

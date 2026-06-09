@@ -8,16 +8,20 @@ import { readStoredTokens, writeStoredTokens } from '../services/authSession';
 import { useFavouritesStore } from './favourites';
 
 export const useAuthStore = defineStore('auth', () => {
-  const storedTokens = readStoredTokens();
-  const accessToken = ref(storedTokens.accessToken);
-  const refreshToken = ref(storedTokens.refreshToken);
+  const accessToken = ref(null);
+  const refreshToken = ref(null);
   const user = ref(null);
   const loading = ref(false);
   const error = ref(null);
-  const initialized = ref(false);
-  let initializePromise = null;
+  const bootstrapped = ref(false);
+  const authResolving = ref(false);
+  const authResolved = ref(false);
+  let authResolutionPromise = null;
 
   const hasToken = computed(() => !!accessToken.value);
+  const isAuthPending = computed(
+    () => bootstrapped.value && hasToken.value && !authResolved.value,
+  );
   const role = computed(() => {
     if (!user.value) return null;
     if (user.value.user_type === 'admin') return 'admin';
@@ -43,6 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
   function setTokens({ accessToken: nextAccessToken = null, refreshToken: nextRefreshToken = null } = {}) {
     accessToken.value = nextAccessToken;
     refreshToken.value = nextRefreshToken;
+    bootstrapped.value = true;
+    authResolved.value = !nextAccessToken || !!user.value;
     syncTokensToStorage();
   }
 
@@ -51,12 +57,27 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null;
     refreshToken.value = null;
     user.value = null;
+    bootstrapped.value = true;
+    authResolving.value = false;
+    authResolved.value = true;
+    authResolutionPromise = null;
     syncTokensToStorage();
     favouritesStore.reset();
   }
 
+  function hydrateFromStorage() {
+    if (bootstrapped.value) {
+      return;
+    }
+
+    const storedTokens = readStoredTokens();
+    accessToken.value = storedTokens.accessToken;
+    refreshToken.value = storedTokens.refreshToken;
+    bootstrapped.value = true;
+    authResolved.value = !storedTokens.accessToken;
+  }
+
   async function login(email, password) {
-    const favouritesStore = useFavouritesStore();
     loading.value = true;
     error.value = null;
     
@@ -67,10 +88,11 @@ export const useAuthStore = defineStore('auth', () => {
       setTokens({ accessToken: access_token, refreshToken: refresh_token });
       
       await fetchUser();
-      await favouritesStore.fetchAll(true);
+      authResolved.value = true;
       return true;
     } catch (err) {
       error.value = err.response?.data?.detail || 'Login failed';
+      clearSessionState();
       return false;
     } finally {
       loading.value = false;
@@ -95,6 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchUser() {
     if (!hasToken.value) {
       user.value = null;
+      authResolved.value = true;
       return;
     }
     
@@ -138,34 +161,46 @@ export const useAuthStore = defineStore('auth', () => {
     };
   }
 
-  async function initialize() {
-    if (initialized.value) {
-      return;
+  async function resolveCurrentUser() {
+    await fetchUser();
+  }
+
+  function startAuthResolution() {
+    hydrateFromStorage();
+
+    if (!hasToken.value) {
+      authResolving.value = false;
+      authResolved.value = true;
+      return Promise.resolve(null);
     }
 
-    if (initializePromise) {
-      return initializePromise;
+    if (authResolved.value && user.value) {
+      return Promise.resolve(user.value);
     }
 
-    const favouritesStore = useFavouritesStore();
+    if (authResolutionPromise) {
+      return authResolutionPromise;
+    }
 
-    initializePromise = (async () => {
-      if (hasToken.value) {
-        try {
-          await fetchUser();
-          await favouritesStore.fetchAll(true);
-        } catch (err) {
-          error.value = null;
-        }
-      } else {
-        favouritesStore.reset();
-      }
-    })().finally(() => {
-      initialized.value = true;
-      initializePromise = null;
-    });
+    authResolving.value = true;
 
-    return initializePromise;
+    authResolutionPromise = resolveCurrentUser()
+      .catch(() => {
+        error.value = null;
+        return null;
+      })
+      .finally(() => {
+        authResolving.value = false;
+        authResolved.value = true;
+        authResolutionPromise = null;
+      });
+
+    return authResolutionPromise;
+  }
+
+  function initialize() {
+    hydrateFromStorage();
+    return startAuthResolution();
   }
 
   registerAuthSessionHandlers({
@@ -180,8 +215,11 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     loading,
     error,
-    initialized,
+    bootstrapped,
+    authResolving,
+    authResolved,
     hasToken,
+    isAuthPending,
     role,
     isAuthenticated,
     isBusiness,
@@ -189,6 +227,9 @@ export const useAuthStore = defineStore('auth', () => {
     isEmployee,
     shouldPromptForInterests,
     setTokens,
+    hydrateFromStorage,
+    startAuthResolution,
+    resolveCurrentUser,
     setInterestsHandled,
     clearSessionState,
     login,

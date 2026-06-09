@@ -145,7 +145,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useFavouritesStore } from '../stores/favourites'
 import { useToastStore } from '../stores/toast'
 
@@ -154,6 +154,12 @@ const toastStore = useToastStore()
 
 const favourites = computed(() => favouritesStore.items)
 const loading = computed(() => favouritesStore.loading && !favouritesStore.loaded)
+
+onMounted(() => {
+  favouritesStore.fetchAll().catch((err) => {
+    console.error('Failed to load favourites', err)
+  })
+})
 
 async function removeFavourite(listingId) {
   try {

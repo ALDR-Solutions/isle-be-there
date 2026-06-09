@@ -1194,7 +1194,10 @@ function handleSelectService(serviceId) {
 }
 
 async function handleOpenBooking() {
-  await authStore.initialize();
+  if (authStore.isAuthPending) {
+    await authStore.startAuthResolution();
+  }
+
   if (!authStore.isAuthenticated) {
     router.push({ name: 'Login', query: { redirect: route.fullPath } });
     return;

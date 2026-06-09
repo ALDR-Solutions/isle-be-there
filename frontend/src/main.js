@@ -24,6 +24,9 @@ registerUnauthorizedHandler(async () => {
   }
 })
 
+authStore.hydrateFromStorage()
+authStore.startAuthResolution()
+
 app.use(pinia)
 app.use(router)
 app.use(VueTelInput)

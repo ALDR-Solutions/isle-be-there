@@ -56,7 +56,14 @@
           </form>
 
           <div class="flex shrink-0 items-center justify-end gap-3">
-            <template v-if="authStore.isAuthenticated">
+            <template v-if="showAuthPlaceholder">
+              <div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2.5">
+                <div class="h-8 w-8 animate-pulse rounded-full bg-slate-200"></div>
+                <div class="hidden w-20 animate-pulse rounded-full bg-slate-200 sm:block h-4"></div>
+              </div>
+            </template>
+
+            <template v-else-if="authStore.isAuthenticated">
               <div class="relative">
                 <button
                   @click="desktopDropdownOpen = !desktopDropdownOpen"
@@ -188,7 +195,17 @@
             Listings
           </router-link>
 
-          <template v-if="authStore.isAuthenticated">
+          <template v-if="showAuthPlaceholder">
+            <hr class="border-slate-100" />
+            <div class="rounded-2xl bg-slate-50 px-3 py-3">
+              <div class="animate-pulse">
+                <div class="h-4 w-28 rounded-full bg-slate-200"></div>
+                <div class="mt-3 h-10 rounded-2xl bg-slate-200"></div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="authStore.isAuthenticated">
             <hr class="border-slate-100" />
             <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 mb-2">
               <img
@@ -259,7 +276,8 @@
     </header>
 
     <main>
-      <slot />
+      <AuthResolvingState v-if="showProtectedAuthShell" />
+      <slot v-else />
     </main>
 
     <footer class="relative mt-16 overflow-hidden border-t border-slate-200 bg-slate-950 text-slate-200">
@@ -350,6 +368,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
+import AuthResolvingState from '../components/AuthResolvingState.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -360,6 +379,10 @@ const currentYear = computed(() => new Date().getFullYear());
 const desktopDropdownOpen = ref(false);
 const mobileMenuOpen = ref(false);
 const searchInput = ref('');
+const showAuthPlaceholder = computed(() => authStore.isAuthPending);
+const showProtectedAuthShell = computed(() =>
+  (route.meta?.requiresAuth || route.meta?.role) && authStore.isAuthPending,
+);
 
 const userInitial = computed(() => {
   const name = authStore.user?.first_name || authStore.user?.username || '?'

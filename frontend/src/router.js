@@ -157,30 +157,42 @@ const router = createRouter({
 })
 
 // Route guards
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const authStore = useAuthStore(pinia)
-  await authStore.initialize()
-
-  // Not logged in trying to access a protected route
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return next({ name: 'Login', query: { redirect: to.fullPath } })
+  if (!authStore.bootstrapped) {
+    authStore.hydrateFromStorage()
+    authStore.startAuthResolution()
   }
 
-  // Logged-in users trying to access guest-only routes (login/register)
-  if (to.meta.guest && authStore.isAuthenticated) {
+  const redirectByRole = () => {
     if (authStore.role === 'admin') return next({ name: 'AdminHome' })
     if (authStore.role === 'business') return next({ name: 'BusinessHome' })
     if (authStore.role === 'employee') return next({ name: 'EmployeeHome' })
     return next({ name: 'Home' })
   }
 
+  // Not logged in trying to access a protected route
+  if ((to.meta.requiresAuth || to.meta.role) && !authStore.hasToken) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } })
+  }
+
+  // Logged-in users trying to access guest-only routes (login/register)
+  if (to.meta.guest && authStore.authResolved && authStore.isAuthenticated) {
+    return redirectByRole()
+  }
+
+  if ((to.meta.requiresAuth || to.meta.role) && authStore.hasToken && !authStore.authResolved) {
+    return next()
+  }
+
+  if ((to.meta.requiresAuth || to.meta.role) && authStore.authResolved && !authStore.isAuthenticated) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } })
+  }
+
   // Role-restricted routes
-  if (to.meta.role && authStore.isAuthenticated) {
+  if (to.meta.role && authStore.authResolved && authStore.isAuthenticated) {
     if (to.meta.role !== authStore.role) {
-      if (authStore.role === 'admin') return next({ name: 'AdminHome' })
-      if (authStore.role === 'business') return next({ name: 'BusinessHome' })
-      if (authStore.role === 'employee') return next({ name: 'EmployeeHome' })
-      return next({ name: 'Home' })
+      return redirectByRole()
     }
   }
 

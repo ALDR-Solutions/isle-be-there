@@ -1238,6 +1238,10 @@ function redirectToLogin() {
 }
 
 async function persistGeneratedItinerary({ redirectToCalendar = false } = {}) {
+  if (authStore.isAuthPending) {
+    await authStore.startAuthResolution();
+  }
+
   if (!authStore.isAuthenticated) {
     toastStore.show("Sign in to save your itinerary.", "info");
     redirectToLogin();
@@ -1298,6 +1302,10 @@ async function handleSaveItinerary() {
 }
 
 async function handleEmailItinerary() {
+  if (authStore.isAuthPending) {
+    await authStore.startAuthResolution();
+  }
+
   if (savedItinerary.value?.id && !authStore.isAuthenticated) {
     toastStore.show("Sign in to email your saved itinerary.", "info");
     redirectToLogin();

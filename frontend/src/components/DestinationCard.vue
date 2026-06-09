@@ -275,6 +275,10 @@ watch(
 );
 
 async function toggleFavourite(listingId) {
+  if (authStore.isAuthPending) {
+    await authStore.startAuthResolution();
+  }
+
   if (!authStore.isAuthenticated) {
     toastStore.show("Sign in to save listings to your favourites.", "info");
     router.push({ name: "Login", query: { redirect: route.fullPath } });
