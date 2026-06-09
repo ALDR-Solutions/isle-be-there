@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -10,105 +9,14 @@ from app.modules.listings.models import Listing, Statuses
 from app.modules.businesses.models import BusinessType
 from app.modules.users.models import User
 
+from .classification import classify_review_text
 from .profanity import censor_text
-from .classifiers.keyword_classifier import (
-    BUSINESS_TYPE_UUIDS,
-    classify_with_keywords,
-    get_classification_approach,
-)
-from .classifiers.ml_classifier import (
-    classify_review as ml_classify_review,
-    _load_models,
-    _get_embedding_model_with_timeout,
-)
 from app.shared.sanitization import sanitize_html
 
 from .models import Review, BusinessReply
 from .schemas import ReviewCreate, ReviewUpdate
 
 import json
-
-logger = logging.getLogger(__name__)
-
-
-def _verify_ml_models() -> bool:
-    models_data = _load_models()
-    embedding_model = _get_embedding_model_with_timeout(5)
-    if models_data is None or embedding_model is None:
-        logger.warning(
-            "ML classification models not available. "
-            "Hotel/Restaurant classification will fall back to keyword classifier. "
-            "Models path: %s",
-            __file__,
-        )
-        return False
-    return True
-
-
-ML_MODELS_VERIFIED = _verify_ml_models()
-
-
-def classify_review_text(
-    text: str, business_type_name: str, business_type_uuid: str
-) -> dict:
-    classification_method = "keyword"
-    main_label = "(none)"
-    second_label = "(none)"
-    third_label = "(none)"
-    detected_lang = None
-    translated_text = None
-
-    if get_classification_approach(business_type_name) == "ml":
-        classification_method = "ml"
-        if not ML_MODELS_VERIFIED:
-            logger.warning("ML models not verified, falling back to keyword classifier")
-            classification_method = "ml_fallback"
-
-        try:
-            ml_result = ml_classify_review(
-                text=text, business_type_uuid=business_type_uuid, verbose=False
-            )
-            if ml_result.get("main_label") is None:
-                classification_result = classify_with_keywords(text, business_type_uuid)
-                main_label = classification_result.get("main_label") or "(none)"
-                second_label = classification_result.get("second_label") or "(none)"
-                third_label = classification_result.get("third_label") or "(none)"
-                classification_method = "ml_fallback"
-            else:
-                main_label = ml_result.get("main_label") or "(none)"
-                second_label = ml_result.get("second_label") or "(none)"
-                third_label = ml_result.get("third_label") or "(none)"
-                detected_lang = ml_result.get("detected_language", "en")
-                translated_text = ml_result.get("translated_text")
-        except Exception as e:
-            logger.error("ML classification failed: %s", str(e))
-            try:
-                classification_result = classify_with_keywords(text, business_type_uuid)
-                main_label = classification_result.get("main_label") or "(none)"
-                second_label = classification_result.get("second_label") or "(none)"
-                third_label = classification_result.get("third_label") or "(none)"
-                classification_method = "ml_fallback"
-            except Exception:
-                raise HTTPException(
-                    status_code=500, detail="Review could not be classified"
-                )
-    else:
-        classification_result = classify_with_keywords(text, business_type_uuid)
-        main_label = classification_result.get("main_label") or "(none)"
-        second_label = classification_result.get("second_label") or "(none)"
-        third_label = classification_result.get("third_label") or "(none)"
-
-    classification_labels = json.dumps([main_label, second_label, third_label])
-
-    return {
-        "main_label": main_label,
-        "second_label": second_label,
-        "third_label": third_label,
-        "classification_labels": classification_labels,
-        "detected_lang": detected_lang,
-        "translated_text": translated_text,
-        "classification_method": classification_method,
-    }
 
 
 def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
