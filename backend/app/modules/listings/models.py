@@ -106,13 +106,6 @@ class Listing(SQLModel, table=True):
     details: Optional[dict] = Field(
         default=None, sa_column=Column(JSONB, nullable=True)
     )
-    start_time: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-    end_time: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
-    )
-
     itinerary_items: list["ItineraryItem"] = Relationship(back_populates="listing_rel")
     interests: list["Interests"] = Relationship(
         back_populates="listings",
