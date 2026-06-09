@@ -1,10 +1,15 @@
 from datetime import time
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Column, ForeignKey, Integer, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Relationship, SQLModel
 
+
+if TYPE_CHECKING:
+    from app.modules.listings.models import Listing
+    from app.modules.services.models import Service
 
 class ListingHours(SQLModel, table=True):
     __tablename__ = "listing_hours"

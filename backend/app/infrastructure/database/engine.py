@@ -4,6 +4,8 @@ from sqlmodel import create_engine
 
 from app.core.config import get_settings
 
+from . import models as _models
+
 
 @lru_cache
 def get_engine():
