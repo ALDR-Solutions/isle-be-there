@@ -3,9 +3,11 @@
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
       <div class="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:h-20 sm:px-6 lg:px-8">
         <router-link to="/business" class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-lg shadow-slate-900/10">
-            IBT
-          </div>
+          <img
+            src="/isle-logo-solo.png"
+            alt="Isle Be There logo"
+            class="h-11 w-11 shrink-0 object-contain"
+          />
           <div>
             <p class="hidden text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600 sm:block">Travel Platform</p>
             <p class="text-base font-bold text-slate-900 sm:text-lg">Isle Be There</p>

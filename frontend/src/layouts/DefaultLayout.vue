@@ -3,9 +3,11 @@
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
       <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:h-20 sm:px-6 lg:px-8">
         <router-link to="/" class="flex shrink-0 items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white shadow-lg shadow-slate-900/10">
-            IBT
-          </div>
+          <img
+            src="/isle-logo-solo.png"
+            alt="Isle Be There logo"
+            class="h-11 w-11 shrink-0 object-contain"
+          />
           <div>
             <p class="hidden text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600 sm:block">
               Travel Platform
@@ -303,7 +305,7 @@
               <p>
                 Email:
                 <a href="mailto:hello@islebethere.com" class="transition hover:text-white">
-                  hello@islebethere.com
+                  islebethere@outlook.com
                 </a>
               </p>
               <p>
@@ -329,7 +331,7 @@
               <p>Isle Be There Pte. Ltd.</p>
               <p>123 Marina View</p>
               <p>Level 8, South Tower</p>
-              <p>Singapore 018960</p>
+              <p>Trinidad 000000</p>
             </div>
           </div>
         </div>
