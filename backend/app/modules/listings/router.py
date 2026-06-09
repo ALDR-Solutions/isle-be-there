@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session
@@ -26,12 +26,30 @@ router = APIRouter(prefix="/api/listings", tags=["Listings"])
 
 @router.get("", response_model=List[ListingResponse])
 def get_listings(
+    skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    city: str | None = Query(default=None),
+    country: str | None = Query(default=None),
+    business_type: str | None = Query(default=None),
+    min_price: float | None = Query(default=None, ge=0),
+    max_price: float | None = Query(default=None, ge=0),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = Query(default="asc"),
+    status: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     return list_listings(
         db=db,
+        skip=skip,
         limit=limit,
+        city=city,
+        country=country,
+        business_type=business_type,
+        min_price=min_price,
+        max_price=max_price,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        status=status,
     )
 
 
