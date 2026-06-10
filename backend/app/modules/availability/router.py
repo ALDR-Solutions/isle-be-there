@@ -8,6 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from app.infrastructure.database.session import get_db
+from app.modules.listings.models import Listing
+from app.modules.services.models import Service
+from app.shared.dependencies.permissions import require_listing_owner, require_service_access
 
 from .schemas import (
     ListingHoursCreate,
@@ -34,6 +37,7 @@ logger = logging.getLogger(__name__)
 def create_listing_hours(
     listing_id: UUID,
     data: ListingHoursCreate,
+    listing: Listing = Depends(require_listing_owner),
     db: Session = Depends(get_db),
 ):
     """Create hours for a specific day of the week."""
@@ -45,6 +49,7 @@ def create_listing_hours(
 @router.get("/listings/{listing_id}/hours", response_model=list[ListingHoursResponse])
 def list_listing_hours(
     listing_id: UUID,
+    listing: Listing = Depends(require_listing_owner),
     db: Session = Depends(get_db),
 ):
     """List all hours for a listing."""
@@ -56,6 +61,7 @@ def update_listing_hours(
     listing_id: UUID,
     day: int,
     data: ListingHoursUpdate,
+    listing: Listing = Depends(require_listing_owner),
     db: Session = Depends(get_db),
 ):
     """Update hours for a specific day."""
@@ -66,6 +72,7 @@ def update_listing_hours(
 def delete_listing_hours(
     listing_id: UUID,
     day: int,
+    listing: Listing = Depends(require_listing_owner),
     db: Session = Depends(get_db),
 ):
     """Delete hours for a specific day."""
@@ -81,6 +88,7 @@ def delete_listing_hours(
 def create_service_slot(
     service_id: UUID,
     data: ServiceSlotsCreate,
+    service: Service = Depends(require_service_access),
     db: Session = Depends(get_db),
 ):
     """Create a new service slot."""
@@ -92,6 +100,7 @@ def create_service_slot(
 @router.get("/services/{service_id}/slots", response_model=list[ServiceSlotsResponse])
 def list_service_slots(
     service_id: UUID,
+    service: Service = Depends(require_service_access),
     db: Session = Depends(get_db),
 ):
     """List all slots for a service."""
@@ -102,10 +111,11 @@ def list_service_slots(
 def delete_service_slot(
     service_id: UUID,
     slot_id: int,
+    service: Service = Depends(require_service_access),
     db: Session = Depends(get_db),
 ):
     """Delete a service slot."""
-    availability_service.delete_service_slot(db, slot_id)
+    availability_service.delete_service_slot(db, service_id, slot_id)
 
 
 # ============================================================================

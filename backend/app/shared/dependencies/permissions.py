@@ -199,6 +199,45 @@ def require_service_access(
     raise HTTPException(403, "Not authorized")
 
 
+def get_listing_service_manager_or_403(
+    db: Session,
+    user: User,
+    listing_id: UUID | str,
+) -> Listing:
+    listing = db.exec(select(Listing).where(Listing.id == listing_id)).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    if user.user_type == "admin":
+        return listing
+
+    if listing.business_id:
+        business = db.exec(
+            select(Business).where(Business.id == listing.business_id)
+        ).first()
+        if business and str(business.user_id) == str(user.id):
+            return listing
+
+    assignment = db.exec(
+        select(EmployeeListings).where(
+            EmployeeListings.listing_id == listing.id,
+            EmployeeListings.employee_id == user.id,
+        )
+    ).first()
+    if assignment:
+        return listing
+
+    raise HTTPException(status_code=403, detail="Not authorized")
+
+
+def require_listing_service_manager(
+    listing_id: UUID | str,
+    user: User = Depends(require_roles("business", "employee", "admin")),
+    db: Session = Depends(get_db),
+) -> Listing:
+    return get_listing_service_manager_or_403(db, user, listing_id)
+
+
 __all__ = [
     "get_current_user",
     "get_optional_current_user",
@@ -209,4 +248,6 @@ __all__ = [
     "require_business_owner",
     "require_listing_owner",
     "require_service_access",
+    "get_listing_service_manager_or_403",
+    "require_listing_service_manager",
 ]

@@ -43,35 +43,57 @@ def _is_hotel_service(db: Session, service: Service) -> bool:
     return business_type.name.lower() == "hotel"
 
 
-def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
-    query = (
+def booking_summary_query():
+    return (
         select(
             Booking,
             Service.name.label("service_name"),
             Listing.title.label("listing_name"),
             BusinessType.name.label("listing_business_type_name"),
-            PaymentEvent.created_at.label("paid_at"))
+            PaymentEvent.created_at.label("paid_at"),
+        )
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
         .outerjoin(BusinessType, Listing.business_type == BusinessType.id)
         .outerjoin(
             PaymentEvent,
-            (PaymentEvent.booking_id == Booking.id) &
-            (PaymentEvent.event_type == "payment_intent.confirmed")
+            (PaymentEvent.booking_id == Booking.id)
+            & (PaymentEvent.event_type == "payment_intent.confirmed"),
         )
-        .where(Booking.user_id == user_id)
     )
+
+
+def build_booking_response(
+    db: Session,
+    booking: Booking,
+    service_name: Optional[str],
+    listing_name: Optional[str],
+    listing_business_type_name: Optional[str],
+    paid_at: Optional[datetime],
+) -> BookingResponse:
+    return BookingResponse(
+        **booking.model_dump(),
+        service_name=service_name,
+        listing_name=listing_name,
+        listing_business_type_name=listing_business_type_name,
+        paid_at=paid_at,
+        has_refund=_booking_has_refund(db, booking.id),
+        refund_date=_get_refund_date(db, booking.id),
+    )
+
+
+def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
+    query = booking_summary_query().where(Booking.user_id == user_id)
     results = db.exec(query).all()
 
     return [
-        BookingResponse(
-            **booking.model_dump(),
-            service_name=service_name,
-            listing_name=listing_name,
-            listing_business_type_name=listing_business_type_name,
-            paid_at=paid_at,
-            has_refund=_booking_has_refund(db, booking.id),
-            refund_date=_get_refund_date(db, booking.id),
+        build_booking_response(
+            db,
+            booking,
+            service_name,
+            listing_name,
+            listing_business_type_name,
+            paid_at,
         )
         for booking, service_name, listing_name, listing_business_type_name, paid_at in results
     ]
@@ -89,25 +111,9 @@ def _booking_has_refund(db: Session, booking_id: UUID) -> bool:
 
 
 def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingResponse:
-    query = (
-        select(
-            Booking,
-            Service.name.label("service_name"),
-            Listing.title.label("listing_name"),
-            BusinessType.name.label("listing_business_type_name"),
-            PaymentEvent.created_at.label("paid_at"))
-        .outerjoin(Service, Booking.service_id == Service.service_id)
-        .outerjoin(Listing, Service.listing_id == Listing.id)
-        .outerjoin(BusinessType, Listing.business_type == BusinessType.id)
-        .outerjoin(
-            PaymentEvent,
-            (PaymentEvent.booking_id == Booking.id) &
-            (PaymentEvent.event_type == "payment_intent.confirmed")
-        )
-        .where(
-            Booking.id == booking_id,
-            Booking.user_id == user_id
-        )
+    query = booking_summary_query().where(
+        Booking.id == booking_id,
+        Booking.user_id == user_id,
     )
 
     result = db.exec(query).first()
@@ -117,15 +123,31 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
 
     booking, service_name, listing_name, listing_business_type_name, paid_at = result
 
-    return BookingResponse(
-        **booking.model_dump(),
-        service_name=service_name,
-        listing_name=listing_name,
-        listing_business_type_name=listing_business_type_name,
-        paid_at=paid_at,
-        has_refund=_booking_has_refund(db, booking.id),
-        refund_date=_get_refund_date(db, booking.id),
+    return build_booking_response(
+        db,
+        booking,
+        service_name,
+        listing_name,
+        listing_business_type_name,
+        paid_at,
     )
+
+
+def list_bookings_for_listing(db: Session, listing_id: UUID) -> List[BookingResponse]:
+    query = booking_summary_query().where(Service.listing_id == listing_id)
+    results = db.exec(query).all()
+
+    return [
+        build_booking_response(
+            db,
+            booking,
+            service_name,
+            listing_name,
+            listing_business_type_name,
+            paid_at,
+        )
+        for booking, service_name, listing_name, listing_business_type_name, paid_at in results
+    ]
 
 
 def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:

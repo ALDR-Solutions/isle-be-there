@@ -97,6 +97,19 @@ def get_service_slot(db: Session, slot_id: int) -> ServiceSlots | None:
     return db.exec(select(ServiceSlots).where(ServiceSlots.id == slot_id)).scalars().first()
 
 
+def get_service_slot_for_service(
+    db: Session,
+    service_id: UUID,
+    slot_id: int,
+) -> ServiceSlots | None:
+    """Get a service slot scoped to a specific service."""
+    return db.exec(
+        select(ServiceSlots)
+        .where(ServiceSlots.id == slot_id)
+        .where(ServiceSlots.service_id == service_id)
+    ).scalars().first()
+
+
 def list_service_slots(db: Session, service_id: UUID) -> list[ServiceSlots]:
     """List all slots for a service."""
     return db.exec(
@@ -126,9 +139,9 @@ def create_service_slot(db: Session, data: ServiceSlotsCreate) -> ServiceSlots:
     return slot
 
 
-def delete_service_slot(db: Session, slot_id: int) -> None:
+def delete_service_slot(db: Session, service_id: UUID, slot_id: int) -> None:
     """Delete a service slot."""
-    slot = get_service_slot(db, slot_id)
+    slot = get_service_slot_for_service(db, service_id, slot_id)
     if not slot:
         raise HTTPException(404, "Slot not found")
 
