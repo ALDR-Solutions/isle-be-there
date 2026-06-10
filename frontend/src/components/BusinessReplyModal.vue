@@ -88,9 +88,7 @@ const description = ref(props.reply?.description || '');
 const submitting = ref(false);
 
 watch(() => props.reply, (newReply) => {
-  if (newReply) {
-    description.value = newReply.description || '';
-  }
+  description.value = newReply?.description || '';
 }, { immediate: true });
 
 async function submit() {

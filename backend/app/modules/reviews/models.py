@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     CheckConstraint,
@@ -79,6 +79,7 @@ class BusinessReply(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("review_id", name="unique_reply_per_review"),)
 
     id: UUID = Field(
+        default_factory=uuid4,
         sa_column=Column(
             PGUUID(as_uuid=True),
             primary_key=True,
