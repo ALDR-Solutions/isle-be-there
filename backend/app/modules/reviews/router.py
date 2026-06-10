@@ -8,14 +8,12 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_roles
 
-from .models import Review, BusinessReply
+from .models import Review
 from .schemas import (
     ReviewCreate,
     ReviewResponse,
     ReviewSubmitResponse,
     ReviewUpdate,
-    BusinessReplyCreate,
-    BusinessReplyUpdate,
     BusinessReplyResponse,
 )
 from .service import (
@@ -83,7 +81,6 @@ def get_reviews_for_listing_route(
         400: {"description": "Listing is not active"},
         401: {"description": "Not authorized"},
         404: {"description": "Listing not found"},
-        409: {"description": "You already reviewed this listing"},
         500: {"description": "Review could not be classified"},
     },
 )
@@ -212,21 +209,10 @@ def create_reply_route(
     db: Session = Depends(get_db),
 ):
     """Create a business reply to a review (business/employee only)."""
-    from app.modules.businesses.models import Business
-
-    business = db.exec(
-        select(Business).where(Business.user_id == current_user.id)
-    ).first()
-    if not business:
-        raise HTTPException(
-            status_code=403, detail="No business associated with this user"
-        )
-
     reply = create_business_reply(
         db=db,
         review_id=review_id,
-        business_id=business.id,
-        user_id=current_user.id,
+        current_user=current_user,
         description=description,
     )
     reply["user_name"] = current_user.username
@@ -265,11 +251,11 @@ def update_reply_route(
     current_user: User = Depends(require_roles("business", "employee")),
     db: Session = Depends(get_db),
 ):
-    """Update a business reply (owner or admin only)."""
+    """Update the single business reply for a review."""
     reply = update_business_reply(
         db=db,
         review_id=review_id,
-        user_id=current_user.id,
+        current_user=current_user,
         description=description,
     )
     return reply
@@ -290,10 +276,10 @@ def delete_reply_route(
     current_user: User = Depends(require_roles("business", "employee")),
     db: Session = Depends(get_db),
 ):
-    """Delete a business reply (owner or admin only)."""
+    """Delete the single business reply for a review."""
     delete_business_reply(
         db=db,
         review_id=review_id,
-        user_id=current_user.id,
+        current_user=current_user,
     )
     return {"detail": "Reply deleted"}

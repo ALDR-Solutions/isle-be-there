@@ -213,6 +213,24 @@
         />
 
         <div>
+          <div class="mb-6">
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600"
+            >
+              Guest Feedback
+            </p>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">Reviews</h2>
+          </div>
+
+          <ListingReviewsPanel
+            :listing-id="businessStore.activeListing?.id"
+            :can-reply="true"
+            :can-manage-reply="true"
+            empty-subtext="Customer feedback for this listing will appear here."
+          />
+        </div>
+
+        <div>
           <div class="mb-6 flex items-center justify-between">
             <div>
               <p
@@ -1129,6 +1147,7 @@ import TourDetailForm from "../components/listings/detail-forms/TourDetailForm.v
 import ActivityDetailForm from "../components/listings/detail-forms/ActivityDetailForm.vue";
 import ListingBookingsSection from "../components/bookings/ListingBookingsSection.vue";
 import ListingServicesSection from "../components/services/ListingServicesSection.vue";
+import ListingReviewsPanel from "../components/reviews/ListingReviewsPanel.vue";
 import { useImageManager } from "../composables/useImageManager";
 
 const toastStore = useToastStore();
