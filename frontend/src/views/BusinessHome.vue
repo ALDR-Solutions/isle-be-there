@@ -202,15 +202,17 @@
           </div>
         </div>
 
-        <ListingBookingsSection
-          :listing="businessStore.activeListing"
-        />
-
+  
         <ListingServicesSection
           :listing="businessStore.activeListing"
           :read-only="isListingSuspended(businessStore.activeListing)"
           @services-changed="handleServicesChanged"
         />
+        
+        <ListingBookingsSection
+          :listing="businessStore.activeListing"
+        />
+
 
         <div>
           <div class="mb-6">

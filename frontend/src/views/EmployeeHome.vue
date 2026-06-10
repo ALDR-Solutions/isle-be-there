@@ -82,14 +82,14 @@
           </div>
         </div>
 
-        <ListingBookingsSection
-          :listing="employeeStore.activeListing"
-        />
-
         <ListingServicesSection
           :listing="employeeStore.activeListing"
           :read-only="employeeStore.activeListing?.status === 'suspended'"
           @services-changed="handleServicesChanged"
+        />
+
+        <ListingBookingsSection
+          :listing="employeeStore.activeListing"
         />
 
         <div>
