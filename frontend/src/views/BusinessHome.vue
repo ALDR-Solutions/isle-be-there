@@ -202,6 +202,10 @@
           </div>
         </div>
 
+        <ListingBookingsSection
+          :listing="businessStore.activeListing"
+        />
+
         <ListingServicesSection
           :listing="businessStore.activeListing"
           :read-only="isListingSuspended(businessStore.activeListing)"
@@ -1123,6 +1127,7 @@ import HotelDetailForm from "../components/listings/detail-forms/HotelDetailForm
 import RestaurantDetailForm from "../components/listings/detail-forms/RestaurantDetailForm.vue";
 import TourDetailForm from "../components/listings/detail-forms/TourDetailForm.vue";
 import ActivityDetailForm from "../components/listings/detail-forms/ActivityDetailForm.vue";
+import ListingBookingsSection from "../components/bookings/ListingBookingsSection.vue";
 import ListingServicesSection from "../components/services/ListingServicesSection.vue";
 import { useImageManager } from "../composables/useImageManager";
 

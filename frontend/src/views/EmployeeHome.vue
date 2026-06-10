@@ -82,6 +82,10 @@
           </div>
         </div>
 
+        <ListingBookingsSection
+          :listing="employeeStore.activeListing"
+        />
+
         <ListingServicesSection
           :listing="employeeStore.activeListing"
           :read-only="employeeStore.activeListing?.status === 'suspended'"
@@ -97,6 +101,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useEmployeeStore } from '../stores/employee'
+import ListingBookingsSection from '../components/bookings/ListingBookingsSection.vue'
 import ListingServicesSection from '../components/services/ListingServicesSection.vue'
 
 const employeeStore = useEmployeeStore()
