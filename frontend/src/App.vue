@@ -42,6 +42,14 @@ watch(
       return;
     }
 
+    if (route.meta?.visitorOrUserOnly && isAuthenticated && authStore.role !== 'user') {
+      const target = getRoleRedirect();
+      if (target.name !== route.name) {
+        await router.replace(target);
+      }
+      return;
+    }
+
     if (!(route.meta?.requiresAuth || route.meta?.role)) {
       return;
     }

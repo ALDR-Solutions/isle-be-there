@@ -7,7 +7,8 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home
+    component: Home,
+    meta: { visitorOrUserOnly: true }
   },
 
   {
@@ -177,6 +178,15 @@ router.beforeEach((to, from, next) => {
 
   // Logged-in users trying to access guest-only routes (login/register)
   if (to.meta.guest && authStore.authResolved && authStore.isAuthenticated) {
+    return redirectByRole()
+  }
+
+  if (
+    to.meta.visitorOrUserOnly &&
+    authStore.authResolved &&
+    authStore.isAuthenticated &&
+    authStore.role !== 'user'
+  ) {
     return redirectByRole()
   }
 
