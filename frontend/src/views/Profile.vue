@@ -1,13 +1,13 @@
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
     <div class="mb-8">
       <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">Account</p>
       <h1 class="mt-2 text-3xl font-bold text-slate-900">My Profile</h1>
       <p class="mt-1 text-sm text-slate-500">Manage your personal information and account settings.</p>
     </div>
 
-    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
-      <div class="flex items-center gap-5">
+    <div class="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <img
           v-if="avatarSrc"
           :src="avatarSrc"
@@ -16,9 +16,9 @@
         <div v-else class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl font-bold text-white select-none">
           {{ initials }}
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="font-semibold text-slate-900">{{ user?.first_name }} {{ user?.last_name }}</p>
-          <p class="text-sm text-slate-500">{{ user?.email }}</p>
+          <p class="break-all text-sm text-slate-500">{{ user?.email }}</p>
           <span
             v-if="user?.user_type === 'business'"
             class="mt-1 inline-block rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-700"
@@ -35,7 +35,7 @@
           type="button"
           :disabled="avatarUploading"
           @click="openAvatarPicker"
-          class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+          class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
           {{ avatarUploading ? 'Uploading...' : 'Upload Avatar' }}
         </button>
       </div>
@@ -86,12 +86,12 @@
           {{ formError }}
         </div>
 
-        <div class="flex gap-3 pt-1">
+        <div class="flex flex-col gap-3 pt-1 sm:flex-row">
           <template v-if="!editing">
             <button
               type="button"
               @click="startEditing"
-              class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
               Edit Profile
             </button>
           </template>
@@ -99,21 +99,21 @@
             <button
               type="submit"
               :disabled="saving"
-              class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed">
+              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
               {{ saving ? 'Saving...' : 'Save Changes' }}
             </button>
             <button
               type="button"
               @click="cancelEditing"
-              class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              class="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto">
               Cancel
             </button>
           </template>
         </div>
       </form>
     </div>
-    <div class="mt-6 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
-      <div class="flex items-center justify-between gap-4">
+    <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 class="text-lg font-bold text-slate-900">My Itineraries</h2>
           <p class="mt-1 text-sm text-slate-500">Trips you have saved from the itinerary planner.</p>
@@ -121,7 +121,7 @@
 
         <RouterLink
           to="/itinerary"
-          class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+          class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
           Create Itinerary
         </RouterLink>
       </div>
@@ -143,8 +143,8 @@
           v-for="itinerary in itineraries"
           :key="itinerary.id"
           class="rounded-2xl border border-slate-200 p-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
               <h3 class="font-semibold text-slate-900">{{ itinerary.title }}</h3>
               <p class="mt-1 text-sm text-slate-500">
                 {{ itinerary.start_date }} to {{ itinerary.end_date }}
@@ -160,7 +160,7 @@
 
             <RouterLink
               :to="{ name: 'SavedItinerary', params: { id: itinerary.id } }"
-              class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+              class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
               View
             </RouterLink>
           </div>
@@ -169,7 +169,7 @@
     </div>
 
 
-    <div class="mt-6 rounded-3xl border border-red-200 bg-white p-8">
+    <div class="mt-6 rounded-3xl border border-red-200 bg-white p-5 sm:p-8">
       <h2 class="text-base font-semibold text-red-700">Danger Zone</h2>
       <p class="mt-1 text-sm text-slate-500">
         Disabling your account will log you out immediately. An administrator will need to reactivate it.
@@ -177,7 +177,7 @@
       <button
         type="button"
         @click="showDisableModal = true"
-        class="mt-4 rounded-xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100">
+        class="mt-4 w-full rounded-xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto">
         Disable Account
       </button>
     </div>
@@ -185,10 +185,10 @@
     <div
       v-if="showSaveModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
         <h3 class="text-lg font-bold text-slate-900">Save Changes?</h3>
         <p class="mt-2 text-sm text-slate-500">Are you sure you want to update your profile details?</p>
-        <div class="mt-6 flex gap-3">
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             @click="confirmSave"
             :disabled="saving"
@@ -207,12 +207,12 @@
     <div
       v-if="showDisableModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
         <h3 class="text-lg font-bold text-slate-900">Disable Account?</h3>
         <p class="mt-2 text-sm text-slate-500">
           This will deactivate your account and log you out immediately. You won't be able to sign in until an administrator reactivates your account.
         </p>
-        <div class="mt-6 flex gap-3">
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             @click="confirmDisable"
             :disabled="disabling"
