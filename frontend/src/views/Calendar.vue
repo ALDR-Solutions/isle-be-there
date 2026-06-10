@@ -2,7 +2,7 @@
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <div class="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">
+        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-700">
           Trips
         </p>
         <h1 class="mt-2 text-3xl font-bold text-slate-900">Travel Calendar</h1>
@@ -20,7 +20,7 @@
         </router-link>
         <button
           type="button"
-          class="inline-flex items-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          class="inline-flex items-center rounded-2xl bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
           @click="refreshCalendar"
         >
           Refresh
@@ -47,12 +47,8 @@
               <span class="h-3 w-3 rounded-full bg-violet-600"></span>
               Saved itineraries
             </span>
-            <span class="inline-flex items-center gap-2">
-              <span class="h-3 w-3 rounded-full bg-blue-600"></span>
-              Draft itineraries
-            </span>
           </div>
-          <p v-if="calendarLoading" class="text-sm text-slate-400">Updating calendar…</p>
+          <p v-if="calendarLoading" class="text-sm text-cyan-700">Updating calendar...</p>
         </div>
 
         <div class="calendar-shell px-2 py-4 sm:px-4">
@@ -64,7 +60,7 @@
         <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">
+              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700">
                 Selected Event
               </p>
               <h2 class="mt-2 text-lg font-bold text-slate-900">
@@ -154,14 +150,14 @@
         <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">
+              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700">
                 Saved Itineraries
               </p>
               <h2 class="mt-2 text-lg font-bold text-slate-900">Trip Plans</h2>
             </div>
             <button
               type="button"
-              class="text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+              class="text-sm font-semibold text-cyan-700 transition hover:text-cyan-900"
               @click="fetchItineraries"
             >
               Reload
@@ -184,7 +180,7 @@
             <article
               v-for="itinerary in itineraries"
               :key="itinerary.id"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+              class="rounded-2xl border border-cyan-100 bg-cyan-50/40 px-4 py-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -196,8 +192,7 @@
                   </p>
                 </div>
                 <span
-                  class="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
-                  :class="itinerary.status === 'saved' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
+                  class="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700"
                 >
                   {{ itinerary.status }}
                 </span>
@@ -353,15 +348,16 @@ onMounted(() => {
 
 .calendar-shell :deep(.fc-button:hover),
 .calendar-shell :deep(.fc-button:focus) {
-  background: #f8fafc;
-  color: #0f172a;
+  background: #ecfeff;
+  border-color: #67e8f9;
+  color: #164e63;
   box-shadow: none;
 }
 
 .calendar-shell :deep(.fc-button-primary:not(:disabled).fc-button-active) {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: white;
+  background: #06b6d4;
+  border-color: #06b6d4;
+  color: #082f49;
 }
 
 .calendar-shell :deep(.fc-theme-standard td),
