@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from typing import List
 from uuid import UUID
@@ -7,6 +7,7 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import (
     get_optional_current_user,
+    get_listing_service_manager_or_403,
     require_roles,
     require_service_access
 )
@@ -59,6 +60,10 @@ def create_service_endpoint(
     user: User = Depends(require_roles("business", "employee")),
     db: Session = Depends(get_db)
 ):
+    if not data.listing_id:
+        raise HTTPException(400, "listing_id is required")
+
+    get_listing_service_manager_or_403(db, user, data.listing_id)
     return create_service(db, data, user.id)
 
 

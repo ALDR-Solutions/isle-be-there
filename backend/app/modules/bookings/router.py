@@ -1,16 +1,18 @@
 from typing import List
 
-import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
-from sqlmodel.sql.expression import select
 
 from app.infrastructure.database import get_db
+from app.modules.listings.models import Listing
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_booking_owner, require_roles
+from app.shared.dependencies.permissions import (
+    require_booking_owner,
+    require_listing_service_manager,
+    require_roles,
+)
 
-from .models import Booking, BookingStatus, PaymentEvent
-from uuid import UUID
+from .models import Booking
 from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse, BulkBookingCreateRequest, BulkBookingCreateResponse, PaymentIntentResponse
 from .service import (
     cancel_booking,
@@ -19,12 +21,11 @@ from .service import (
     create_payment_intent,
     delete_booking,
     get_booking_by_id,
+    list_bookings_for_listing,
     list_bookings,
     update_booking,
     price_booking_by_id,
 )
-from app.modules.availability.service import is_available as check_availability
-from app.modules.services.models import Service
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
 
@@ -36,6 +37,14 @@ def get_bookings(
     db: Session = Depends(get_db),
 ):
     return list_bookings(db, current_user.id)
+
+
+@router.get("/listing/{listing_id}", response_model=List[BookingResponse])
+def get_bookings_by_listing(
+    listing: Listing = Depends(require_listing_service_manager),
+    db: Session = Depends(get_db),
+):
+    return list_bookings_for_listing(db, listing.id)
 
 
 @router.get("/{booking_id}", response_model=BookingResponse)
