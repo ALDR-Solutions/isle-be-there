@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.modules.bookings.models import Booking
-from app.modules.itineraries.models import Itinerary, ItineraryItem
+from app.modules.itineraries.models import Itinerary, ItineraryItem, ItineraryStatus
 from app.modules.services.models import Service
 from app.modules.listings.models import Listing
 
@@ -106,7 +106,7 @@ def _load_itinerary_events(
         select(ItineraryItem, Itinerary)
         .join(Itinerary, Itinerary.id == ItineraryItem.itinerary_id)
         .where(Itinerary.user_id == user_id)
-        .where(Itinerary.status != "archived")
+        .where(Itinerary.status == ItineraryStatus.SAVED)
     )
 
     if start is not None:

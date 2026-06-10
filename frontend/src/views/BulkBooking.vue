@@ -212,7 +212,7 @@
                     {{ formatServiceName(getServicesForItem(item), formDataMap[item._key]?.service_id) || (item.title || item.name) }}
                   </p>
                   <p class="mt-1 text-slate-500">
-                    <template v-if="isHotelItem(item)">1 room</template>
+                    <template v-if="isHotelItem(item)">1 room × {{ getHotelNights(item) }} night{{ getHotelNights(item) > 1 ? 's' : '' }}</template>
                     <template v-else>{{ formDataMap[item._key]?.amount_of_people || 1 }} person{{ (formDataMap[item._key]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
                   </p>
                 </div>
@@ -453,6 +453,21 @@ const formatServiceName = (services, serviceId) => {
   return service ? service.name || 'Service' : '';
 };
 
+// Helper to calculate hotel nights
+const getHotelNights = (item) => {
+  const formData = formDataMap.value[item._key];
+  const checkIn = formData?.booking_from_time;
+  const checkOut = formData?.booking_to_time;
+  if (checkIn && checkOut) {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const diffTime = checkOutDate - checkInDate;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }
+  return 1;
+};
+
 const calculateItemTotal = (item) => {
   const formData = formDataMap.value[item._key];
   const services = getServicesForItem(item);
@@ -462,7 +477,21 @@ const calculateItemTotal = (item) => {
   if (services.length > 0 && serviceId) {
     const service = services.find((s) => s.service_id === serviceId);
     if (service?.price) {
-      return service.price * (isHotelItem(item) ? 1 : people);
+      if (isHotelItem(item)) {
+        // For hotels, calculate number of nights between check-out and check-in
+        const checkIn = formData?.booking_from_time;
+        const checkOut = formData?.booking_to_time;
+        let nights = 1;
+        if (checkIn && checkOut) {
+          const checkInDate = new Date(checkIn);
+          const checkOutDate = new Date(checkOut);
+          const diffTime = checkOutDate - checkInDate;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          nights = diffDays > 0 ? diffDays : 1;
+        }
+        return service.price * nights;
+      }
+      return service.price * people;
     }
   }
 
@@ -543,18 +572,20 @@ watch(formDataMap, (newMap) => {
     if (!item) continue;
     const serviceId = formData?.service_id;
     const date = formData?.booking_from_time?.slice(0, 10);
-    fetchAvailabilityForItem(itemKey, serviceId, date, formData?.amount_of_people || 1);
+    // Fetch availability - don't skip even if selected_slot_id changes (availability needs to be loaded)
+    fetchAvailabilityForItem(itemKey, serviceId, date);
   }
 }, { deep: true });
 
 // --- Methods ---
-async function fetchAvailabilityForItem(itemKey, serviceId, date, people) {
+async function fetchAvailabilityForItem(itemKey, serviceId, date) {
   if (!serviceId || !date) {
     serviceAvailability.value[itemKey] = null;
     return;
   }
   try {
-    const response = await availabilityAPI.getServiceAvailability(serviceId, date, people);
+    // Don't pass people count to get all slots - capacity handled in UI
+    const response = await availabilityAPI.getServiceAvailability(serviceId, date);
     serviceAvailability.value[itemKey] = response.data;
   } catch {
     serviceAvailability.value[itemKey] = null;
@@ -591,6 +622,7 @@ function validateSelectedItems() {
   for (const item of selectedItems.value) {
     const formData = formDataMap.value[item._key];
     const services = getServicesForItem(item);
+    const availability = serviceAvailability.value[item._key];
 
     if (isServicesLoading(item)) {
       toastStore.show('Services are still loading for one or more selections.', 'error');
@@ -615,6 +647,35 @@ function validateSelectedItems() {
     if (new Date(formData.booking_to_time) <= new Date(formData.booking_from_time)) {
       toastStore.show(`The booking time range for "${item.title}" is invalid.`, 'error');
       return false;
+    }
+
+    // Check if slot selection is required (when availability has slots)
+    if (!isHotelItem(item)) {
+      const hasSlots = availability?.slots && availability.slots.length > 0;
+      if (hasSlots && !formData.selected_slot_id) {
+        console.log('Slot validation failed:', {
+          itemTitle: item.title,
+          itemKey: item._key,
+          formDataKeys: Object.keys(formData),
+          selected_slot_id: formData.selected_slot_id,
+          selected_slot_id_type: typeof formData.selected_slot_id,
+          hasSlots,
+          availabilitySlots: availability?.slots?.length
+        })
+        toastStore.show(`Please select a time slot for "${item.title}".`, 'error');
+        return false;
+      }
+      // If no slots available, user must use the fallback time inputs (no slot selection required)
+    }
+
+    // Check capacity if availability/slots exist
+    if (!isHotelItem(item) && availability?.slots && availability.slots.length > 0) {
+      const people = formData?.amount_of_people || 1;
+      const matchingSlot = availability.slots.find(s => String(s.slot_id) === String(formData.selected_slot_id));
+      if (matchingSlot && matchingSlot.remaining_capacity < people) {
+        toastStore.show(`Please reduce the number of people for "${item.title}". Maximum available is ${matchingSlot.remaining_capacity}.`, 'error');
+        return false;
+      }
     }
   }
   return true;

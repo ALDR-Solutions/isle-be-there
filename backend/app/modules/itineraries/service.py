@@ -190,6 +190,7 @@ def list_saved_itineraries(
     itineraries = db.exec(
         select(Itinerary)
         .where(Itinerary.user_id == user_id)
+        .where(Itinerary.status == ItineraryModelStatus.SAVED)
         .order_by(desc(Itinerary.created_at))
     ).all()
 
