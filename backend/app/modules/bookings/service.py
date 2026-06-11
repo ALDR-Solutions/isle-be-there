@@ -18,7 +18,11 @@ from app.modules.availability.service import (
 from app.modules.availability.models import ServiceSlots
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
 from app.modules.businesses.models import BusinessType
-from app.modules.discounts.models import Discount
+from app.modules.discounts.service import (
+    calculate_discount_for_amount,
+    get_eligible_package_discount,
+    normalize_fractional_percent as normalize_discount_percent,
+)
 from app.modules.itineraries.models import Itinerary, ItineraryItem
 from app.modules.listings.models import Listing
 from app.modules.pricing.service import calculate_display_price
@@ -355,24 +359,18 @@ def price_booking_from_itinerary_item(
     service_fee_amount = base_price * service_fee_percent
     display_price = base_price + service_fee_amount
 
-    # 4. Look up discount if itinerary has applied_discount_id set
+    # 4. Auto-apply the active package discount whenever the itinerary qualifies.
+    discount = get_eligible_package_discount(db, itinerary)
     discount_percent = 0.0
     discount_amount = 0.0
-    discount = None
-    if (getattr(itinerary, "applied_discount_id", None) is not None) or getattr(itinerary, "applied_discount_rel", None) is not None:
-        discount = itinerary.applied_discount_rel
-        if discount is None and getattr(itinerary, "applied_discount_id", None) is not None:
-            discount = db.get(Discount, itinerary.applied_discount_id)
-        if discount:
-            discount_percent = float(getattr(discount, "discount_percent", 0.0))
-
-    # 5. Calculate discount amount with optional max
-    raw_discount = display_price * discount_percent
-    max_discount_amount = float(getattr(discount, "max_discount_amount", None)) if 'discount' in locals() and getattr(discount, "max_discount_amount", None) is not None else None
-    if max_discount_amount is not None:
-        discount_amount = min(raw_discount, max_discount_amount)
-    else:
-        discount_amount = raw_discount
+    if discount is not None:
+        discount_percent = normalize_discount_percent(getattr(discount, "discount_percent", 0.0))
+        max_discount_amount = getattr(discount, "max_discount_amount", None)
+        discount_amount = calculate_discount_for_amount(
+            display_price,
+            discount_percent,
+            max_discount_amount,
+        )
 
     final_price = display_price - discount_amount
 
@@ -429,7 +427,7 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
         service_fee_amount = base_price * service_fee_percent
         display_price = base_price + service_fee_amount
 
-    discount_percent = float(booking.discount_percent or 0.0)
+    discount_percent = normalize_discount_percent(float(booking.discount_percent or 0.0))
     discount_amount = float(booking.discount_amount or 0.0)
     final_price = display_price - discount_amount
 

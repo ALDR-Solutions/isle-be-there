@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -26,11 +26,15 @@ router = APIRouter(prefix="/api/pricing", tags=["Pricing"])
 
 
 @router.get("/listing/{listing_id}", response_model=ListingPriceResponse)
-def get_listing_pricing(listing_id: UUID, db: Session = Depends(get_db)):
+def get_listing_pricing(
+    listing_id: UUID,
+    service_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+):
     """Public endpoint: get display price for a listing.
     No authentication required.
     """
-    return get_listing_display_price(db, listing_id)
+    return get_listing_display_price(db, listing_id, service_id)
 
 
 @router.get("/config", response_model=List[PlatformPricingConfigResponse])
