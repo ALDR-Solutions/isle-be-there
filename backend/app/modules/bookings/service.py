@@ -216,11 +216,7 @@ def resolve_booking_slot_context(
     service_slot_id: int,
     booking_from_time: Optional[datetime],
     booking_to_time: Optional[datetime],
-) -> tuple[ServiceSlots, datetime, datetime]:
-    slot = get_service_slot_for_service(db, service_id, service_slot_id)
-    if slot is None:
-        raise HTTPException(status_code=400, detail="Selected service slot is invalid for this service")
-
+) -> tuple[ServiceSlots | None, datetime, datetime]:
     booking_date_source = booking_from_time or booking_to_time
     if booking_date_source is None:
         raise HTTPException(
@@ -229,6 +225,30 @@ def resolve_booking_slot_context(
         )
 
     booking_day_of_week = get_booking_day_of_week(booking_date_source)
+
+    # Handle virtual slot (id=-1) from listing hours fallback
+    if service_slot_id == -1:
+        service = get_service_or_404(db, service_id)
+        if not service.listing_id:
+            raise HTTPException(status_code=400, detail="Service has no listing associated")
+
+        from app.modules.availability.service import get_listing_hours
+        listing_hours = get_listing_hours(db, service.listing_id, booking_day_of_week)
+        if not listing_hours:
+            raise HTTPException(
+                status_code=400,
+                detail="No listing hours found for the selected date - cannot use virtual slot",
+            )
+
+        slot_start = datetime.combine(booking_date_source.date(), listing_hours.open_time)
+        slot_end = datetime.combine(booking_date_source.date(), listing_hours.close_time)
+        # Return None for slot since it's a virtual slot (no actual ServiceSlots record)
+        return None, slot_start, slot_end
+
+    slot = get_service_slot_for_service(db, service_id, service_slot_id)
+    if slot is None:
+        raise HTTPException(status_code=400, detail="Selected service slot is invalid for this service")
+
     if booking_day_of_week != slot.day_of_week:
         raise HTTPException(
             status_code=400,
@@ -420,6 +440,7 @@ def create_booking_record(
     slot: ServiceSlots | None = None
     booking_from_time = booking.booking_from_time
     booking_to_time = booking.booking_to_time
+    is_virtual_slot = False
 
     if booking.service_slot_id is not None:
         slot, booking_from_time, booking_to_time = resolve_booking_slot_context(
@@ -429,6 +450,9 @@ def create_booking_record(
             booking_from_time,
             booking_to_time,
         )
+        # Mark virtual slots so we don't store -1 in the FK column
+        if slot is None and booking.service_slot_id == -1:
+            is_virtual_slot = True
     else:
         if booking_requires_slot_selection(db, booking.service_id, booking_from_time):
             raise HTTPException(
@@ -469,6 +493,9 @@ def create_booking_record(
     booking_record.user_id = user_id
     booking_record.booking_from_time = booking_from_time
     booking_record.booking_to_time = booking_to_time
+    # Virtual slots (id=-1) have no real ServiceSlots record - store NULL instead
+    if is_virtual_slot:
+        booking_record.service_slot_id = None
     if is_restaurant_service(db, service):
         booking_record.status = BookingStatus.approved
 
@@ -555,6 +582,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
     new_service_slot_id = update_data.get("service_slot_id", booking.service_slot_id)
     new_from_time = update_data.get("booking_from_time", booking.booking_from_time)
     new_to_time = update_data.get("booking_to_time", booking.booking_to_time)
+    is_virtual_slot = False
 
     if booking.service_id is not None and new_service_slot_id is not None:
         slot, new_from_time, new_to_time = resolve_booking_slot_context(
@@ -566,6 +594,9 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
         )
         update_data["booking_from_time"] = new_from_time
         update_data["booking_to_time"] = new_to_time
+        # Mark virtual slots so we don't store -1 in the FK column
+        if slot is None and new_service_slot_id == -1:
+            is_virtual_slot = True
     elif booking.service_id is not None and (
         "booking_from_time" in update_data or "booking_to_time" in update_data
     ):
@@ -630,6 +661,10 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
             update_data.get("booking_from_time", booking.booking_from_time),
             update_data.get("booking_to_time", booking.booking_to_time),
         )
+
+    # Virtual slots (id=-1) have no real ServiceSlots record - store NULL instead
+    if is_virtual_slot:
+        update_data["service_slot_id"] = None
 
     for key, value in update_data.items():
         setattr(booking, key, value)
