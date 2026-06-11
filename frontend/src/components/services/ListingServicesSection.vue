@@ -61,7 +61,7 @@
           <div class="min-w-0">
             <p class="truncate text-base font-bold text-slate-900">{{ service.name }}</p>
             <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
-              <span v-if="service.capacity != null">Capacity {{ service.capacity }}</span>
+              <span v-if="service.capacity != null">Default capacity {{ service.capacity }}</span>
               <span v-if="typeSummary(service)">{{ typeSummary(service) }}</span>
             </div>
           </div>
@@ -292,7 +292,7 @@
             </div>
 
             <div>
-              <label class="mb-1.5 block text-sm font-semibold text-slate-700">Capacity</label>
+              <label class="mb-1.5 block text-sm font-semibold text-slate-700">Default Capacity</label>
               <input
                 v-model="serviceForm.capacity"
                 type="number"
@@ -300,6 +300,9 @@
                 placeholder="e.g. 4"
                 class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
               />
+              <p class="mt-1.5 text-xs text-slate-500">
+                Used as the general capacity, and as the fallback when a slot does not override it.
+              </p>
             </div>
           </div>
 
@@ -484,7 +487,7 @@
                     type="number"
                     min="1"
                     v-model="newSlot.capacity"
-                    placeholder="Defaults to service capacity"
+                    placeholder="Defaults to the service default capacity"
                     class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
