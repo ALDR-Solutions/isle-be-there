@@ -1170,6 +1170,7 @@ watch(
       businessStore.showCreateModal = false;
     }
   },
+  { immediate: true },
 );
 
 async function fetchBusinessTypes() {

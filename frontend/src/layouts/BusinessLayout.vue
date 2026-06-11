@@ -294,10 +294,15 @@ function switchListing(id) {
   }
 }
 
-function triggerAddListing() {
-  businessStore.showCreateModal = true
+async function triggerAddListing() {
   desktopDropdownOpen.value = false
   mobileMenuOpen.value = false
+
+  if (router.currentRoute.value.name !== 'BusinessHome') {
+    await router.push({ name: 'BusinessHome' })
+  }
+
+  businessStore.showCreateModal = true
 }
 
 function handleLogout() {
