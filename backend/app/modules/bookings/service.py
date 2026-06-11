@@ -249,7 +249,7 @@ def validate_slot_capacity(
     if exclude_booking_id is not None:
         booked_count_query = booked_count_query.where(Booking.id != exclude_booking_id)
 
-    booked_count = int(db.exec(booked_count_query).scalar_one())
+    booked_count = int(db.exec(booked_count_query).one())
     available_capacity = slot.capacity - booked_count
     if available_capacity < amount_of_people:
         raise HTTPException(
@@ -659,7 +659,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
                     .where(Booking.id != booking.id)
                     .where(Booking.booking_from_time < new_to_time)
                     .where(Booking.booking_to_time > new_from_time)
-                ).scalar_one_or_none()
+                ).one_or_none()
 
                 available = booking.service.capacity - int(booked_count)
                 if available < (update_data.get("amount_of_people", booking.amount_of_people or 1)):
@@ -829,7 +829,7 @@ def update_expired_bookings(db: Session) -> dict:
         update(Booking)
         .where(Booking.status == BookingStatus.pending)
         .where(Booking.booking_to_time.isnot(None))
-        .where(Booking.booking_to_time < now)
+        .where(Booking.booking_from_time < now)
         .values(status=BookingStatus.cancelled)
     )
     pending_count = pending_result.rowcount
