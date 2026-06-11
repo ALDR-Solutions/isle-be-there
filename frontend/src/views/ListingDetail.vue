@@ -417,31 +417,52 @@
               </label>
             </div>
 
-            <div v-if="isHotelType" class="grid gap-5 md:grid-cols-2">
-              <label class="block">
-                <span class="text-sm font-semibold text-slate-700">
-                  Check-in date <span class="text-red-500">*</span>
-                </span>
-                <input
-                  :value="hotelCheckInDate"
-                  type="date"
-                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                  @input="updateHotelCheckIn($event.target.value)"
-                />
-              </label>
+            <template v-if="isHotelType">
+              <div class="grid gap-5 md:grid-cols-2">
+                <label class="block">
+                  <span class="text-sm font-semibold text-slate-700">
+                    Check-in date <span class="text-red-500">*</span>
+                  </span>
+                  <input
+                    :value="hotelCheckInDate"
+                    type="date"
+                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    @input="updateHotelCheckIn($event.target.value)"
+                  />
+                </label>
 
-              <label class="block">
-                <span class="text-sm font-semibold text-slate-700">
-                  Check-out date <span class="text-red-500">*</span>
-                </span>
-                <input
-                  :value="hotelCheckOutDate"
-                  type="date"
-                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                  @input="updateHotelCheckOut($event.target.value)"
-                />
-              </label>
-            </div>
+                <label class="block">
+                  <span class="text-sm font-semibold text-slate-700">
+                    Check-out date <span class="text-red-500">*</span>
+                  </span>
+                  <input
+                    :value="hotelCheckOutDate"
+                    type="date"
+                    class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    @input="updateHotelCheckOut($event.target.value)"
+                  />
+                </label>
+              </div>
+
+              <div
+                v-if="bookingLoadingAvailability"
+                class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+              >
+                Loading hotel availability...
+              </div>
+              <div
+                v-else-if="bookingAvailabilityError"
+                class="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500"
+              >
+                {{ bookingAvailabilityError }}
+              </div>
+              <div
+                v-else-if="bookingDateValue && bookingAvailability && bookingAvailability.is_open === false"
+                class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+              >
+                This service is unavailable for the selected check-in date. Try another date.
+              </div>
+            </template>
 
             <div v-else>
               <!-- Date picker -->
@@ -939,7 +960,6 @@ function getBookingAvailabilityRequestKey() {
 function shouldFetchBookingAvailability() {
   return (
     showBooking.value
-    && !isHotelType.value
     && !!selectedServiceId.value
     && !!bookingDateValue.value
   )
@@ -948,11 +968,6 @@ function shouldFetchBookingAvailability() {
 function refreshBookingAvailability() {
   const requestKey = getBookingAvailabilityRequestKey()
   activeBookingAvailabilityRequestKey = requestKey
-
-  if (isHotelType.value) {
-    clearAvailabilityState()
-    return
-  }
 
   if (!shouldFetchBookingAvailability()) {
     clearAvailabilityState()
@@ -1400,6 +1415,10 @@ function validateListingBooking() {
     bookingError.value = isHotelType.value
       ? 'Please choose both check-in and check-out dates.'
       : 'Please choose a booking date first.';
+    return false;
+  }
+  if (isHotelType.value && bookingAvailability.value && bookingAvailability.value.is_open === false) {
+    bookingError.value = 'This service is unavailable for the selected check-in date.';
     return false;
   }
   if (!isHotelType.value && bookingAvailabilityError.value) {

@@ -27,6 +27,9 @@ from app.modules.businesses.models import BusinessType
 from app.modules.listings.models import Listing
 from app.modules.services.models import Service
 
+HOTEL_DEFAULT_CHECK_IN_TIME = time(14, 0, 0)
+HOTEL_DEFAULT_CHECK_OUT_TIME = time(11, 0, 0)
+
 
 # ============================================================================
 # ListingHours CRUD
@@ -132,6 +135,10 @@ def get_service_slot_for_service(
 
 def list_service_slots(db: Session, service_id: UUID) -> list[ServiceSlots]:
     """List all slots for a service."""
+    service = get_service_record(db, service_id)
+    if service and is_hotel_service(db, service_id):
+        return []
+
     return (
         db.exec(
             select(ServiceSlots)
@@ -146,13 +153,10 @@ def list_service_slots(db: Session, service_id: UUID) -> list[ServiceSlots]:
 def create_service_slot(db: Session, data: ServiceSlotsCreate) -> ServiceSlots:
     """Create a new service slot."""
     # Get the service to find its listing_id
-    service = (
-        db.exec(select(Service).where(Service.service_id == data.service_id))
-        .scalars()
-        .first()
-    )
+    service = get_service_record(db, data.service_id)
     if not service:
         raise HTTPException(404, "Service not found")
+    ensure_service_supports_slots(db, service)
 
     # Validate slot is within listing hours for the same day
     validate_slot_within_listing_hours(
@@ -187,13 +191,10 @@ def update_service_slot(
     if not slot:
         raise HTTPException(404, "Slot not found")
 
-    service = (
-        db.exec(select(Service).where(Service.service_id == service_id))
-        .scalars()
-        .first()
-    )
+    service = get_service_record(db, service_id)
     if not service:
         raise HTTPException(404, "Service not found")
+    ensure_service_supports_slots(db, service)
 
     payload = data.model_dump(exclude_unset=True)
     next_day = payload.get("day_of_week", slot.day_of_week)
@@ -464,6 +465,19 @@ def is_hotel_service(db: Session, service_id: UUID) -> bool:
     return business_type.name.lower() == "hotel"
 
 
+def get_service_record(db: Session, service_id: UUID) -> Service | None:
+    return (
+        db.exec(select(Service).where(Service.service_id == service_id))
+        .scalars()
+        .first()
+    )
+
+
+def ensure_service_supports_slots(db: Session, service: Service) -> None:
+    if is_hotel_service(db, service.service_id):
+        raise HTTPException(400, "Hotel services do not support service slots")
+
+
 # ============================================================================
 # Service Availability Query
 # ============================================================================
@@ -482,16 +496,15 @@ def get_service_availability(
     If all slots are unavailable, sets closed_reason='fully_booked'.
     """
     # 1. Fetch Service to get listing_id
-    service = (
-        db.exec(select(Service).where(Service.service_id == service_id))
-        .scalars()
-        .first()
-    )
+    service = get_service_record(db, service_id)
+    python_weekday = date.weekday()
+    db_day_of_week = (python_weekday + 1) % 7  # Convert Monday-based to Sunday-based
     if not service:
         # Return empty availability instead of 404 - treats deleted service as "unavailable"
         return ServiceAvailableResponse(
             service_id=service_id,
             date=date.isoformat(),
+            day_of_week=db_day_of_week,
             is_available=False,
             is_open=False,
             slots=[],
@@ -500,12 +513,31 @@ def get_service_availability(
 
     # 2. Determine if hotel via is_hotel_service()
     is_hotel = is_hotel_service(db, service_id)
+    service_capacity = service.capacity if service.capacity is not None else 999
+
+    if is_hotel:
+        start_dt = datetime.combine(date, HOTEL_DEFAULT_CHECK_IN_TIME)
+        end_dt = datetime.combine(date + timedelta(days=1), HOTEL_DEFAULT_CHECK_OUT_TIME)
+        remaining = get_available_slots(
+            db,
+            service_id,
+            service_capacity,
+            start_dt,
+            end_dt,
+        )
+        is_open = remaining >= 1
+        return ServiceAvailableResponse(
+            service_id=service_id,
+            date=date.isoformat(),
+            day_of_week=db_day_of_week,
+            is_available=is_open,
+            is_open=is_open,
+            slots=[],
+            closed_reason=None if is_open else "fully_booked",
+        )
 
     # 3. Get day-of-week from date (Python: 0=Monday, 6=Sunday; DB: 0=Sunday, 6=Saturday)
     # Convert: Python weekday() returns 0=Monday, DB wants 0=Sunday
-    python_weekday = date.weekday()
-    db_day_of_week = (python_weekday + 1) % 7  # Convert Monday-based to Sunday-based
-
     # 4. Fetch ServiceSlots for that service + day-of-week
     slots = (
         db.exec(
@@ -521,8 +553,6 @@ def get_service_availability(
     if not slots:
         # Get listing hours for this day
         listing_hours = get_listing_hours(db, service.listing_id, db_day_of_week)
-        # Use service capacity, or fallback to a high number if service has no capacity set
-        service_capacity = service.capacity if service.capacity is not None else 999
         if listing_hours:
             # Create virtual slot from listing hours using namedtuple
             VirtualSlot = namedtuple(
@@ -583,11 +613,18 @@ def get_service_availability(
     for slot in slots:
         slot_date = datetime.combine(date, slot.start_time)
 
-        # For virtual slots (from listing hours fallback), use slot capacity directly
+        start_dt = datetime.combine(date, slot.start_time)
+        end_dt = datetime.combine(date, slot.end_time)
+
+        # For virtual slots (from listing hours fallback), use service capacity minus overlapping bookings
         if getattr(slot, "is_virtual", False):
-            remaining = (
-                slot.capacity
-            )  # Use high capacity (999) for listing-hour-based slots
+            remaining = get_available_slots(
+                db,
+                service_id,
+                slot.capacity,
+                start_dt,
+                end_dt,
+            )
         else:
             remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
 

@@ -380,7 +380,7 @@
           </div>
 
           <!-- Service Slots Section (inline) -->
-          <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <div v-if="!isHotelType" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Service Slots</p>

@@ -813,6 +813,10 @@ function validateSelectedItems() {
       toastStore.show(`The booking time range for "${item.title}" is invalid.`, 'error');
       return false;
     }
+    if (isHotelItem(item) && availability && availability.is_open === false) {
+      toastStore.show(`"${item.title}" is unavailable for the selected check-in date.`, 'error');
+      return false;
+    }
 
     // Check if slot selection is required (when availability has slots)
     if (!isHotelItem(item)) {
