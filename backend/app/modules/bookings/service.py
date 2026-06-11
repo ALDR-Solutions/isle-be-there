@@ -143,6 +143,23 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
 
     booking, service_name, listing_name, listing_business_type_name, paid_at = result
 
+    # Recalculate price to ensure it reflects current people count and stay duration
+    # This is important for displaying accurate prices on the booking details page
+    if booking.service_id is not None:
+        try:
+            recalculated = price_booking_by_id(db, booking_id, user_id)
+            # Update booking fields with recalculated prices
+            booking.base_price = recalculated["base_price"]
+            booking.service_fee_percent = recalculated["service_fee_percent"]
+            booking.service_fee_amount = recalculated["service_fee_amount"]
+            booking.discount_percent = recalculated["discount_percent"]
+            booking.discount_amount = recalculated["discount_amount"]
+            booking.display_price = recalculated["display_price"]
+            booking.final_price = recalculated["final_price"]
+        except Exception:
+            # If recalculation fails, use stored prices (booking might be old)
+            pass
+
     return build_booking_response(
         db,
         booking,
@@ -450,6 +467,10 @@ def price_booking_from_itinerary_item(
 
 
 def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
+    """Recalculate price for a booking based on current people count and stay duration.
+    
+    This ensures the price always reflects the actual booking details, not stale stored values.
+    """
     # Retrieve booking to determine pricing path
     booking = db.get(Booking, booking_id)
     if not booking:
@@ -465,8 +486,6 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
 
     # If tied to an itinerary item, use itinerary-based pricing
     if booking.itinerary_item_id is not None:
-        # Use stored amount_of_people if available, otherwise default to 1
-        # (for existing bookings, base_price is already multiplied)
         people = getattr(booking, "amount_of_people", None) or 1
         return price_booking_from_itinerary_item(
             db,
@@ -478,21 +497,24 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
             booking_to_time=booking.booking_to_time,
         )
 
-    # Use stored base_price if available, otherwise recalculate
-    if booking.base_price is not None:
-        base_price = float(booking.base_price)
-        # Recalculate fee amounts since they may not be stored
-        price_info = calculate_display_price(db, listing_id, booking.service_id)
-        service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
-        service_fee_amount = base_price * service_fee_percent
-        display_price = base_price + service_fee_amount
+    # Standalone booking: recalculate from per-person/night price
+    # This ensures price reflects current amount_of_people and hotel days
+    price_info = calculate_display_price(db, listing_id, booking.service_id)
+    per_person_base = float(price_info.get("base_price", 0.0))
+    service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
+    
+    is_hotel = is_hotel_service(db, service)
+    people = getattr(booking, "amount_of_people", None) or 1
+    
+    if is_hotel:
+        hotel_days = calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
+        total_base = per_person_base * hotel_days
     else:
-        price_info = calculate_display_price(db, listing_id, booking.service_id)
-        base_price = float(price_info.get("base_price", 0.0))
-        service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
-        service_fee_amount = base_price * service_fee_percent
-        display_price = base_price + service_fee_amount
-
+        total_base = per_person_base * people
+    
+    service_fee_amount = total_base * service_fee_percent
+    display_price = total_base + service_fee_amount
+    
     discount_percent = normalize_discount_percent(
         float(booking.discount_percent or 0.0)
     )
@@ -500,7 +522,7 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     final_price = display_price - discount_amount
 
     return {
-        "base_price": base_price,
+        "base_price": total_base,
         "service_fee_percent": service_fee_percent,
         "service_fee_amount": service_fee_amount,
         "discount_percent": discount_percent,

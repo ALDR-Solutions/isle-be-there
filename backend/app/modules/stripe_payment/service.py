@@ -52,19 +52,34 @@ def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
                     detail="The selected time slot is no longer available. Please choose a different time."
                 )
 
-    # Verify final_price >= 0.50 (calculate if None)
-    if booking.final_price is None:
-        # Calculate final_price from components
-        base = float(booking.base_price or 0)
-        fee = float(booking.service_fee_amount or 0)
-        discount = float(booking.discount_amount or 0)
-        calculated_final = base + fee - discount
-        if calculated_final < 0.50:
-            raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
-        booking.final_price = calculated_final
-        db.add(booking)
-        db.commit()
-    elif booking.final_price < 0.50:
+    # Verify final_price >= 0.50 (recalculate if None or seems incorrect)
+    # Import and use price_booking_by_id to ensure correct price calculation
+    if booking.final_price is None or booking.final_price < 0.50:
+        from app.modules.bookings.service import price_booking_by_id
+        try:
+            recalculated = price_booking_by_id(db, booking_id, user_id)
+            booking.base_price = recalculated["base_price"]
+            booking.service_fee_percent = recalculated["service_fee_percent"]
+            booking.service_fee_amount = recalculated["service_fee_amount"]
+            booking.discount_percent = recalculated["discount_percent"]
+            booking.discount_amount = recalculated["discount_amount"]
+            booking.display_price = recalculated["display_price"]
+            booking.final_price = recalculated["final_price"]
+            db.add(booking)
+            db.commit()
+        except Exception as e:
+            # If recalculation fails, fall back to simple calculation
+            base = float(booking.base_price or 0)
+            fee = float(booking.service_fee_amount or 0)
+            discount = float(booking.discount_amount or 0)
+            calculated_final = base + fee - discount
+            if calculated_final < 0.50:
+                raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
+            booking.final_price = calculated_final
+            db.add(booking)
+            db.commit()
+    
+    if booking.final_price < 0.50:
         raise HTTPException(status_code=400, detail="Booking final price must be at least $0.50")
 
     # Get Stripe key
