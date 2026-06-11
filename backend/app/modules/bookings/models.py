@@ -95,6 +95,18 @@ class Booking(SQLModel, table=True):
             nullable=True
         )
     )
+    cancellation_reason: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    cancelled_by_role: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    cancelled_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
     bookers_name: str = Field(
         default=None, 
         sa_column=Column(

@@ -193,7 +193,115 @@
         <p class="mt-4 text-sm text-slate-500">
           {{ statusMessage(booking) }}
         </p>
+
+        <div
+          v-if="booking.cancellation_reason"
+          class="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3"
+        >
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-rose-500">
+            Cancellation Reason
+          </p>
+          <p class="mt-2 text-sm text-rose-700">
+            {{ booking.cancellation_reason }}
+          </p>
+        </div>
+
+        <div v-if="canCancelBooking(booking)" class="mt-5 flex justify-end">
+          <button
+            type="button"
+            @click="openCancelModal(booking)"
+            class="inline-flex items-center justify-center rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+          >
+            Cancel Booking
+          </button>
+        </div>
       </article>
+    </div>
+
+    <div
+      v-if="bookingToCancel"
+      class="fixed inset-0 z-[70] flex items-center justify-center px-4"
+      @click.self="!cancelling && closeCancelModal()"
+    >
+      <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-2xl">
+        <div class="px-6 py-6 sm:px-7">
+          <div class="flex items-start gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M12 9v3.75m0 3.75h.007v.008H12v-.008Zm-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126Z"
+                />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-bold text-slate-900">Cancel booking?</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-600">
+                Booking
+                <span class="font-semibold text-slate-900">#{{ bookingToCancel.id }}</span>
+                will be cancelled by the business.
+                {{ cancelModalDescription }}
+              </p>
+
+              <div class="mt-5">
+                <label
+                  for="business-booking-cancel-reason"
+                  class="block text-sm font-semibold text-slate-800"
+                >
+                  Cancellation reason
+                </label>
+                <textarea
+                  id="business-booking-cancel-reason"
+                  v-model="cancellationReason"
+                  rows="4"
+                  maxlength="500"
+                  placeholder="Tell the guest why this booking is being cancelled."
+                  class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                ></textarea>
+                <div class="mt-2 flex items-center justify-between gap-3">
+                  <p
+                    v-if="cancelReasonError"
+                    class="text-sm text-red-600"
+                  >
+                    {{ cancelReasonError }}
+                  </p>
+                  <span class="ml-auto text-xs text-slate-400">
+                    {{ cancellationReason.trim().length }}/500
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-7">
+          <button
+            type="button"
+            @click="confirmCancelBooking"
+            :disabled="cancelling"
+            class="inline-flex w-full justify-center rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-3 sm:w-auto"
+          >
+            {{ cancelling ? "Cancelling..." : "Cancel Booking" }}
+          </button>
+          <button
+            type="button"
+            @click="closeCancelModal"
+            :disabled="cancelling"
+            class="mt-3 inline-flex w-full justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0 sm:w-auto"
+          >
+            Keep Booking
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -202,6 +310,7 @@
 import { computed, ref, watch } from "vue";
 
 import { bookingsAPI } from "../../services/api";
+import { useToastStore } from "../../stores/toast";
 
 const props = defineProps({
   listing: {
@@ -210,10 +319,15 @@ const props = defineProps({
   },
 });
 
+const toastStore = useToastStore();
 const bookings = ref([]);
 const loading = ref(false);
 const error = ref("");
 const activeTab = ref("all");
+const bookingToCancel = ref(null);
+const cancellationReason = ref("");
+const cancelReasonError = ref("");
+const cancelling = ref(false);
 
 const sortedBookings = computed(() =>
   [...bookings.value].sort((a, b) => {
@@ -277,6 +391,17 @@ const pendingCount = computed(
   () => bookings.value.filter((booking) => normalizedStatus(booking.status) === "pending").length,
 );
 
+const cancelModalDescription = computed(() => {
+  if (!bookingToCancel.value) return "";
+  if (
+    normalizedStatus(bookingToCancel.value.status) === "approved"
+    && bookingToCancel.value.paid_at
+  ) {
+    return "If payment was collected, the refund will be issued automatically.";
+  }
+  return "The guest will be notified that this reservation is no longer available.";
+});
+
 watch(
   () => props.listing?.id,
   (listingId) => {
@@ -312,6 +437,11 @@ function normalizedStatus(status) {
   return String(status || "").toLowerCase();
 }
 
+function canCancelBooking(booking) {
+  const normalized = normalizedStatus(booking?.status);
+  return normalized === "pending" || normalized === "approved";
+}
+
 function statusLabel(status, hasRefund = false) {
   const normalized = normalizedStatus(status);
   if (normalized === "cancelled" && hasRefund) return "Refunded";
@@ -343,12 +473,63 @@ function statusMessage(booking) {
     return "This booking has already been completed.";
   }
   if (normalized === "cancelled" && booking.has_refund) {
+    if (booking.cancelled_by_role === "guest") {
+      return "This booking was cancelled by the guest and refunded.";
+    }
+    if (booking.cancelled_by_role) {
+      return "This booking was cancelled by the business team and refunded.";
+    }
     return "This booking was cancelled and refunded.";
   }
   if (normalized === "cancelled") {
+    if (booking.cancelled_by_role === "guest") {
+      return "This booking was cancelled by the guest.";
+    }
+    if (booking.cancelled_by_role) {
+      return "This booking was cancelled by the business team.";
+    }
     return "This booking was cancelled.";
   }
   return "This booking status is up to date.";
+}
+
+function openCancelModal(booking) {
+  bookingToCancel.value = booking;
+  cancellationReason.value = "";
+  cancelReasonError.value = "";
+}
+
+function closeCancelModal(force = false) {
+  if (cancelling.value && !force) return;
+  bookingToCancel.value = null;
+  cancellationReason.value = "";
+  cancelReasonError.value = "";
+}
+
+async function confirmCancelBooking() {
+  if (!bookingToCancel.value) return;
+
+  const reason = cancellationReason.value.trim();
+  if (!reason) {
+    cancelReasonError.value = "Please enter a cancellation reason for the guest.";
+    return;
+  }
+
+  cancelling.value = true;
+  cancelReasonError.value = "";
+
+  try {
+    await bookingsAPI.cancelByBusiness(bookingToCancel.value.id, { reason });
+    toastStore.show("Booking cancelled.", "success");
+    closeCancelModal(true);
+    await fetchBookings();
+  } catch (err) {
+    const message = err.response?.data?.detail || "Failed to cancel booking.";
+    cancelReasonError.value = message;
+    toastStore.show(message, "error");
+  } finally {
+    cancelling.value = false;
+  }
 }
 
 function formatDate(value) {

@@ -117,6 +117,17 @@ def require_booking_owner(
     return ensure_booking_owner(user, booking)
 
 
+def require_booking_listing_manager(
+    booking_id: UUID,
+    user: User = Depends(require_roles("business", "employee", "admin")),
+    db: Session = Depends(get_db),
+) -> Booking:
+    booking = get_booking_or_404(db, booking_id)
+    service = get_service_or_404(db, booking.service_id)
+    get_listing_service_manager_or_403(db, user, service.listing_id)
+    return booking
+
+
 def require_review_owner(
     review_id: UUID,
     user: User = Depends(require_roles("regular", "admin")),
@@ -176,6 +187,7 @@ __all__ = [
     "get_user_role",
     "require_roles",
     "require_booking_owner",
+    "require_booking_listing_manager",
     "require_review_owner",
     "require_business_owner",
     "require_listing_owner",

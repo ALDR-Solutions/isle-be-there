@@ -166,6 +166,17 @@
                       {{ booking.special_requests }}
                     </p>
                   </div>
+
+                  <div v-if="shouldShowCancellationReason(booking)">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Cancellation Reason
+                    </p>
+                    <div class="mt-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
+                      <p class="text-sm font-medium text-rose-700">
+                        {{ booking.cancellation_reason }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,6 +355,16 @@ function statusClasses(status) {
   }
   if (value === 'completed') return 'bg-cyan-100 text-cyan-800'
   return 'bg-slate-100 text-slate-700'
+}
+
+function shouldShowCancellationReason(currentBooking) {
+  return (
+    normalizedStatus(currentBooking?.status) === 'cancelled'
+    && currentBooking?.cancelled_by_role
+    && currentBooking.cancelled_by_role !== 'guest'
+    && typeof currentBooking.cancellation_reason === 'string'
+    && currentBooking.cancellation_reason.trim().length > 0
+  )
 }
 
 function handlePaymentSuccess() {

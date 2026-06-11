@@ -425,6 +425,13 @@
                   <span class="ml-2 text-xs text-slate-400">Capacity {{ slot.capacity }}</span>
                 </div>
                 <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    @click="startEditingSlot(slot)"
+                    class="text-xs text-slate-600 hover:text-slate-800 font-medium"
+                  >
+                    Edit
+                  </button>
                   <!-- Copy single slot to another day -->
                   <div class="relative" :ref="'copySlotDropup-' + slot.id">
                     <button
@@ -460,7 +467,19 @@
 
             <!-- Add Slot Form -->
             <div class="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Add New Slot for {{ slotDayNames[selectedSlotDay] }}</h4>
+              <div class="flex items-center justify-between gap-3">
+                <h4 class="text-sm font-medium text-slate-700">
+                  {{ editingSlotId ? `Edit Slot for ${slotDayNames[selectedSlotDay]}` : `Add New Slot for ${slotDayNames[selectedSlotDay]}` }}
+                </h4>
+                <button
+                  v-if="editingSlotId"
+                  type="button"
+                  @click="resetSlotEditor"
+                  class="text-xs font-medium text-slate-500 transition hover:text-slate-700"
+                >
+                  Cancel Edit
+                </button>
+              </div>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
@@ -495,13 +514,23 @@
 
               <p v-if="slotValidationError" class="text-xs text-red-500">{{ slotValidationError }}</p>
 
-              <button
-                type="button"
-                @click="handleAddSlot"
-                class="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-600"
-              >
-                Add Slot for {{ slotDayNames[selectedSlotDay] }}
-              </button>
+              <div class="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  @click="handleAddSlot"
+                  class="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-600"
+                >
+                  {{ editingSlotId ? 'Save Slot Changes' : `Add Slot for ${slotDayNames[selectedSlotDay]}` }}
+                </button>
+                <button
+                  v-if="editingSlotId"
+                  type="button"
+                  @click="resetSlotEditor"
+                  class="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Keep Current Slot
+                </button>
+              </div>
             </div>
           </div>
 
@@ -723,6 +752,7 @@ const slotValidationError = ref('')
 const selectedSlotDay = ref(1) // Default to Monday
 const activeCopySlotDropup = ref(null)
 const localSlotIdCounter = ref(0)
+const editingSlotId = ref(null)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
@@ -735,6 +765,13 @@ function blankSlotForm(defaultCapacity = '') {
     endTime: '17:00',
     capacity: defaultCapacity === '' || defaultCapacity == null ? '' : String(defaultCapacity),
   }
+}
+
+function sortSlots(slots) {
+  return [...slots].sort((a, b) => {
+    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week
+    return String(a.start_time ?? '').localeCompare(String(b.start_time ?? ''))
+  })
 }
 
 const blankServiceForm = () => ({
@@ -960,6 +997,7 @@ function openServiceModal(service = null) {
   serviceErrors.value = {}
   roomAmenityInput.value = ''
   slotValidationError.value = ''
+  editingSlotId.value = null
   selectedSlotDay.value = 1
   newSlot.value = blankSlotForm(serviceForm.value.capacity)
   activeCopySlotDropup.value = null
@@ -972,7 +1010,7 @@ function openServiceModal(service = null) {
   if (service) {
     loadingSlots.value = true
     availabilityAPI.getServiceSlots(service.service_id)
-      .then(response => { serviceSlots.value = response.data || [] })
+      .then(response => { serviceSlots.value = sortSlots(response.data || []) })
       .catch(err => { console.error('Failed to load slots', err); serviceSlots.value = [] })
       .finally(() => { loadingSlots.value = false })
   } else {
@@ -991,6 +1029,7 @@ function closeServiceModal() {
   serviceSlots.value = []
   loadingSlots.value = false
   slotValidationError.value = ''
+  editingSlotId.value = null
   selectedSlotDay.value = 1
   newSlot.value = blankSlotForm()
   activeCopySlotDropup.value = null
@@ -1086,7 +1125,7 @@ async function submitService() {
       } catch (slotError) {
         try {
           const slotResponse = await availabilityAPI.getServiceSlots(createdService.service_id)
-          serviceSlots.value = Array.isArray(slotResponse.data) ? slotResponse.data : []
+          serviceSlots.value = sortSlots(Array.isArray(slotResponse.data) ? slotResponse.data : [])
         } catch (loadError) {
           console.error('Failed to reload slots after slot creation error', loadError)
         }
@@ -1098,7 +1137,7 @@ async function submitService() {
         return
       }
 
-      serviceSlots.value = createdSlots
+      serviceSlots.value = sortSlots(createdSlots)
       toastStore.show(
         createdSlots.length ? 'Service and slots added.' : 'Service added.',
         'success'
@@ -1218,6 +1257,12 @@ function validateSlotForm() {
   return true
 }
 
+function resetSlotEditor() {
+  editingSlotId.value = null
+  newSlot.value = blankSlotForm(serviceForm.value.capacity)
+  slotValidationError.value = ''
+}
+
 function slotsForSelectedDay() {
   return serviceSlots.value.filter(s => s.day_of_week === selectedSlotDay.value)
 }
@@ -1249,24 +1294,79 @@ function buildSlotPayload(dayOverride) {
   }
 }
 
+function startEditingSlot(slot) {
+  editingSlotId.value = slot.id
+  selectedSlotDay.value = slot.day_of_week
+  newSlot.value = {
+    day: slot.day_of_week,
+    startTime: formatSlotTime(slot.start_time),
+    endTime: formatSlotTime(slot.end_time),
+    capacity: slot.capacity == null ? '' : String(slot.capacity),
+  }
+  slotValidationError.value = ''
+}
+
 async function handleAddSlot() {
   if (!validateSlotForm()) return
 
+  if (editingSlotId.value && !editingService.value) {
+    serviceSlots.value = sortSlots(
+      serviceSlots.value.map((slot) =>
+        slot.id === editingSlotId.value
+          ? {
+              ...slot,
+              day_of_week: selectedSlotDay.value,
+              start_time: normalizeSlotTimeValue(newSlot.value.startTime),
+              end_time: normalizeSlotTimeValue(newSlot.value.endTime),
+              capacity: getSlotCapacity(),
+            }
+          : slot
+      )
+    )
+    toastStore.show('Slot updated.', 'success')
+    resetSlotEditor()
+    return
+  }
+
+  if (editingSlotId.value && editingService.value) {
+    try {
+      const payload = {
+        day_of_week: selectedSlotDay.value,
+        start_time: normalizeSlotTimeValue(newSlot.value.startTime),
+        end_time: normalizeSlotTimeValue(newSlot.value.endTime),
+        capacity: getSlotCapacity(),
+      }
+      const response = await availabilityAPI.updateServiceSlot(
+        editingService.value.service_id,
+        editingSlotId.value,
+        payload,
+      )
+      serviceSlots.value = sortSlots(
+        serviceSlots.value.map((slot) => (slot.id === editingSlotId.value ? response.data : slot))
+      )
+      toastStore.show('Slot updated.', 'success')
+      resetSlotEditor()
+    } catch (error) {
+      console.error('Failed to update slot', error)
+      slotValidationError.value = error.response?.data?.detail || 'Failed to update slot'
+      toastStore.show(error.response?.data?.detail || 'Failed to update slot', 'error')
+    }
+    return
+  }
+
   if (!editingService.value) {
-    serviceSlots.value = [...serviceSlots.value, buildPendingSlot()]
+    serviceSlots.value = sortSlots([...serviceSlots.value, buildPendingSlot()])
     toastStore.show('Slot added to the new service.', 'success')
-    newSlot.value.startTime = '09:00'
-    newSlot.value.endTime = '17:00'
+    resetSlotEditor()
     return
   }
 
   try {
     const payload = buildSlotPayload()
     const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
-    serviceSlots.value = [...serviceSlots.value, response.data]
+    serviceSlots.value = sortSlots([...serviceSlots.value, response.data])
     toastStore.show('Slot added', 'success')
-    newSlot.value.startTime = '09:00'
-    newSlot.value.endTime = '17:00'
+    resetSlotEditor()
   } catch (error) {
     console.error('Failed to add slot', error)
     toastStore.show(error.response?.data?.detail || 'Failed to add slot', 'error')
@@ -1277,14 +1377,14 @@ async function handleCopySlotToDay(slot, targetDay) {
   activeCopySlotDropup.value = null
 
   if (!editingService.value) {
-    serviceSlots.value = [
+    serviceSlots.value = sortSlots([
       ...serviceSlots.value,
       buildPendingSlot(targetDay, {
         start_time: slot.start_time,
         end_time: slot.end_time,
         capacity: slot.capacity,
       }),
-    ]
+    ])
     toastStore.show('Slot copied', 'success')
     return
   }
@@ -1298,7 +1398,7 @@ async function handleCopySlotToDay(slot, targetDay) {
       capacity: slot.capacity
     }
     const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
-    serviceSlots.value = [...serviceSlots.value, response.data]
+    serviceSlots.value = sortSlots([...serviceSlots.value, response.data])
     toastStore.show('Slot copied', 'success')
   } catch (error) {
     console.error('Failed to copy slot', error)
@@ -1311,6 +1411,10 @@ function toggleCopySlotDropup(slotId) {
 }
 
 async function handleDeleteSlot(slotId) {
+  if (editingSlotId.value === slotId) {
+    resetSlotEditor()
+  }
+
   if (!editingService.value) {
     serviceSlots.value = serviceSlots.value.filter(s => s.id !== slotId)
     toastStore.show('Slot removed.', 'info')

@@ -139,6 +139,90 @@ def create_service_slot(db: Session, data: ServiceSlotsCreate) -> ServiceSlots:
     return slot
 
 
+def update_service_slot(
+    db: Session,
+    service_id: UUID,
+    slot_id: int,
+    data: ServiceSlotsUpdate,
+) -> ServiceSlots:
+    """Update an existing service slot."""
+    slot = get_service_slot_for_service(db, service_id, slot_id)
+    if not slot:
+        raise HTTPException(404, "Slot not found")
+
+    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    if not service:
+        raise HTTPException(404, "Service not found")
+
+    payload = data.model_dump(exclude_unset=True)
+    next_day = payload.get("day_of_week", slot.day_of_week)
+    next_start = payload.get("start_time", slot.start_time)
+    next_end = payload.get("end_time", slot.end_time)
+    next_capacity = payload.get("capacity", slot.capacity)
+
+    future_linked_bookings = db.exec(
+        select(Booking)
+        .where(Booking.service_slot_id == slot.id)
+        .where(col(Booking.status).in_([BookingStatus.pending, BookingStatus.approved]))
+        .where(Booking.booking_to_time >= datetime.utcnow())
+    ).scalars().all()
+
+    schedule_changed = (
+        next_day != slot.day_of_week
+        or next_start != slot.start_time
+        or next_end != slot.end_time
+    )
+    if schedule_changed and future_linked_bookings:
+        raise HTTPException(
+            409,
+            "Cannot change this slot's day or time while future bookings are linked to it",
+        )
+
+    if next_capacity < slot.capacity:
+        approved_booking_loads = db.exec(
+            select(
+                Booking.booking_from_time,
+                Booking.booking_to_time,
+                func.coalesce(func.sum(Booking.amount_of_people), 0),
+            )
+            .where(Booking.service_slot_id == slot.id)
+            .where(Booking.status == BookingStatus.approved)
+            .where(Booking.booking_to_time >= datetime.utcnow())
+            .group_by(Booking.booking_from_time, Booking.booking_to_time)
+        ).all()
+
+        if any(int(booked_people) > next_capacity for _, _, booked_people in approved_booking_loads):
+            raise HTTPException(
+                409,
+                "Cannot reduce slot capacity below approved bookings already assigned to this slot",
+            )
+
+    validate_slot_within_listing_hours(
+        db,
+        service_id,
+        service.listing_id,
+        next_day,
+        next_start,
+        next_end,
+    )
+    check_slot_overlap(
+        db,
+        service_id,
+        next_day,
+        next_start,
+        next_end,
+        exclude_id=slot.id,
+    )
+
+    for key, value in payload.items():
+        setattr(slot, key, value)
+
+    db.add(slot)
+    db.commit()
+    db.refresh(slot)
+    return slot
+
+
 def delete_service_slot(db: Session, service_id: UUID, slot_id: int) -> None:
     """Delete a service slot."""
     slot = get_service_slot_for_service(db, service_id, slot_id)

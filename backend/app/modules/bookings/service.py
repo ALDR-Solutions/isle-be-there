@@ -50,6 +50,19 @@ def is_hotel_service(db: Session, service: Service) -> bool:
     return business_type.name.lower() == "hotel"
 
 
+def is_restaurant_service(db: Session, service: Service) -> bool:
+    """Check if a service belongs to a restaurant business type."""
+    if not service.listing_id:
+        return False
+    listing = db.get(Listing, service.listing_id)
+    if not listing or not listing.business_type:
+        return False
+    business_type = db.get(BusinessType, listing.business_type)
+    if not business_type:
+        return False
+    return business_type.name.lower() == "restaurant"
+
+
 def booking_summary_query():
     return (
         select(
@@ -511,6 +524,8 @@ def create_booking_record(
     booking_record.user_id = user_id
     booking_record.booking_from_time = booking_from_time
     booking_record.booking_to_time = booking_to_time
+    if is_restaurant_service(db, service):
+        booking_record.status = BookingStatus.approved
 
     # If booking is tied to an itinerary item, calculate price accordingly
     price_breakdown: Optional[dict] = None
@@ -679,11 +694,22 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
     return booking
 
 
-def cancel_booking(db: Session, booking: Booking) -> Booking:
+def cancel_booking(
+    db: Session,
+    booking: Booking,
+    *,
+    cancelled_by_role: str | None = None,
+    cancellation_reason: str | None = None,
+) -> Booking:
     """
     Cancel a booking. If booking is approved and has payment, process refund first.
     If refund fails, booking stays approved and HTTPException is raised.
     """
+    if booking.status == BookingStatus.cancelled:
+        raise HTTPException(status_code=400, detail="Booking is already cancelled")
+    if booking.status == BookingStatus.completed:
+        raise HTTPException(status_code=400, detail="Completed bookings cannot be cancelled")
+
     # If booking is approved AND has stripe_payment_intent_id, process refund first
     if booking.status == BookingStatus.approved and booking.stripe_payment_intent_id:
         # Import process_refund from stripe_payment
@@ -700,6 +726,9 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
 
     # Update booking status to cancelled
     booking.status = BookingStatus.cancelled
+    booking.cancelled_by_role = cancelled_by_role
+    booking.cancellation_reason = cancellation_reason
+    booking.cancelled_at = datetime.utcnow()
 
     db.commit()
     db.refresh(booking)

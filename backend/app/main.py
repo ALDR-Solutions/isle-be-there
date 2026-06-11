@@ -28,7 +28,6 @@ from app.modules.favourites.router import router as favourites_router
 from app.modules.interests.router import router as interests_router
 from app.modules.listings.router import router as listings_router
 from app.modules.calendar.router import router as calendar_router
-from app.modules.recommendations.router import router as recommendations_router
 from app.modules.reviews.router import router as reviews_router
 from app.modules.users.router import router as profile_router
 from app.modules.employees.router import router as employees_router
@@ -49,7 +48,6 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(itineraries_router)
     app.include_router(reviews_router)
     app.include_router(calendar_router)
-    app.include_router(recommendations_router)
     app.include_router(profile_router)
     app.include_router(favourites_router)
     app.include_router(interests_router)

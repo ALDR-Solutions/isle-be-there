@@ -81,9 +81,9 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
 
     # Determine pricing config: try listing's business_type first, then global; default to 0.10 if none
     config = None
-    if getattr(listing, "business_type_id", None) is not None:
+    if getattr(listing, "business_type", None) is not None:
         try:
-            config = get_pricing_config(db, listing.business_type_id)  # may raise 404
+            config = get_pricing_config(db, listing.business_type)  # may raise 404
         except HTTPException:
             config = None
     if config is None:

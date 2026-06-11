@@ -37,11 +37,18 @@ class BookingUpdate(BaseModel):
     service_slot_id: Optional[int] = None
     status: Optional[BookingStatus] = None
 
+
+class BusinessBookingCancelRequest(BaseModel):
+    reason: str
+
 class BookingResponse(BaseModel):
     id: UUID
     bookers_name: str
     amount_of_people: int
     special_requests: Optional[str]
+    cancellation_reason: Optional[str] = None
+    cancelled_by_role: Optional[str] = None
+    cancelled_at: Optional[datetime] = None
     booking_from_time: datetime
     booking_to_time: datetime
     service_id: Optional[UUID] = None
@@ -66,17 +73,9 @@ class BookingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class BookingPriceResponse(BaseModel):
-    base_price: float
-    service_fee_percent: float
-    service_fee_amount: float
-    discount_percent: float
-    discount_amount: float
-    display_price: float
-    final_price: float
-
 class BookingCreateResponse(BaseModel):
     id: UUID
+    status: Optional[BookingStatus] = None
     bookers_name: str
     amount_of_people: int
     special_requests: Optional[str]
