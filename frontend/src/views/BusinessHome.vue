@@ -1207,7 +1207,7 @@ function canEditListing(listing) {
 }
 
 function canArchiveListing(listing) {
-  return Boolean(listing && listing.status !== "inactive" && listing.status !== "suspended");
+  return Boolean(listing && listing.status !== "inactive" && listing.status !== "suspended" && listing.status !== "pending" && listing.status !== "rejected");
 }
 
 function canRestoreListing(listing) {
