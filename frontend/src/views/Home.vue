@@ -328,7 +328,7 @@
             Special Promo
           </p>
           <h2 class="mt-4 text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-            Build your itinerary with us and get 10% off.
+            Build your itinerary with us and get 5% off.
           </h2>
           <p class="mt-5 max-w-xl text-base leading-7 text-slate-100 sm:text-lg">
             Use the itinerary builder to shape your trip in one place, then unlock a limited-time

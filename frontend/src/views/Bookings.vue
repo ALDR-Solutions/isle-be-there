@@ -12,7 +12,7 @@
       </p>
       <router-link
         to="/calendar"
-        class="mt-4 inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+        class="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:w-auto"
       >
         Open Calendar
       </router-link>
@@ -26,25 +26,51 @@
     </div>
 
     <!-- Status Tabs -->
-    <div v-if="!loading && bookings.length > 0" class="mb-6 border-b border-slate-200">
-      <nav class="flex gap-6">
-        <button
-          v-for="tab in statusTabs"
-          :key="tab.value"
-          @click="activeTab = tab.value"
-          :class="[
-            'pb-3 text-sm font-medium transition-colors',
-            activeTab === tab.value
-              ? 'border-b-2 border-cyan-600 text-cyan-600'
-              : 'text-slate-500 hover:text-slate-700'
-          ]"
-        >
-          {{ tab.label }}
-          <span class="ml-2 rounded-full px-2 py-0.5 text-xs" :class="tab.count > 0 ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-400'">
-            {{ tab.count }}
-          </span>
-        </button>
-      </nav>
+    <div v-if="!loading && bookings.length > 0" class="mb-6">
+      <div class="sm:hidden">
+        <nav class="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            @click="activeTab = tab.value"
+            :class="[
+              'shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+              activeTab === tab.value
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700 shadow-sm'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
+            ]"
+          >
+            {{ tab.label }}
+            <span
+              class="ml-2 rounded-full px-2 py-0.5 text-xs"
+              :class="activeTab === tab.value ? 'bg-cyan-100 text-cyan-700' : tab.count > 0 ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-400'"
+            >
+              {{ tab.count }}
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="hidden border-b border-slate-200 sm:block">
+        <nav class="flex gap-6">
+          <button
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            @click="activeTab = tab.value"
+            :class="[
+              'pb-3 text-sm font-medium transition-colors',
+              activeTab === tab.value
+                ? 'border-b-2 border-cyan-600 text-cyan-600'
+                : 'text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            {{ tab.label }}
+            <span class="ml-2 rounded-full px-2 py-0.5 text-xs" :class="tab.count > 0 ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-400'">
+              {{ tab.count }}
+            </span>
+          </button>
+        </nav>
+      </div>
     </div>
 
     <div v-if="loading" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -104,144 +130,151 @@
       <article
         v-for="booking in filteredBookings"
         :key="booking.id"
-        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
       >
-        <div class="flex items-start justify-between gap-4">
-          <div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
             <p
               class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400"
             >
               Booking
             </p>
-            <h2 class="mt-2 text-xl font-bold text-slate-900">
-              Reference No.: #{{ booking.id }}
+            <h2 class="mt-2 break-all text-lg font-bold text-slate-900 sm:text-xl">
+              Ref #{{ booking.id }}
             </h2>
           </div>
           <span
-            class="rounded-full px-3 py-1 text-xs font-semibold"
+            class="self-start rounded-full px-3 py-1 text-xs font-semibold"
             :class="statusClasses(booking.status, booking.has_refund)"
           >
             {{ statusLabel(booking.status, booking.has_refund) }}
           </span>
         </div>
 
-        <div class="mt-6 space-y-4 rounded-2xl bg-slate-50 p-4">
-          <div>
+        <div class="mt-5 rounded-2xl bg-slate-50 p-4">
+          <div class="space-y-1">
             <p
               class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
             >
               Listing
             </p>
             <p class="mt-1 text-sm font-medium text-slate-700">
-              Listing Name: {{ booking.listing_name }}
+              {{ booking.listing_name }}
             </p>
           </div>
         </div>
 
-        <div class="mt-6 space-y-4 rounded-2xl bg-slate-50 p-4">
-          <div>
-            <p
-              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-            >
-              Service
-            </p>
-            <p class="mt-1 text-sm font-medium text-slate-700">
-              Service Name: {{ booking.service_name }}
-            </p>
+        <div class="mt-4 rounded-2xl bg-slate-50 p-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p
+                class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+              >
+                Service
+              </p>
+              <p class="mt-1 text-sm font-medium text-slate-700">
+                {{ booking.service_name }}
+              </p>
+            </div>
+
+            <div>
+              <p
+                class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+              >
+                Booker
+              </p>
+              <p class="mt-1 text-sm font-medium text-slate-700">
+                {{ booking.bookers_name }}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <p
-              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-            >
-              Booking Time
-            </p>
-            <p class="mt-1 text-sm font-medium text-slate-700">
-              From: {{ formatDate(booking.booking_from_time) }}
-            </p>
-            <p class="mt-1 text-sm font-medium text-slate-700">
-              To: {{ formatDate(booking.booking_to_time) }}
-            </p>
-          </div>
+          <div class="mt-4 space-y-4">
+            <div>
+              <p
+                class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+              >
+                Booking Time
+              </p>
+              <div class="mt-2 space-y-2 text-sm font-medium text-slate-700">
+                <p><span class="text-slate-500">From:</span> {{ formatDate(booking.booking_from_time) }}</p>
+                <p><span class="text-slate-500">To:</span> {{ formatDate(booking.booking_to_time) }}</p>
+              </div>
+            </div>
 
-          <div>
-            <p
-              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-            >
-              Name On Booking
-            </p>
-            <p class="mt-1 text-sm font-medium text-slate-700">
-              {{ booking.bookers_name }}
-            </p>
-          </div>
-
-          <div>
-            <p
-              class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-            >
-              Amount of People
-            </p>
-            <p class="mt-1 text-sm font-medium text-slate-700">
-              {{ booking.amount_of_people }}
-            </p>
+            <div>
+              <p
+                class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+              >
+                Guests
+              </p>
+              <p class="mt-1 text-sm font-medium text-slate-700">
+                {{ booking.amount_of_people }}
+              </p>
+            </div>
           </div>
         </div>
 
-<div class="mt-6 flex items-center justify-between gap-3">
-            <p class="text-sm text-slate-500">
-              {{
-              normalizedStatus(booking.status) === "pending"
-                ? "This booking is still awaiting confirmation."
-                : normalizedStatus(booking.status) === "cancelled"
-                  ? booking.has_refund
-                    ? "This booking was cancelled and refunded."
-                    : "This booking has been cancelled."
-                  : "Your booking status is up to date."
-              }}
-            </p>
+        <div class="mt-5 border-t border-slate-100 pt-4">
+          <p class="text-sm leading-6 text-slate-500">
+            {{ bookingStatusMessage(booking) }}
+          </p>
+
+          <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <router-link
               :to="'/bookings/' + booking.id"
-              class="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              class="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
             >
               {{ normalizedStatus(booking.status) === 'pending' ? 'Pay Now' : 'View Details' }}
             </router-link>
-          <button
-            v-if="normalizedStatus(booking.status) === 'pending' || normalizedStatus(booking.status) === 'approved'"
-            @click="bookingToCancel = booking"
-            class="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-          >
-            Cancel
-          </button>
-          <template v-else-if="normalizedStatus(booking.status) === 'cancelled' && !booking.has_refund">
-            <template v-if="confirmingDelete === booking.id">
-              <span class="flex items-center gap-2 text-sm text-slate-500">
-                Delete?
-                <button
-                  @click="deleteBooking(booking.id)"
-                  :disabled="deleting"
-                  class="font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
-                >
-                  Yes
-                </button>
-                <button
-                  @click="confirmingDelete = null"
-                  class="font-semibold text-slate-600 hover:text-slate-800"
-                >
-                  No
-                </button>
-              </span>
-            </template>
+
             <button
-              v-else
-              @click="confirmingDelete = booking.id"
-              class="shrink-0 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              v-if="normalizedStatus(booking.status) === 'pending' || normalizedStatus(booking.status) === 'approved'"
+              @click="bookingToCancel = booking"
+              class="inline-flex w-full items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto"
             >
-              Delete
+              Cancel
             </button>
-          </template>
-          <template v-else-if="normalizedStatus(booking.status) === 'cancelled' && booking.has_refund">
-            <span class="text-sm text-slate-400">Non-deletable</span>
-          </template>
+
+            <template v-else-if="normalizedStatus(booking.status) === 'cancelled' && !booking.has_refund">
+              <div
+                v-if="confirmingDelete === booking.id"
+                class="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+              >
+                <p class="text-sm font-medium text-slate-600">Delete this booking?</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                  <button
+                    @click="deleteBooking(booking.id)"
+                    :disabled="deleting"
+                    class="rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Yes, Delete
+                  </button>
+                  <button
+                    @click="confirmingDelete = null"
+                    class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Keep It
+                  </button>
+                </div>
+              </div>
+
+              <button
+                v-else
+                @click="confirmingDelete = booking.id"
+                class="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:w-auto"
+              >
+                Delete
+              </button>
+            </template>
+
+            <div
+              v-else-if="normalizedStatus(booking.status) === 'cancelled' && booking.has_refund"
+              class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+            >
+              Refunded bookings stay in your history.
+            </div>
+          </div>
         </div>
       </article>
     </div>
@@ -253,7 +286,7 @@
     >
       <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"></div>
       <div
-        class="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl"
+        class="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8"
       >
         <div class="flex items-start gap-4">
           <div
@@ -282,7 +315,7 @@
           </div>
         </div>
 
-        <div class="mt-6 flex gap-3">
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             @click="bookingToCancel = null"
             class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -414,6 +447,19 @@ function statusClasses(status, hasRefund = false) {
   }
   if (value === "completed") return "bg-cyan-100 text-cyan-800";
   return "bg-slate-100 text-slate-700";
+}
+
+function bookingStatusMessage(booking) {
+  const value = normalizedStatus(booking.status);
+  if (value === "pending") {
+    return "This booking is still awaiting confirmation.";
+  }
+  if (value === "cancelled") {
+    return booking.has_refund
+      ? "This booking was cancelled and refunded."
+      : "This booking has been cancelled.";
+  }
+  return "Your booking status is up to date.";
 }
 
 function normalizedStatus(status) {

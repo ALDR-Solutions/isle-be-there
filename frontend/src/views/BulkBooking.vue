@@ -58,8 +58,29 @@
       </div>
 
       <template v-else>
-        <div v-if="tabs.length > 1" class="mb-6 rounded-3xl border border-slate-200 bg-white px-5 shadow-sm">
-          <nav class="flex gap-6 overflow-x-auto">
+        <div v-if="tabs.length > 1" class="mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:px-5 sm:py-0">
+          <div class="sm:hidden">
+            <nav class="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-0">
+              <button
+                v-for="tab in tabs"
+                :key="tab.id"
+                :class="[
+                  'shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                  activeTab === tab.id
+                    ? 'border-cyan-600 bg-cyan-50 text-cyan-700 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
+                ]"
+                @click="activeTab = tab.id"
+              >
+                {{ tab.mobileLabel }}
+              </button>
+            </nav>
+            <p v-if="activeTabSummary" class="mt-3 text-sm text-slate-500">
+              {{ activeTabSummary }}
+            </p>
+          </div>
+
+          <nav class="hidden gap-6 overflow-x-auto sm:flex">
             <button
               v-for="tab in tabs"
               :key="tab.id"
@@ -71,7 +92,7 @@
               ]"
               @click="activeTab = tab.id"
             >
-              {{ tab.label }}
+              {{ tab.desktopLabel }}
             </button>
           </nav>
         </div>
@@ -400,6 +421,20 @@ const normalizeDayDate = (dateValue) => {
   }
 };
 
+const formatTabSummaryDate = (dateValue) => {
+  if (!dateValue || dateValue === 'unknown') return 'Unscheduled itinerary stops';
+
+  const date = new Date(`${dateValue}T00:00:00`);
+  if (isNaN(date.getTime())) return 'Unscheduled itinerary stops';
+
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
 const bookerName = computed(() => {
   const user = authStore.user;
   if (!user) return '';
@@ -446,18 +481,40 @@ const tabs = computed(() => {
     }
   }
 
-  return [
-    ...Object.keys(dayMap).sort().map((dayKey) => ({
-      id: `day-${dayKey}`,
-      label: dayKey === 'unknown' ? 'Unscheduled' : `Day - ${dayKey}`,
-    })),
-    ...(hotelItems.length > 0 ? [{ id: 'hotels', label: `Hotels (${hotelItems.length})` }] : []),
-  ];
+  const dayTabs = Object.keys(dayMap).sort().map((dayKey, index) => ({
+    id: `day-${dayKey}`,
+    type: 'day',
+    desktopLabel: dayKey === 'unknown' ? 'Unscheduled' : `Day - ${dayKey}`,
+    mobileLabel: dayKey === 'unknown' ? 'Unscheduled' : `Day ${index + 1}`,
+    summary: formatTabSummaryDate(dayKey),
+  }));
+
+  const hotelTab = hotelItems.length > 0
+    ? [{
+        id: 'hotels',
+        type: 'hotels',
+        desktopLabel: `Hotels (${hotelItems.length})`,
+        mobileLabel: 'Hotels',
+        summary: `${hotelItems.length} hotel ${hotelItems.length === 1 ? 'stay' : 'stays'} in this itinerary`,
+      }]
+    : [];
+
+  return [...dayTabs, ...hotelTab];
 });
 
 watch(tabs, (newTabs) => {
-  if (newTabs.length > 0 && !activeTab.value) activeTab.value = newTabs[0].id;
+  if (newTabs.length === 0) {
+    activeTab.value = '';
+    return;
+  }
+
+  if (!newTabs.some((tab) => tab.id === activeTab.value)) {
+    activeTab.value = newTabs[0].id;
+  }
 }, { immediate: true });
+
+const activeTabMeta = computed(() => tabs.value.find((tab) => tab.id === activeTab.value) || null);
+const activeTabSummary = computed(() => activeTabMeta.value?.summary || '');
 
 // --- Computed: Filtered Items by Tab ---
 const filteredItems = computed(() => {
@@ -682,15 +739,6 @@ function validateSelectedItems() {
     if (!isHotelItem(item)) {
       const hasSlots = availability?.slots && availability.slots.length > 0;
       if (hasSlots && !formData.selected_slot_id) {
-        console.log('Slot validation failed:', {
-          itemTitle: item.title,
-          itemKey: item._key,
-          formDataKeys: Object.keys(formData),
-          selected_slot_id: formData.selected_slot_id,
-          selected_slot_id_type: typeof formData.selected_slot_id,
-          hasSlots,
-          availabilitySlots: availability?.slots?.length
-        })
         toastStore.show(`Please select a time slot for "${item.title}".`, 'error');
         return false;
       }

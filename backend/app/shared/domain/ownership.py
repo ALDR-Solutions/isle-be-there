@@ -112,3 +112,29 @@ def ensure_service_access(
         return service
 
     raise HTTPException(status_code=403, detail=detail)
+
+
+def ensure_listing_service_manager(
+    db: Session,
+    user: User,
+    listing: Listing,
+    detail: str = "Not authorized",
+) -> Listing:
+    if is_admin_user(user):
+        return listing
+
+    if listing.business_id:
+        business = get_business_or_404(db, listing.business_id)
+        if str(business.user_id) == str(user.id):
+            return listing
+
+    assignment = db.exec(
+        select(EmployeeListings).where(
+            EmployeeListings.listing_id == listing.id,
+            EmployeeListings.employee_id == user.id,
+        )
+    ).first()
+    if assignment:
+        return listing
+
+    raise HTTPException(status_code=403, detail=detail)

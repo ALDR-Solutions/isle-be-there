@@ -1,21 +1,17 @@
 from uuid import UUID
 import logging
 
-from fastapi import APIRouter, Depends, Form, HTTPException
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, Form
+from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_roles
-
-from .models import Review, BusinessReply
+from app.shared.dependencies.permissions import require_review_owner, require_roles
 from .schemas import (
     ReviewCreate,
     ReviewResponse,
     ReviewSubmitResponse,
     ReviewUpdate,
-    BusinessReplyCreate,
-    BusinessReplyUpdate,
     BusinessReplyResponse,
 )
 from .service import (
@@ -83,7 +79,6 @@ def get_reviews_for_listing_route(
         400: {"description": "Listing is not active"},
         401: {"description": "Not authorized"},
         404: {"description": "Listing not found"},
-        409: {"description": "You already reviewed this listing"},
         500: {"description": "Review could not be classified"},
     },
 )
@@ -142,21 +137,10 @@ def update_review_route(
     review_id: UUID,
     rating: int | None = Form(default=None, ge=1, le=5),
     comment: str | None = Form(default=None),
-    current_user: User = Depends(require_roles("regular", "admin")),
+    review=Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
     """Update an existing review (owner only). Re-classifies if comment changes."""
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    if (
-        str(review.user_id) != str(current_user.id)
-        and current_user.user_type != "admin"
-    ):
-        raise HTTPException(
-            status_code=401, detail="Not authorized to update this review"
-        )
-
     review_update = ReviewUpdate(rating=rating, comment=comment)
     return update_review(db, review, review_update)
 
@@ -172,24 +156,11 @@ def update_review_route(
 )
 def delete_review_route(
     review_id: UUID,
-    current_user: User = Depends(require_roles("regular", "admin")),
+    review=Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
     """Delete a review (owner or admin only)."""
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    if (
-        str(review.user_id) != str(current_user.id)
-        and current_user.user_type != "admin"
-    ):
-        raise HTTPException(
-            status_code=401, detail="Not authorized to delete this review"
-        )
-
-    db.delete(review)
-    db.commit()
-
+    delete_review(db, review)
     return {"detail": "Review deleted"}
 
 
@@ -212,21 +183,10 @@ def create_reply_route(
     db: Session = Depends(get_db),
 ):
     """Create a business reply to a review (business/employee only)."""
-    from app.modules.businesses.models import Business
-
-    business = db.exec(
-        select(Business).where(Business.user_id == current_user.id)
-    ).first()
-    if not business:
-        raise HTTPException(
-            status_code=403, detail="No business associated with this user"
-        )
-
     reply = create_business_reply(
         db=db,
         review_id=review_id,
-        business_id=business.id,
-        user_id=current_user.id,
+        current_user=current_user,
         description=description,
     )
     reply["user_name"] = current_user.username
@@ -265,11 +225,11 @@ def update_reply_route(
     current_user: User = Depends(require_roles("business", "employee")),
     db: Session = Depends(get_db),
 ):
-    """Update a business reply (owner or admin only)."""
+    """Update the single business reply for a review."""
     reply = update_business_reply(
         db=db,
         review_id=review_id,
-        user_id=current_user.id,
+        current_user=current_user,
         description=description,
     )
     return reply
@@ -290,10 +250,10 @@ def delete_reply_route(
     current_user: User = Depends(require_roles("business", "employee")),
     db: Session = Depends(get_db),
 ):
-    """Delete a business reply (owner or admin only)."""
+    """Delete the single business reply for a review."""
     delete_business_reply(
         db=db,
         review_id=review_id,
-        user_id=current_user.id,
+        current_user=current_user,
     )
     return {"detail": "Reply deleted"}

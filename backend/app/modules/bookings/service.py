@@ -356,6 +356,16 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
 
 
 def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
+    return _create_booking_record(db, booking, user_id, commit=True)
+
+
+def _create_booking_record(
+    db: Session,
+    booking: BookingCreate,
+    user_id: UUID,
+    *,
+    commit: bool,
+) -> Booking:
     _validate_booking_window(booking.booking_from_time, booking.booking_to_time)
     service, _ = _validate_service_for_booking(
         db,
@@ -436,8 +446,11 @@ def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Bookin
         booking_record.final_price = final_price
 
     db.add(booking_record)
-    db.commit()
-    db.refresh(booking_record)
+    if commit:
+        db.commit()
+        db.refresh(booking_record)
+    else:
+        db.flush()
     return booking_record
 
 
@@ -446,8 +459,11 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
     bookings = []
     try:
         for booking_data in items:
-            booking = create_booking(db, booking_data, user_id)
+            booking = _create_booking_record(db, booking_data, user_id, commit=False)
             bookings.append(booking)
+        db.commit()
+        for booking in bookings:
+            db.refresh(booking)
         return bookings
     except HTTPException:
         db.rollback()

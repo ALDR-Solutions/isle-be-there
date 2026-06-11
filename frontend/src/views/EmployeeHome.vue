@@ -88,6 +88,26 @@
           @services-changed="handleServicesChanged"
         />
 
+        <ListingBookingsSection
+          :listing="employeeStore.activeListing"
+        />
+
+        <div>
+          <div class="mb-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-600">
+              Guest Feedback
+            </p>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">Reviews</h2>
+          </div>
+
+          <ListingReviewsPanel
+            :listing-id="employeeStore.activeListing?.id"
+            :can-reply="true"
+            :can-manage-reply="true"
+            empty-subtext="Customer feedback for this listing will appear here."
+          />
+        </div>
+
       </div>
     </template>
 
@@ -97,7 +117,9 @@
 <script setup>
 import { ref } from 'vue'
 import { useEmployeeStore } from '../stores/employee'
+import ListingBookingsSection from '../components/bookings/ListingBookingsSection.vue'
 import ListingServicesSection from '../components/services/ListingServicesSection.vue'
+import ListingReviewsPanel from '../components/reviews/ListingReviewsPanel.vue'
 
 const employeeStore = useEmployeeStore()
 

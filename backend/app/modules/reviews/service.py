@@ -2,13 +2,17 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, desc, select
 
-from app.modules.listings.models import Listing, Statuses
+from app.modules.listings.models import EmployeeListings, Listing, Statuses
 from app.modules.businesses.models import BusinessType
-from app.modules.users.models import User
+from app.modules.users.models import User, UserTypes
+from app.shared.domain import (
+    get_business_employee_link_or_404,
+    get_business_by_user_id,
+    get_listing_for_business_or_404,
+)
 
 from .classification import classify_review_text
 from .profanity import censor_text
@@ -93,6 +97,72 @@ def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
     return reviews
 
 
+def _get_review_listing_context(
+    db: Session,
+    review_id: UUID,
+) -> tuple[Review, Listing]:
+    review = db.exec(select(Review).where(Review.id == review_id)).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    listing = db.exec(select(Listing).where(Listing.id == review.listing_id)).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    return review, listing
+
+
+def _authorize_reply_actor(
+    db: Session,
+    listing: Listing,
+    user: User,
+    *,
+    detail: str,
+) -> UUID:
+    if not listing.business_id:
+        raise HTTPException(status_code=403, detail=detail)
+
+    if user.user_type == UserTypes.business:
+        business = get_business_by_user_id(db, user.id)
+        if business is None:
+            raise HTTPException(status_code=403, detail=detail)
+
+        get_listing_for_business_or_404(
+            db,
+            business.id,
+            listing.id,
+            detail="Listing not found",
+            ownership_detail=detail,
+        )
+        return business.id
+
+    if user.user_type == UserTypes.employee:
+        try:
+            get_business_employee_link_or_404(
+                db,
+                listing.business_id,
+                user.id,
+                detail=detail,
+            )
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                raise HTTPException(status_code=403, detail=detail) from exc
+            raise
+
+        assignment = db.exec(
+            select(EmployeeListings).where(
+                EmployeeListings.employee_id == user.id,
+                EmployeeListings.listing_id == listing.id,
+            )
+        ).first()
+        if assignment is None:
+            raise HTTPException(status_code=403, detail=detail)
+
+        return listing.business_id
+
+    raise HTTPException(status_code=403, detail=detail)
+
+
 def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> dict:
     listing = db.exec(
         select(Listing).where(Listing.id == review_request.listing_id)
@@ -145,13 +215,9 @@ def submit_review(db: Session, user_id: UUID, review_request: ReviewCreate) -> d
         censored_comment=censored_comment,
     )
 
-    try:
-        db.add(review)
-        db.commit()
-        db.refresh(review)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="You already reviewed this listing")
+    db.add(review)
+    db.commit()
+    db.refresh(review)
 
     return {
         "id": review.id,
@@ -237,19 +303,18 @@ def update_review(db: Session, review: Review, review_request: ReviewUpdate) -> 
 
 
 def create_business_reply(
-    db: Session, review_id: UUID, business_id: UUID, user_id: UUID, description: str
+    db: Session,
+    review_id: UUID,
+    current_user: User,
+    description: str,
 ) -> dict:
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-
-    from app.modules.listings.models import Listing
-
-    listing = db.exec(select(Listing).where(Listing.id == review.listing_id)).first()
-    if not listing or str(listing.business_id) != str(business_id):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to reply to this review"
-        )
+    review, listing = _get_review_listing_context(db, review_id)
+    business_id = _authorize_reply_actor(
+        db,
+        listing,
+        current_user,
+        detail="Not authorized to reply to this review",
+    )
 
     existing = db.exec(
         select(BusinessReply).where(BusinessReply.review_id == review_id)
@@ -262,7 +327,7 @@ def create_business_reply(
     reply = BusinessReply(
         review_id=review_id,
         business_id=business_id,
-        user_id=user_id,
+        user_id=current_user.id,
         description=sanitize_html(description),
     )
     db.add(reply)
@@ -306,9 +371,8 @@ def get_business_reply(db: Session, review_id: UUID) -> dict | None:
 def update_business_reply(
     db: Session,
     review_id: UUID,
-    user_id: UUID,
+    current_user: User,
     description: str,
-    is_admin: bool = False,
 ) -> dict:
     reply = db.exec(
         select(BusinessReply).where(BusinessReply.review_id == review_id)
@@ -317,7 +381,14 @@ def update_business_reply(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
-    if not is_admin and str(reply.user_id) != str(user_id):
+    _, listing = _get_review_listing_context(db, reply.review_id)
+    business_id = _authorize_reply_actor(
+        db,
+        listing,
+        current_user,
+        detail="Not authorized to update this reply",
+    )
+    if str(reply.business_id) != str(business_id):
         raise HTTPException(
             status_code=403, detail="Not authorized to update this reply"
         )
@@ -340,7 +411,9 @@ def update_business_reply(
 
 
 def delete_business_reply(
-    db: Session, review_id: UUID, user_id: UUID, is_admin: bool = False
+    db: Session,
+    review_id: UUID,
+    current_user: User,
 ) -> None:
     reply = db.exec(
         select(BusinessReply).where(BusinessReply.review_id == review_id)
@@ -349,7 +422,14 @@ def delete_business_reply(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
-    if not is_admin and str(reply.user_id) != str(user_id):
+    _, listing = _get_review_listing_context(db, reply.review_id)
+    business_id = _authorize_reply_actor(
+        db,
+        listing,
+        current_user,
+        detail="Not authorized to delete this reply",
+    )
+    if str(reply.business_id) != str(business_id):
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this reply"
         )

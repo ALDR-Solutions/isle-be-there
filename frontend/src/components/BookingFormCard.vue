@@ -255,7 +255,6 @@ watch(selectedDate, (newDate, oldDate) => {
 
 // Watch availability prop (from parent - BulkBooking)
 watch(() => props.availability, (externalAvailability) => {
-  console.log('Availability watch triggered:', externalAvailability?.slots?.length, 'slots')
   // Only clear slots if availability is explicitly null (not undefined/not yet loaded)
   if (externalAvailability === null) {
     availabilityData.value = null
@@ -268,7 +267,6 @@ watch(() => props.availability, (externalAvailability) => {
     availabilityData.value = externalAvailability
     if (externalAvailability?.slots) {
       availableSlots.value = externalAvailability.slots.filter(slot => slot.is_available)
-      console.log('Slots updated:', availableSlots.value.length, availableSlots.value.map(s => s.slot_id))
     } else {
       availableSlots.value = []
     }
@@ -396,7 +394,6 @@ function selectSlot(slotId) {
     console.warn('selectSlot: slot not found', slotId, availableSlots.value.map(s => s.slot_id))
     return
   }
-  console.log('selectSlot called:', slotId, 'current formData:', formData.value)
   const date = dateValue.value
   const newFormData = {
     ...formData.value,
@@ -404,7 +401,6 @@ function selectSlot(slotId) {
     booking_from_time: date ? `${date}T${formatSlotTime(slot.start_time)}:00` : null,
     booking_to_time: date ? `${date}T${formatSlotTime(slot.end_time)}:00` : null
   }
-  console.log('selectSlot emitting:', newFormData)
   emit('update:modelValue', newFormData)
 }
 
