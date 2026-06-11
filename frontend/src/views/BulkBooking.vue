@@ -710,15 +710,6 @@ function validateSelectedItems() {
     if (!isHotelItem(item)) {
       const hasSlots = availability?.slots && availability.slots.length > 0;
       if (hasSlots && !formData.selected_slot_id) {
-        console.log('Slot validation failed:', {
-          itemTitle: item.title,
-          itemKey: item._key,
-          formDataKeys: Object.keys(formData),
-          selected_slot_id: formData.selected_slot_id,
-          selected_slot_id_type: typeof formData.selected_slot_id,
-          hasSlots,
-          availabilitySlots: availability?.slots?.length
-        })
         toastStore.show(`Please select a time slot for "${item.title}".`, 'error');
         return false;
       }

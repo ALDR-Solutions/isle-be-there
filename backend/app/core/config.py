@@ -27,6 +27,8 @@ DEFAULT_ALLOWED_IMAGE_MIME_TYPES = (
 class AppSettings(BaseSettings):
     APP_NAME: str = "Isle Be There API"
     ENV: str = "development"
+    TESTING: bool = False
+    ENABLE_BACKGROUND_JOBS: bool = True
     DATABASE_URL: str | None = None
     SQL_ECHO: bool = False
 
@@ -60,6 +62,10 @@ class AppSettings(BaseSettings):
     @property
     def is_local_env(self) -> bool:
         return self.ENV.strip().lower() in LOCAL_ENVIRONMENTS
+
+    @property
+    def should_start_background_jobs(self) -> bool:
+        return self.ENABLE_BACKGROUND_JOBS and not self.TESTING
 
     @property
     def cors_allow_origins(self) -> list[str]:

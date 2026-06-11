@@ -1,14 +1,12 @@
 from uuid import UUID
 import logging
 
-from fastapi import APIRouter, Depends, Form, HTTPException
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, Form
+from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_roles
-
-from .models import Review
+from app.shared.dependencies.permissions import require_review_owner, require_roles
 from .schemas import (
     ReviewCreate,
     ReviewResponse,
@@ -139,21 +137,10 @@ def update_review_route(
     review_id: UUID,
     rating: int | None = Form(default=None, ge=1, le=5),
     comment: str | None = Form(default=None),
-    current_user: User = Depends(require_roles("regular", "admin")),
+    review=Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
     """Update an existing review (owner only). Re-classifies if comment changes."""
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    if (
-        str(review.user_id) != str(current_user.id)
-        and current_user.user_type != "admin"
-    ):
-        raise HTTPException(
-            status_code=401, detail="Not authorized to update this review"
-        )
-
     review_update = ReviewUpdate(rating=rating, comment=comment)
     return update_review(db, review, review_update)
 
@@ -169,24 +156,11 @@ def update_review_route(
 )
 def delete_review_route(
     review_id: UUID,
-    current_user: User = Depends(require_roles("regular", "admin")),
+    review=Depends(require_review_owner),
     db: Session = Depends(get_db),
 ):
     """Delete a review (owner or admin only)."""
-    review = db.exec(select(Review).where(Review.id == review_id)).first()
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    if (
-        str(review.user_id) != str(current_user.id)
-        and current_user.user_type != "admin"
-    ):
-        raise HTTPException(
-            status_code=401, detail="Not authorized to delete this review"
-        )
-
-    db.delete(review)
-    db.commit()
-
+    delete_review(db, review)
     return {"detail": "Review deleted"}
 
 

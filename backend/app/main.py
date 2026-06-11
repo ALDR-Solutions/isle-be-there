@@ -42,122 +42,140 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup/shutdown events."""
-    settings.validate_runtime()
-    # Startup: initialize scheduler
-    init_scheduler()
-    yield
-    # Shutdown: shut down scheduler gracefully
-    from app.modules.bookings.scheduler import scheduler
-    if scheduler.running:
-        scheduler.shutdown(wait=False)
-
-
-app = FastAPI(
-    title="Isle Be There API",
-    description="Travel platform API with AI recommendations",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+def _include_routers(app: FastAPI) -> None:
+    app.include_router(auth_router)
+    app.include_router(listings_router)
+    app.include_router(bookings_router)
+    app.include_router(itineraries_router)
+    app.include_router(reviews_router)
+    app.include_router(calendar_router)
+    app.include_router(recommendations_router)
+    app.include_router(profile_router)
+    app.include_router(favourites_router)
+    app.include_router(interests_router)
+    app.include_router(businesses_router)
+    app.include_router(employees_router)
+    app.include_router(services_router)
+    app.include_router(pricing_router)
+    app.include_router(discounts_router)
+    app.include_router(availability_router)
+    app.include_router(stripe_payment_router)
 
 
 class UploadCleanupRequest(BaseModel):
     urls: list[str]
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    # Explicit origins keep credentialed requests compatible across browsers.
-    allow_origins=settings.cors_allow_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def _register_core_routes(app: FastAPI) -> None:
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
 
-# Serve static files
-if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+    @app.post("/api/upload")
+    async def upload_image(
+        file: UploadFile = File(...),
+        folder: str = Form(default="misc"),
+        current_user: User = Depends(get_current_user),
+    ):
+        safe_folder = "".join(
+            ch for ch in folder.lower() if ch.isalnum() or ch in {"-", "_"}
+        )
+        folder_name = safe_folder or "misc"
+        extension = Path(file.filename).suffix.lower()
+        file_bytes = await validate_image_upload(file)
+        object_path = f"{folder_name}/{current_user.id}/{uuid4().hex}{extension}"
 
-# Include routers
-app.include_router(auth_router)
-app.include_router(listings_router)
-app.include_router(bookings_router)
-app.include_router(itineraries_router)
-app.include_router(reviews_router)
-app.include_router(calendar_router)
-app.include_router(recommendations_router)
-app.include_router(profile_router)
-app.include_router(favourites_router)
-app.include_router(interests_router)
-app.include_router(businesses_router)
-app.include_router(employees_router)
-app.include_router(services_router)
-app.include_router(pricing_router)
-app.include_router(discounts_router)
-app.include_router(availability_router)
-app.include_router(stripe_payment_router)
+        public_url = upload_image_to_supabase(
+            data=file_bytes,
+            destination_path=object_path,
+            content_type=(file.content_type or "application/octet-stream"),
+        )
+        return {"filename": file.filename, "url": public_url}
+
+    @app.delete("/api/upload")
+    async def delete_uploaded_images(
+        payload: UploadCleanupRequest = Body(...),
+        current_user: User = Depends(get_current_user),
+    ):
+        user_id = str(current_user.id)
+
+        for url in payload.urls:
+            if not is_supabase_storage_url(url):
+                continue
+            object_path = get_supabase_storage_object_path(url)
+            path_parts = object_path.split("/")
+            if len(path_parts) < 2 or path_parts[1] != user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Not authorized to delete this image",
+                )
+
+        for url in payload.urls:
+            delete_image_from_supabase(public_url=url)
+
+        return {"detail": "Deleted"}
+
+    @app.get("/")
+    async def root():
+        if FRONTEND_DIST.exists():
+            return FileResponse(str(FRONTEND_DIST / "index.html"))
+        return {"message": "Isle Be There API"}
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
+
+        if FRONTEND_DIST.exists():
+            return FileResponse(str(FRONTEND_DIST / "index.html"))
+        return {"message": "Isle Be There API"}
 
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-@app.post("/api/upload")
-async def upload_image(
-    file: UploadFile = File(...),
-    folder: str = Form(default="misc"),
-    current_user: User = Depends(get_current_user),
-):
-    safe_folder = "".join(ch for ch in folder.lower() if ch.isalnum() or ch in {"-", "_"})
-    folder_name = safe_folder or "misc"
-    extension = Path(file.filename).suffix.lower()
-    file_bytes = await validate_image_upload(file)
-    object_path = f"{folder_name}/{current_user.id}/{uuid4().hex}{extension}"
-
-    public_url = upload_image_to_supabase(
-        data=file_bytes,
-        destination_path=object_path,
-        content_type=(file.content_type or "application/octet-stream"),
+def create_app(*, background_jobs_enabled: bool | None = None) -> FastAPI:
+    resolved_background_jobs_enabled = (
+        settings.should_start_background_jobs
+        if background_jobs_enabled is None
+        else background_jobs_enabled
     )
-    return {"filename": file.filename, "url": public_url}
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Lifespan context manager for startup/shutdown events."""
+        settings.validate_runtime()
+        if resolved_background_jobs_enabled:
+            init_scheduler()
+        yield
+        if resolved_background_jobs_enabled:
+            from app.modules.bookings.scheduler import scheduler
 
-@app.delete("/api/upload")
-async def delete_uploaded_images(
-    payload: UploadCleanupRequest = Body(...),
-    current_user: User = Depends(get_current_user),
-):
-    user_id = str(current_user.id)
+            if scheduler.running:
+                scheduler.shutdown(wait=False)
 
-    for url in payload.urls:
-        if not is_supabase_storage_url(url):
-            continue
-        object_path = get_supabase_storage_object_path(url)
-        path_parts = object_path.split("/")
-        if len(path_parts) < 2 or path_parts[1] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized to delete this image")
+    app = FastAPI(
+        title="Isle Be There API",
+        description="Travel platform API with AI recommendations",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+    app.state.background_jobs_enabled = resolved_background_jobs_enabled
 
-    for url in payload.urls:
-        delete_image_from_supabase(public_url=url)
-
-    return {"detail": "Deleted"}
-
-# Root route - serve Vue app
-@app.get("/")
-async def root():
-    if FRONTEND_DIST.exists():
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
-    return {"message": "Isle Be There API"}
-
-# Catch-all for Vue Router SPA
-@app.get("/{path:path}")
-async def serve_spa(path: str):
-    if path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route not found")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allow_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     if FRONTEND_DIST.exists():
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
-    return {"message": "Isle Be There API"}
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(FRONTEND_DIST / "assets")),
+            name="assets",
+        )
+
+    _include_routers(app)
+    _register_core_routes(app)
+    return app
+
+
+app = create_app()
