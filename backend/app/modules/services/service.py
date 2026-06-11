@@ -9,6 +9,14 @@ from app.modules.services.schemas import ServiceCreate, ServiceUpdate
 from app.shared.domain import get_listing_or_404, get_service_or_404
 
 
+def require_service_capacity(capacity: int | None) -> int:
+    if capacity is None:
+        raise HTTPException(400, "capacity is required")
+    if capacity < 1:
+        raise HTTPException(400, "capacity must be at least 1")
+    return capacity
+
+
 def get_service_by_id(db: Session, service_id: UUID) -> Service:
     return get_service_or_404(db, service_id)
 
@@ -38,6 +46,7 @@ def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
         raise HTTPException(400, "listing_id is required")
 
     get_listing_or_404(db, data.listing_id)
+    require_service_capacity(data.capacity)
 
     service = Service(**data.model_dump(), user_id=user_id)
 
@@ -49,6 +58,8 @@ def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
 
 def update_service(db: Session, service_id: UUID, data: ServiceUpdate) -> Service:
     service = get_service_or_404(db, service_id)
+    next_capacity = data.capacity if "capacity" in data.model_fields_set else service.capacity
+    require_service_capacity(next_capacity)
 
     for k, v in data.model_dump(exclude_unset=True).items():
         setattr(service, k, v)

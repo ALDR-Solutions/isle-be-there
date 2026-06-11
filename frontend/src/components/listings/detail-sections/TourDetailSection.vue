@@ -17,21 +17,8 @@
         </span>
       </div>
 
-      <div v-if="details.available_days?.length" class="flex items-start gap-3">
-        <span class="w-36 shrink-0 text-sm text-slate-500">Available days</span>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="day in details.available_days"
-            :key="day"
-            class="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700"
-          >
-            {{ day }}
-          </span>
-        </div>
-      </div>
-
       <div v-if="details.service_availability" class="flex items-center gap-3">
-        <span class="w-36 text-sm text-slate-500">Schedule</span>
+        <span class="w-36 text-sm text-slate-500">Schedule notes</span>
         <span class="text-sm font-medium text-slate-800">{{ details.service_availability }}</span>
       </div>
     </div>

@@ -226,7 +226,7 @@
 
           <ListingReviewsPanel
             :listing-id="businessStore.activeListing?.id"
-            :can-reply="true"
+            :can-reply="canReplyToReview(businessStore.activeListing)"
             :can-manage-reply="true"
             empty-subtext="Customer feedback for this listing will appear here."
           />
@@ -472,6 +472,23 @@
             v-model="form.details"
             :listing-id="editingId"
           />
+
+          <div v-if="showAvailabilityHoursEditor" class="space-y-3">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                Availability Hours
+              </label>
+              <p class="text-xs text-slate-500">
+                Set the listing's general opening hours. These are shown to visitors and used as the fallback schedule when a service does not use its own slots.
+              </p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <AvailabilityHoursEditor
+                v-model="form.availability_hours"
+                :loading="listingHoursLoading"
+              />
+            </div>
+          </div>
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5"
@@ -1136,6 +1153,7 @@ import {
   interestsAPI,
   listingsAPI,
   employeesAPI,
+  availabilityAPI,
 } from "../services/api";
 import { useToastStore } from "../stores/toast";
 import { useBusinessStore } from "../stores/business";
@@ -1147,6 +1165,7 @@ import HotelDetailForm from "../components/listings/detail-forms/HotelDetailForm
 import RestaurantDetailForm from "../components/listings/detail-forms/RestaurantDetailForm.vue";
 import TourDetailForm from "../components/listings/detail-forms/TourDetailForm.vue";
 import ActivityDetailForm from "../components/listings/detail-forms/ActivityDetailForm.vue";
+import AvailabilityHoursEditor from "../components/listings/detail-forms/AvailabilityHoursEditor.vue";
 import ListingBookingsSection from "../components/bookings/ListingBookingsSection.vue";
 import ListingServicesSection from "../components/services/ListingServicesSection.vue";
 import ListingReviewsPanel from "../components/reviews/ListingReviewsPanel.vue";
@@ -1219,6 +1238,8 @@ const isEditing = ref(false);
 const editingId = ref(null);
 const formSubmitting = ref(false);
 const geocodingLocation = ref(false);
+const listingHoursLoading = ref(false);
+const originalListingHours = ref({});
 
 const blankForm = () => ({
   title: "",
@@ -1237,6 +1258,7 @@ const blankForm = () => ({
   longitude: "",
   image_urls: [],
   details: {},
+  availability_hours: {},
 });
 
 const form = ref(blankForm());
@@ -1264,6 +1286,9 @@ const canGeocodeAddress = computed(() =>
   [form.value.street, form.value.city, form.value.country].some((value) =>
     String(value ?? "").trim(),
   ),
+);
+const showAvailabilityHoursEditor = computed(
+  () => !!selectedTypeName.value && selectedTypeName.value !== "Hotel",
 );
 
 const {
@@ -1417,6 +1442,8 @@ function openCreateModal() {
   destroyListingMap();
   clearOriginalState();
   typeInterests.value = [];
+  originalListingHours.value = {};
+  listingHoursLoading.value = false;
   form.value = blankForm();
   formErrors.value = {};
   showFormModal.value = true;
@@ -1456,6 +1483,7 @@ function openEditModal(item) {
       details: item.details ? { ...item.details } : null,
     },
   });
+  originalListingHours.value = {};
   form.value = {
     title: item.title ?? "",
     business_type: item.business_type ?? "",
@@ -1475,8 +1503,10 @@ function openEditModal(item) {
     longitude: item.location?.lng ?? "",
     image_urls: item.image_urls?.length ? [...item.image_urls] : [],
     details: item.details ? { ...item.details } : {},
+    availability_hours: {},
   };
   fetchTypeInterests(form.value.business_type);
+  loadListingHours(item.id);
   formErrors.value = {};
   showFormModal.value = true;
 }
@@ -1486,6 +1516,8 @@ function closeFormModal() {
   destroyListingMap();
   clearOriginalState();
   typeInterests.value = [];
+  originalListingHours.value = {};
+  listingHoursLoading.value = false;
   showFormModal.value = false;
 }
 
@@ -1510,6 +1542,122 @@ function buildLocationPayload() {
   const coordinates = getFormCoordinates();
   if (!coordinates) return null;
   return coordinates;
+}
+
+function formatListingHourValue(value) {
+  if (!value) return "";
+  return String(value).slice(0, 5);
+}
+
+function normalizeListingHoursMap(hours) {
+  const normalized = {};
+  for (const [dayNum, dayHours] of Object.entries(hours ?? {})) {
+    if (!dayHours) continue;
+    const open_time = formatListingHourValue(dayHours.open_time);
+    const close_time = formatListingHourValue(dayHours.close_time);
+    if (!open_time || !close_time) continue;
+    normalized[String(dayNum)] = { open_time, close_time };
+  }
+  return normalized;
+}
+
+function canReplyToReview(listing) {
+  if (!listing) return false;
+  if (!["active", "pending"].includes(listing.status)) return false;
+  return true;
+}
+
+
+function listingHoursPayload(listingId, dayNum, hours) {
+  return {
+    listing_id: listingId,
+    day_of_week: dayNum,
+    open_time: `${hours.open_time}:00`,
+    close_time: `${hours.close_time}:00`,
+  };
+}
+
+async function loadListingHours(listingId) {
+  if (!listingId) {
+    form.value.availability_hours = {};
+    originalListingHours.value = {};
+    listingHoursLoading.value = false;
+    return;
+  }
+
+  listingHoursLoading.value = true;
+  try {
+    const response = await availabilityAPI.getListingHours(listingId);
+    const mapped = {};
+    for (const hours of Array.isArray(response.data) ? response.data : []) {
+      mapped[String(hours.day_of_week)] = {
+        open_time: formatListingHourValue(hours.open_time),
+        close_time: formatListingHourValue(hours.close_time),
+      };
+    }
+    form.value.availability_hours = mapped;
+    originalListingHours.value = { ...mapped };
+  } catch (error) {
+    console.error("Failed to load listing hours", error);
+    form.value.availability_hours = {};
+    originalListingHours.value = {};
+    toastStore.show("Failed to load availability hours.", "error");
+  } finally {
+    listingHoursLoading.value = false;
+  }
+}
+
+async function syncListingHours(listingId) {
+  if (!listingId || !showAvailabilityHoursEditor.value) {
+    return;
+  }
+
+  const nextHours = normalizeListingHoursMap(form.value.availability_hours);
+  const previousHours = normalizeListingHoursMap(originalListingHours.value);
+  const requests = [];
+
+  for (let dayNum = 0; dayNum <= 6; dayNum += 1) {
+    const key = String(dayNum);
+    const next = nextHours[key] ?? null;
+    const previous = previousHours[key] ?? null;
+
+    if (next && previous) {
+      if (
+        next.open_time !== previous.open_time
+        || next.close_time !== previous.close_time
+      ) {
+        requests.push(
+          availabilityAPI.updateListingHours(listingId, dayNum, {
+            open_time: `${next.open_time}:00`,
+            close_time: `${next.close_time}:00`,
+          }),
+        );
+      }
+      continue;
+    }
+
+    if (next && !previous) {
+      requests.push(
+        availabilityAPI.createListingHours(
+          listingId,
+          listingHoursPayload(listingId, dayNum, next),
+        ),
+      );
+      continue;
+    }
+
+    if (!next && previous) {
+      requests.push(availabilityAPI.deleteListingHours(listingId, dayNum));
+    }
+  }
+
+  if (!requests.length) {
+    originalListingHours.value = { ...nextHours };
+    return;
+  }
+
+  await Promise.all(requests);
+  originalListingHours.value = { ...nextHours };
 }
 
 function ensureLeafletCss() {
@@ -1747,6 +1895,13 @@ async function submitForm() {
     if (isEditing.value) {
       const removedOriginalUrls = getRemovedOriginalUrls(payload.image_urls);
       const response = await listingsAPI.update(editingId.value, payload);
+      let listingHoursSaved = true;
+      try {
+        await syncListingHours(editingId.value);
+      } catch (hoursError) {
+        listingHoursSaved = false;
+        console.error("Failed to save listing hours", hoursError);
+      }
       try {
         await deleteImagesOrThrow(removedOriginalUrls);
       } catch (deleteError) {
@@ -1756,11 +1911,28 @@ async function submitForm() {
         throw deleteError;
       }
       businessStore.updateListing(response.data);
-      toastStore.show("Listing updated successfully.", "success");
+      toastStore.show(
+        listingHoursSaved
+          ? "Listing updated successfully."
+          : "Listing updated, but availability hours could not be saved.",
+        listingHoursSaved ? "success" : "error",
+      );
     } else {
       const response = await listingsAPI.create(payload);
       businessStore.addListing(response.data);
-      toastStore.show("Listing created successfully.", "success");
+      let listingHoursSaved = true;
+      try {
+        await syncListingHours(response.data.id);
+      } catch (hoursError) {
+        listingHoursSaved = false;
+        console.error("Failed to save listing hours", hoursError);
+      }
+      toastStore.show(
+        listingHoursSaved
+          ? "Listing created successfully."
+          : "Listing created, but availability hours could not be saved.",
+        listingHoursSaved ? "success" : "error",
+      );
     }
     closeFormModal();
   } catch (e) {

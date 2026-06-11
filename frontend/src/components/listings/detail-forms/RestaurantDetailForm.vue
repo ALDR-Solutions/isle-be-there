@@ -43,17 +43,6 @@
       </button>
     </div>
 
-    <div>
-      <label class="mb-1.5 block text-sm font-semibold text-slate-700">Opening Hours</label>
-      <input
-        :value="modelValue.service_availability ?? ''"
-        @input="update('service_availability', $event.target.value || null)"
-        type="text"
-        placeholder="e.g. Mon-Fri 11am-10pm, Sat-Sun 10am-11pm"
-        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-      />
-    </div>
-
     <div class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
       <div>
         <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Menu</p>
@@ -160,14 +149,11 @@
         </div>
       </div>
     </div>
-
-    <AvailabilitySection v-if="listingId" :listing-id="listingId" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
-import AvailabilitySection from '../detail-sections/AvailabilitySection.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },

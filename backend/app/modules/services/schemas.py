@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.services.models import StatusTypes
 
@@ -21,7 +21,7 @@ class ServiceBase(BaseModel):
     price: Optional[float] = None
     season_price: Optional[float] = None
     status: Optional[StatusTypes] = None
-    capacity: Optional[int] = None
+    capacity: Optional[int] = Field(default=None, ge=1)
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[ServiceTypeData] = None
     listing_id: Optional[UUID] = None
@@ -38,7 +38,7 @@ class ServiceUpdate(BaseModel):
     price: Optional[float] = None
     season_price: Optional[float] = None
     status: Optional[StatusTypes] = None
-    capacity: Optional[int] = None
+    capacity: Optional[int] = Field(default=None, ge=1)
     availability: Optional[Dict[str, Any]] = None
     type_data: Optional[Dict[str, Any]] = None
     image_urls: Optional[List[str]] = None

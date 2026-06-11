@@ -164,3 +164,5 @@ alembic/versions/
 .playwright-mcp/
 solution_models/*
 backend/temp_classification_tester.py
+
+backend/sql/

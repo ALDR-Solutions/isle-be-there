@@ -94,14 +94,11 @@
         </span>
       </div>
     </div>
-
-    <AvailabilitySection v-if="listingId" :listing-id="listingId" />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import AvailabilitySection from '../detail-sections/AvailabilitySection.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },

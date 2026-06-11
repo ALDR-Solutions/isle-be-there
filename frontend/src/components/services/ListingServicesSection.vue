@@ -296,10 +296,12 @@
               <input
                 v-model="serviceForm.capacity"
                 type="number"
-                min="0"
+                min="1"
                 placeholder="e.g. 4"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
+                class="w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
+                :class="serviceErrors.capacity ? 'border-red-300' : 'border-slate-200'"
               />
+              <p v-if="serviceErrors.capacity" class="mt-1.5 text-xs text-red-500">{{ serviceErrors.capacity }}</p>
               <p class="mt-1.5 text-xs text-slate-500">
                 Used as the general capacity, and as the fallback when a slot does not override it.
               </p>
@@ -331,7 +333,7 @@
           <div v-if="isHotelType" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
             <div>
               <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Hotel Service Details</p>
-              <p class="mt-1 text-xs text-slate-500">Stored in `type_data` for hotel listings.</p>
+              <p class="mt-1 text-xs text-slate-500">Additional information for hotel services (Room type and amenities).</p>
             </div>
 
             <div>
@@ -349,14 +351,14 @@
               <div class="flex gap-2">
                 <input
                   v-model="roomAmenityInput"
-                  @keydown.enter.prevent="addListValue('room_amenities', roomAmenityInput)"
+                  @keydown.enter.prevent="addRoomAmenity"
                   type="text"
                   placeholder="e.g. Balcony"
                   class="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
                 />
                 <button
                   type="button"
-                  @click="addListValue('room_amenities', roomAmenityInput)"
+                  @click="addRoomAmenity"
                   class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   Add
@@ -948,6 +950,11 @@ function validateServiceForm() {
     errors.price = 'Please enter a valid base price.'
   }
 
+  const capacity = Number(serviceForm.value.capacity)
+  if (serviceForm.value.capacity === '' || Number.isNaN(capacity) || capacity < 1) {
+    errors.capacity = 'Please enter a default capacity of at least 1.'
+  }
+
   serviceErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -1226,6 +1233,10 @@ function addListValue(field, inputRef) {
     serviceForm.value[field] = [...current, value]
   }
   inputRef.value = ''
+}
+
+function addRoomAmenity() {
+  addListValue('room_amenities', roomAmenityInput)
 }
 
 function removeListValue(field, index) {

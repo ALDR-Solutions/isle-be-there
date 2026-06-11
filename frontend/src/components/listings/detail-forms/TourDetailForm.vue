@@ -32,22 +32,6 @@
     </div>
 
     <div>
-      <label class="block text-sm font-semibold text-slate-700 mb-2">Available Days</label>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="day in days"
-          :key="day"
-          type="button"
-          @click="toggleDay(day)"
-          class="rounded-2xl border px-3 py-1.5 text-xs font-semibold transition"
-          :class="selectedDays.includes(day)
-            ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
-            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-        >{{ day }}</button>
-      </div>
-    </div>
-
-    <div>
       <label class="block text-sm font-semibold text-slate-700 mb-1.5">Schedule Notes</label>
       <input
         :value="modelValue.service_availability ?? ''"
@@ -56,15 +40,10 @@
         class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
       />
     </div>
-
-    <AvailabilitySection v-if="listingId" :listing-id="listingId" />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import AvailabilitySection from '../detail-sections/AvailabilitySection.vue'
-
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
   listingId: { type: String, default: null },
@@ -73,17 +52,5 @@ const emit = defineEmits(['update:modelValue'])
 
 function update(key, value) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
-
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-const selectedDays = computed(() => props.modelValue.available_days ?? [])
-
-function toggleDay(day) {
-  const current = [...selectedDays.value]
-  const idx = current.indexOf(day)
-  if (idx === -1) current.push(day)
-  else current.splice(idx, 1)
-  update('available_days', current)
 }
 </script>

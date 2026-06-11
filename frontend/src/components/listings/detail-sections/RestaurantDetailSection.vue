@@ -40,10 +40,6 @@
         </span>
       </div>
 
-      <div v-if="details.service_availability" class="flex items-center gap-3">
-        <span class="w-36 text-sm text-slate-500">Hours</span>
-        <span class="text-sm font-medium text-slate-800">{{ details.service_availability }}</span>
-      </div>
     </div>
 
     <div v-if="menuSections.length" class="mt-6">
