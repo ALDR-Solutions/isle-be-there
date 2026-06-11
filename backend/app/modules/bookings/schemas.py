@@ -14,6 +14,7 @@ class BookingBase(BaseModel):
     amount_of_people: Optional[int] = 1
     bookers_name: str = None
     special_requests: Optional[str] = None
+    service_slot_id: Optional[int] = None
     booking_from_time: Optional[datetime] = None
     booking_to_time: Optional[datetime] = None
     itinerary_item_id: Optional[UUID] = None
@@ -33,6 +34,7 @@ class BookingUpdate(BaseModel):
     booking_from_time: Optional[datetime] = None
     booking_to_time: Optional[datetime] = None
     special_requests: Optional[str] = None
+    service_slot_id: Optional[int] = None
     status: Optional[BookingStatus] = None
 
 class BookingResponse(BaseModel):
@@ -43,6 +45,7 @@ class BookingResponse(BaseModel):
     booking_from_time: datetime
     booking_to_time: datetime
     service_id: Optional[UUID] = None
+    service_slot_id: Optional[int] = None
     service_name: Optional[str] = None
     listing_name: Optional[str] = None
     listing_business_type_name: Optional[str] = None
@@ -80,6 +83,7 @@ class BookingCreateResponse(BaseModel):
     booking_from_time: datetime
     booking_to_time: datetime
     service_id: Optional[UUID] = None
+    service_slot_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

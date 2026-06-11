@@ -105,7 +105,7 @@
             {{ service.status === 'inactive' ? 'Reactivate' : 'Deactivate' }}
           </button>
           <button
-            @click="deleteService(service)"
+            @click="openDeleteServiceModal(service)"
             :disabled="isActionPending(service.service_id)"
             class="rounded-xl border border-red-100 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -377,11 +377,13 @@
           </div>
 
           <!-- Service Slots Section (inline) -->
-          <div v-if="editingService" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">Service Slots</p>
-                <p class="mt-1 text-xs text-slate-500">Define time slots for this service.</p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ editingService ? 'Define time slots for this service.' : 'Add slots now and they will be created when you save the service.' }}
+                </p>
               </div>
               <span v-if="loadingSlots" class="text-xs text-slate-400">Loading...</span>
             </div>
@@ -457,7 +459,7 @@
             <div class="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
               <h4 class="text-sm font-medium text-slate-700">Add New Slot for {{ slotDayNames[selectedSlotDay] }}</h4>
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label class="block text-xs text-slate-500 mb-1">Start Time</label>
                   <input
@@ -474,6 +476,16 @@
                     v-model="newSlot.endTime"
                     class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
                     step="300"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    v-model="newSlot.capacity"
+                    placeholder="Defaults to service capacity"
+                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -607,6 +619,61 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showDeleteServiceModal"
+      class="fixed inset-0 z-[70] flex items-center justify-center px-4"
+      @click.self="!deleteSubmitting && closeDeleteServiceModal()"
+    >
+      <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-2xl">
+        <div class="px-6 py-6 sm:px-7">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500/10 sm:mx-0 sm:h-10 sm:w-10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                />
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+              <h3 class="text-base font-semibold text-slate-900">Delete service?</h3>
+              <div class="mt-2 space-y-2">
+                <p class="text-sm text-slate-600">
+                  This will permanently remove
+                  <span class="font-semibold text-slate-900">{{ serviceToDelete?.name || 'this service' }}</span>
+                  from this listing.
+                </p>
+                <p class="text-sm text-slate-500">
+                  Any saved service slots for this service will no longer be usable.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-7">
+          <button
+            type="button"
+            @click="confirmDeleteService"
+            :disabled="deleteSubmitting"
+            class="inline-flex w-full justify-center rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-3 sm:w-auto"
+          >
+            {{ deleteSubmitting ? 'Deleting...' : 'Delete Service' }}
+          </button>
+          <button
+            type="button"
+            @click="closeDeleteServiceModal"
+            :disabled="deleteSubmitting"
+            class="mt-3 inline-flex w-full justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0 sm:w-auto"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -640,19 +707,32 @@ const showServiceModal = ref(false)
 const editingService = ref(null)
 const modalSubmitting = ref(false)
 const actionServiceId = ref(null)
+const showDeleteServiceModal = ref(false)
+const serviceToDelete = ref(null)
+const deleteSubmitting = ref(false)
 const serviceErrors = ref({})
 const roomAmenityInput = ref('')
 const serviceSlots = ref([])
 const loadingSlots = ref(false)
 const slotDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const newSlot = ref({ day: 1, startTime: '09:00', endTime: '17:00' })
+const newSlot = ref(blankSlotForm())
 const slotValidationError = ref('')
 const selectedSlotDay = ref(1) // Default to Monday
 const activeCopySlotDropup = ref(null)
+const localSlotIdCounter = ref(0)
 
 const businessTypeName = computed(() => props.listing?.business_type_name ?? '')
 const isHotelType = computed(() => businessTypeName.value === 'Hotel')
 const readOnly = computed(() => props.readOnly)
+
+function blankSlotForm(defaultCapacity = '') {
+  return {
+    day: 1,
+    startTime: '09:00',
+    endTime: '17:00',
+    capacity: defaultCapacity === '' || defaultCapacity == null ? '' : String(defaultCapacity),
+  }
+}
 
 const blankServiceForm = () => ({
   name: '',
@@ -788,6 +868,34 @@ function buildServicePayload(uploadedUrls = [], { includeListingId = true } = {}
   return payload
 }
 
+function normalizeSlotTimeValue(time) {
+  if (!time) return ''
+  return time.length === 5 ? `${time}:00` : time
+}
+
+function buildPendingSlot(dayOverride, overrides = {}) {
+  const day = dayOverride !== undefined ? dayOverride : selectedSlotDay.value
+  localSlotIdCounter.value += 1
+  return {
+    id: `local-slot-${localSlotIdCounter.value}`,
+    service_id: null,
+    day_of_week: day,
+    start_time: normalizeSlotTimeValue(overrides.start_time ?? newSlot.value.startTime),
+    end_time: normalizeSlotTimeValue(overrides.end_time ?? newSlot.value.endTime),
+    capacity: overrides.capacity ?? getSlotCapacity(),
+  }
+}
+
+function getSlotCapacity() {
+  const parsedSlotCapacity = Number(newSlot.value.capacity)
+  if (Number.isFinite(parsedSlotCapacity) && parsedSlotCapacity > 0) {
+    return parsedSlotCapacity
+  }
+
+  const parsedCapacity = Number(serviceForm.value.capacity)
+  return Number.isFinite(parsedCapacity) && parsedCapacity > 0 ? parsedCapacity : 1
+}
+
 function validateServiceForm() {
   const errors = {}
 
@@ -848,6 +956,10 @@ function openServiceModal(service = null) {
   resetServiceImageUi()
   serviceErrors.value = {}
   roomAmenityInput.value = ''
+  slotValidationError.value = ''
+  selectedSlotDay.value = 1
+  newSlot.value = blankSlotForm(serviceForm.value.capacity)
+  activeCopySlotDropup.value = null
   showServiceModal.value = true
   setOriginalServiceState({
     imageUrls: serviceForm.value.image_urls,
@@ -862,6 +974,7 @@ function openServiceModal(service = null) {
       .finally(() => { loadingSlots.value = false })
   } else {
     serviceSlots.value = []
+    loadingSlots.value = false
   }
 }
 
@@ -872,6 +985,24 @@ function closeServiceModal() {
   editingService.value = null
   serviceErrors.value = {}
   roomAmenityInput.value = ''
+  serviceSlots.value = []
+  loadingSlots.value = false
+  slotValidationError.value = ''
+  selectedSlotDay.value = 1
+  newSlot.value = blankSlotForm()
+  activeCopySlotDropup.value = null
+}
+
+function openDeleteServiceModal(service) {
+  if (readOnly.value || isActionPending(service.service_id)) return
+  serviceToDelete.value = service
+  showDeleteServiceModal.value = true
+}
+
+function closeDeleteServiceModal() {
+  if (deleteSubmitting.value) return
+  showDeleteServiceModal.value = false
+  serviceToDelete.value = null
 }
 
 async function rollbackServiceUpdate() {
@@ -885,6 +1016,26 @@ async function rollbackServiceUpdate() {
       service.service_id === rollbackResponse.data.service_id ? rollbackResponse.data : service
     )
   )
+}
+
+async function syncSlotsForCreatedService(service) {
+  if (!service?.service_id || serviceSlots.value.length === 0) {
+    return []
+  }
+
+  const createdSlots = []
+  for (const slot of serviceSlots.value) {
+    const payload = {
+      day_of_week: slot.day_of_week,
+      service_id: service.service_id,
+      start_time: normalizeSlotTimeValue(slot.start_time),
+      end_time: normalizeSlotTimeValue(slot.end_time),
+      capacity: slot.capacity,
+    }
+    const response = await availabilityAPI.createServiceSlot(service.service_id, payload)
+    createdSlots.push(response.data)
+  }
+  return createdSlots
 }
 
 async function submitService() {
@@ -917,8 +1068,38 @@ async function submitService() {
       toastStore.show('Service updated.', 'success')
     } else {
       const response = await servicesAPI.create(payload)
-      setServices([...services.value, response.data])
-      toastStore.show('Service added.', 'success')
+      const createdService = response.data
+      let createdSlots = []
+
+      setServices([...services.value, createdService])
+      editingService.value = createdService
+      setOriginalServiceState({
+        imageUrls: createdService.image_urls ?? [],
+        payload: buildServicePayload([], { includeListingId: false }),
+      })
+
+      try {
+        createdSlots = await syncSlotsForCreatedService(createdService)
+      } catch (slotError) {
+        try {
+          const slotResponse = await availabilityAPI.getServiceSlots(createdService.service_id)
+          serviceSlots.value = Array.isArray(slotResponse.data) ? slotResponse.data : []
+        } catch (loadError) {
+          console.error('Failed to reload slots after slot creation error', loadError)
+        }
+
+        serviceErrors.value.submit =
+          slotError.response?.data?.detail ||
+          'Service was created, but at least one slot could not be saved. You can fix the slots and save again.'
+        toastStore.show('Service created, but some slots could not be saved.', 'error')
+        return
+      }
+
+      serviceSlots.value = createdSlots
+      toastStore.show(
+        createdSlots.length ? 'Service and slots added.' : 'Service added.',
+        'success'
+      )
     }
 
     closeServiceModal()
@@ -966,19 +1147,23 @@ async function toggleServiceStatus(service) {
   }
 }
 
-async function deleteService(service) {
-  if (readOnly.value || isActionPending(service.service_id)) return
+async function confirmDeleteService() {
+  if (!serviceToDelete.value || readOnly.value || isActionPending(serviceToDelete.value.service_id)) return
 
-  actionServiceId.value = service.service_id
+  deleteSubmitting.value = true
+  actionServiceId.value = serviceToDelete.value.service_id
   try {
-    await servicesAPI.delete(service.service_id)
-    setServices(services.value.filter((item) => item.service_id !== service.service_id))
+    await servicesAPI.delete(serviceToDelete.value.service_id)
+    setServices(services.value.filter((item) => item.service_id !== serviceToDelete.value.service_id))
+    showDeleteServiceModal.value = false
+    serviceToDelete.value = null
     toastStore.show('Service deleted.', 'info')
   } catch (error) {
     console.error('Failed to delete service', error)
     toastStore.show(error.response?.data?.detail || 'Failed to delete service.', 'error')
   } finally {
     actionServiceId.value = null
+    deleteSubmitting.value = false
   }
 }
 
@@ -1022,6 +1207,10 @@ function validateSlotForm() {
     slotValidationError.value = 'Start time must be before end time'
     return false
   }
+  if (getSlotCapacity() < 1) {
+    slotValidationError.value = 'Slot capacity must be at least 1'
+    return false
+  }
   slotValidationError.value = ''
   return true
 }
@@ -1050,15 +1239,24 @@ function buildSlotPayload(dayOverride) {
   const day = dayOverride !== undefined ? dayOverride : selectedSlotDay.value
   return {
     day_of_week: day,
-    service_id: editingService.value.service_id,
-    start_time: newSlot.value.startTime.length === 5 ? newSlot.value.startTime + ':00' : newSlot.value.startTime,
-    end_time: newSlot.value.endTime.length === 5 ? newSlot.value.endTime + ':00' : newSlot.value.endTime,
-    capacity: editingService.value.capacity ?? 1
+    service_id: editingService.value?.service_id ?? null,
+    start_time: normalizeSlotTimeValue(newSlot.value.startTime),
+    end_time: normalizeSlotTimeValue(newSlot.value.endTime),
+    capacity: getSlotCapacity(),
   }
 }
 
 async function handleAddSlot() {
-  if (!validateSlotForm() || !editingService.value) return
+  if (!validateSlotForm()) return
+
+  if (!editingService.value) {
+    serviceSlots.value = [...serviceSlots.value, buildPendingSlot()]
+    toastStore.show('Slot added to the new service.', 'success')
+    newSlot.value.startTime = '09:00'
+    newSlot.value.endTime = '17:00'
+    return
+  }
+
   try {
     const payload = buildSlotPayload()
     const response = await availabilityAPI.createServiceSlot(editingService.value.service_id, payload)
@@ -1073,8 +1271,21 @@ async function handleAddSlot() {
 }
 
 async function handleCopySlotToDay(slot, targetDay) {
-  if (!editingService.value) return
   activeCopySlotDropup.value = null
+
+  if (!editingService.value) {
+    serviceSlots.value = [
+      ...serviceSlots.value,
+      buildPendingSlot(targetDay, {
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        capacity: slot.capacity,
+      }),
+    ]
+    toastStore.show('Slot copied', 'success')
+    return
+  }
+
   try {
     const payload = {
       day_of_week: targetDay,
@@ -1097,7 +1308,12 @@ function toggleCopySlotDropup(slotId) {
 }
 
 async function handleDeleteSlot(slotId) {
-  if (!editingService.value) return
+  if (!editingService.value) {
+    serviceSlots.value = serviceSlots.value.filter(s => s.id !== slotId)
+    toastStore.show('Slot removed.', 'info')
+    return
+  }
+
   try {
     await availabilityAPI.deleteServiceSlot(editingService.value.service_id, slotId)
     serviceSlots.value = serviceSlots.value.filter(s => s.id !== slotId)

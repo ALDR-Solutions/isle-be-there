@@ -1408,6 +1408,7 @@ async function submitBooking() {
 
   pendingBookingData.value = {
     service_id: selectedServiceId.value,
+    service_slot_id: selectedSlot.value?.slot_id ?? null,
     bookers_name: bookingForm.bookers_name.trim(),
     amount_of_people: bookingForm.amount_of_people || 1,
     booking_from_time: bookingForm.booking_from_time,

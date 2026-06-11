@@ -20,6 +20,13 @@ from app.shared.services import build_location, extract_lat_lng
 from .models import Listing, Statuses
 
 ACTIVE_LIKE_STATUSES = (Statuses.active, Statuses.approved)
+OWNER_REVIEW_TRIGGER_FIELDS = {
+    "title",
+    "description",
+    "image_urls",
+    "address",
+    "location",
+}
 
 
 def batch_review_stats(db: Session, listing_ids: list) -> dict:
@@ -65,6 +72,46 @@ def normalize_interest_ids(interest_ids: list[UUID] | None) -> list[UUID]:
         seen.add(interest_id)
         deduplicated.append(interest_id)
     return deduplicated
+
+
+def normalize_listing_location_payload(location: dict | None) -> dict | None:
+    if not location:
+        return None
+
+    lat = location.get("lat")
+    lng = location.get("lng")
+    if lat is None or lng is None:
+        return None
+
+    return {
+        "lat": round(float(lat), 6),
+        "lng": round(float(lng), 6),
+    }
+
+
+def get_listing_field_value_for_comparison(listing: Listing, field_name: str):
+    if field_name == "location":
+        return normalize_listing_location_payload(extract_lat_lng(listing.location))
+    return getattr(listing, field_name)
+
+
+def should_send_listing_back_to_pending(listing: Listing, update_data: dict) -> bool:
+    if listing.status not in {Statuses.active, Statuses.approved, Statuses.rejected}:
+        return False
+
+    for field_name in OWNER_REVIEW_TRIGGER_FIELDS:
+        if field_name not in update_data:
+            continue
+
+        next_value = update_data[field_name]
+        if field_name == "location":
+            next_value = normalize_listing_location_payload(next_value)
+
+        current_value = get_listing_field_value_for_comparison(listing, field_name)
+        if next_value != current_value:
+            return True
+
+    return False
 
 
 def get_allowed_interest_ids(db: Session, business_type_id: UUID | None) -> set[UUID]:
@@ -316,6 +363,8 @@ def update_listing(
     update_data: dict,
     is_admin: bool = False,
 ):
+    send_back_to_pending = False
+
     if not is_admin:
         if listing.status == Statuses.suspended:
             raise HTTPException(
@@ -333,6 +382,8 @@ def update_listing(
                     status_code=403,
                     detail="Business owners can only archive or restore their listings",
                 )
+        if requested_status is None:
+            send_back_to_pending = should_send_listing_back_to_pending(listing, update_data)
 
     should_update_interests = "interest_ids" in update_data
     requested_interest_ids = update_data.pop("interest_ids", None)
@@ -352,6 +403,9 @@ def update_listing(
 
     for key, value in update_data.items():
         setattr(listing, key, value)
+
+    if send_back_to_pending:
+        listing.status = Statuses.pending
 
     if should_update_interests and validated_interest_ids is not None:
         sync_listing_interests(db, listing.id, validated_interest_ids)

@@ -880,7 +880,7 @@
                 <span class="font-semibold">Requires approval.</span>
                 {{
                   isEditing
-                    ? "Edits will be reviewed before the listing updates publicly."
+                    ? "Title, description, image_urls, address, or location edits will need to be reviewed before the listing updates publicly."
                     : "New listings are marked as Pending Approval until reviewed by a moderator."
                 }}
               </p>

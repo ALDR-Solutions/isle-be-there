@@ -6,13 +6,16 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlmodel import Session, col, select, update
 
 from app.modules.availability.service import (
     get_available_slots as availability_get_available_slots,
     get_booked_count as availability_get_booked_count,
+    get_service_slot_for_service,
     is_available as availability_is_available,
 )
+from app.modules.availability.models import ServiceSlots
 from app.modules.bookings.schemas import BookingCreate, BookingResponse
 from app.modules.businesses.models import BusinessType
 from app.modules.discounts.models import Discount
@@ -170,6 +173,92 @@ def validate_booking_window(booking_from_time: Optional[datetime], booking_to_ti
         raise HTTPException(status_code=400, detail="Booking start and end time are required")
     if booking_to_time <= booking_from_time:
         raise HTTPException(status_code=400, detail="Booking end time must be after start time")
+
+
+def get_booking_day_of_week(booking_time: datetime) -> int:
+    """Convert Python weekday() (Mon=0) to DB weekday (Sun=0)."""
+    return (booking_time.weekday() + 1) % 7
+
+
+def booking_requires_slot_selection(
+    db: Session,
+    service_id: UUID,
+    booking_from_time: Optional[datetime],
+) -> bool:
+    if booking_from_time is None:
+        return False
+
+    day_of_week = get_booking_day_of_week(booking_from_time)
+    slot = db.exec(
+        select(ServiceSlots.id)
+        .where(ServiceSlots.service_id == service_id)
+        .where(ServiceSlots.day_of_week == day_of_week)
+    ).first()
+    return slot is not None
+
+
+def resolve_booking_slot_context(
+    db: Session,
+    service_id: UUID,
+    service_slot_id: int,
+    booking_from_time: Optional[datetime],
+    booking_to_time: Optional[datetime],
+) -> tuple[ServiceSlots, datetime, datetime]:
+    slot = get_service_slot_for_service(db, service_id, service_slot_id)
+    if slot is None:
+        raise HTTPException(status_code=400, detail="Selected service slot is invalid for this service")
+
+    booking_date_source = booking_from_time or booking_to_time
+    if booking_date_source is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Booking date is required when selecting a service slot",
+        )
+
+    booking_day_of_week = get_booking_day_of_week(booking_date_source)
+    if booking_day_of_week != slot.day_of_week:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected service slot does not match the chosen booking date",
+        )
+
+    slot_start = datetime.combine(booking_date_source.date(), slot.start_time)
+    slot_end = datetime.combine(booking_date_source.date(), slot.end_time)
+    return slot, slot_start, slot_end
+
+
+def validate_slot_capacity(
+    db: Session,
+    slot: ServiceSlots,
+    booking_from_time: datetime,
+    booking_to_time: datetime,
+    amount_of_people: int,
+    *,
+    exclude_booking_id: UUID | None = None,
+) -> None:
+    if amount_of_people < 1:
+        raise HTTPException(status_code=400, detail="Amount of people must be at least 1")
+
+    booked_count_query = (
+        select(func.coalesce(func.sum(Booking.amount_of_people), 0))
+        .where(Booking.service_id == slot.service_id)
+        .where(col(Booking.status).notin_([BookingStatus.cancelled, BookingStatus.pending]))
+        .where(Booking.booking_from_time < booking_to_time)
+        .where(Booking.booking_to_time > booking_from_time)
+    )
+    if exclude_booking_id is not None:
+        booked_count_query = booked_count_query.where(Booking.id != exclude_booking_id)
+
+    booked_count = int(db.exec(booked_count_query).scalar_one())
+    available_capacity = slot.capacity - booked_count
+    if available_capacity < amount_of_people:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Selected time slot is not available for the requested party size. "
+                f"Requested {amount_of_people} slot(s), but only {available_capacity} remain."
+            ),
+        )
 
 
 def validate_service_for_booking(
@@ -366,22 +455,49 @@ def create_booking_record(
     *,
     commit: bool,
 ) -> Booking:
-    validate_booking_window(booking.booking_from_time, booking.booking_to_time)
     service, _ = validate_service_for_booking(
         db,
         booking.service_id,
         booking.itinerary_item_id,
         user_id,
     )
+    slot: ServiceSlots | None = None
+    booking_from_time = booking.booking_from_time
+    booking_to_time = booking.booking_to_time
 
-    # Capacity check - calculate total booked people vs service capacity
-    if service.service_id is not None and service.capacity is not None:
+    if booking.service_slot_id is not None:
+        slot, booking_from_time, booking_to_time = resolve_booking_slot_context(
+            db,
+            booking.service_id,
+            booking.service_slot_id,
+            booking_from_time,
+            booking_to_time,
+        )
+    else:
+        if booking_requires_slot_selection(db, booking.service_id, booking_from_time):
+            raise HTTPException(
+                status_code=400,
+                detail="Please select a service slot for the chosen date",
+            )
+
+    validate_booking_window(booking_from_time, booking_to_time)
+
+    if slot is not None:
+        validate_slot_capacity(
+            db,
+            slot,
+            booking_from_time,
+            booking_to_time,
+            booking.amount_of_people or 1,
+        )
+    elif service.service_id is not None and service.capacity is not None:
+        # Capacity fallback for services without explicit slots
         from app.modules.availability.service import get_booked_count
         booked_count = get_booked_count(
             db,
             service.service_id,
-            booking.booking_from_time,
-            booking.booking_to_time,
+            booking_from_time,
+            booking_to_time,
         )
         available_slots = service.capacity - booked_count
         if available_slots < (booking.amount_of_people or 1):
@@ -395,6 +511,8 @@ def create_booking_record(
 
     booking_record = Booking(**booking.model_dump())
     booking_record.user_id = user_id
+    booking_record.booking_from_time = booking_from_time
+    booking_record.booking_to_time = booking_to_time
 
     # If booking is tied to an itinerary item, calculate price accordingly
     price_breakdown: Optional[dict] = None
@@ -405,8 +523,8 @@ def create_booking_record(
             user_id,
             service,
             booking.amount_of_people or 1,
-            booking_from_time=booking.booking_from_time,
-            booking_to_time=booking.booking_to_time,
+            booking_from_time=booking_from_time,
+            booking_to_time=booking_to_time,
         )
         # Populate price fields on the Booking object
         booking_record.base_price = price_breakdown.get("base_price")
@@ -427,7 +545,7 @@ def create_booking_record(
         # Multiply by people to get total for this booking (or by nights for hotels)
         per_person_base = float(price_breakdown.get("base_price", 0))
         if is_hotel:
-            hotel_days = calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
+            hotel_days = calculate_hotel_days(booking_from_time, booking_to_time)
             total_base = per_person_base * hotel_days
         else:
             total_base = per_person_base * people
@@ -475,41 +593,76 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
 
 
 def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
-    # Check if time fields are being changed
+    slot: ServiceSlots | None = None
+    new_service_slot_id = update_data.get("service_slot_id", booking.service_slot_id)
     new_from_time = update_data.get("booking_from_time", booking.booking_from_time)
     new_to_time = update_data.get("booking_to_time", booking.booking_to_time)
+
+    if booking.service_id is not None and new_service_slot_id is not None:
+        slot, new_from_time, new_to_time = resolve_booking_slot_context(
+            db,
+            booking.service_id,
+            new_service_slot_id,
+            new_from_time,
+            new_to_time,
+        )
+        update_data["booking_from_time"] = new_from_time
+        update_data["booking_to_time"] = new_to_time
+    elif booking.service_id is not None and (
+        "booking_from_time" in update_data or "booking_to_time" in update_data
+    ):
+        if booking_requires_slot_selection(db, booking.service_id, new_from_time):
+            raise HTTPException(
+                status_code=400,
+                detail="Please select a service slot for the chosen date",
+            )
+
     time_changed = (
         new_from_time != booking.booking_from_time or
         new_to_time != booking.booking_to_time
     )
+    slot_changed = new_service_slot_id != booking.service_slot_id
+    people_changed = (
+        "amount_of_people" in update_data
+        and update_data["amount_of_people"] != booking.amount_of_people
+    )
 
-    if time_changed:
+    if time_changed or slot_changed or people_changed:
         validate_booking_window(new_from_time, new_to_time)
 
-        # Conflict check - only approved bookings block
-        if booking.service_id is not None and check_booking_conflict(
-            db, booking.service_id, new_from_time, new_to_time, exclude_booking_id=booking.id
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="Booking conflict: overlapping booking exists for service",
-            )
+        if time_changed:
+            # Conflict check - only approved bookings block
+            if booking.service_id is not None and check_booking_conflict(
+                db, booking.service_id, new_from_time, new_to_time, exclude_booking_id=booking.id
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Booking conflict: overlapping booking exists for service",
+                )
 
         # Capacity check - count approved bookings overlapping with new time, excluding self
         if booking.service_id is not None and booking.service is not None:
-            from sqlalchemy import func
-            booked_count = db.exec(
-                select(func.coalesce(func.sum(Booking.amount_of_people), 0))
-                .where(Booking.service_id == booking.service_id)
-                .where(Booking.status == BookingStatus.approved)
-                .where(Booking.id != booking.id)
-                .where(Booking.booking_from_time < new_to_time)
-                .where(Booking.booking_to_time > new_from_time)
-).scalar_one_or_none()
+            if slot is not None:
+                validate_slot_capacity(
+                    db,
+                    slot,
+                    new_from_time,
+                    new_to_time,
+                    update_data.get("amount_of_people", booking.amount_of_people or 1),
+                    exclude_booking_id=booking.id,
+                )
+            elif booking.service.capacity is not None:
+                booked_count = db.exec(
+                    select(func.coalesce(func.sum(Booking.amount_of_people), 0))
+                    .where(Booking.service_id == booking.service_id)
+                    .where(Booking.status == BookingStatus.approved)
+                    .where(Booking.id != booking.id)
+                    .where(Booking.booking_from_time < new_to_time)
+                    .where(Booking.booking_to_time > new_from_time)
+                ).scalar_one_or_none()
 
-            if booking.service.capacity is not None:
                 available = booking.service.capacity - int(booked_count)
-                if available < (booking.amount_of_people or 1):
+                if available < (update_data.get("amount_of_people", booking.amount_of_people or 1)):
                     raise HTTPException(
                         status_code=409,
                         detail="Not enough capacity for requested time",

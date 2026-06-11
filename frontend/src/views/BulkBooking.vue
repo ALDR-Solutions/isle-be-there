@@ -768,6 +768,7 @@ async function handleConfirmBooking() {
       const formData = formDataMap.value[item.itemKey];
       return bookingsAPI.create({
         service_id: formData.service_id,
+        service_slot_id: formData.selected_slot_id || null,
         itinerary_item_id: item.originalItems?.[0]?.id || item.id,
         booking_from_time: formData.booking_from_time,
         booking_to_time: formData.booking_to_time,
