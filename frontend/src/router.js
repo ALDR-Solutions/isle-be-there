@@ -52,6 +52,12 @@ const routes = [
     component: () => import('./views/Admin.vue'),
     meta: { requiresAuth: true, layout: 'admin', role: 'admin' }
   },
+  {
+    path: '/admin/settings',
+    name: 'AdminSettings',
+    component: () => import('./views/AdminSettings.vue'),
+    meta: { requiresAuth: true, layout: 'admin', role: 'admin' }
+  },
 
   {
     path: '/login',

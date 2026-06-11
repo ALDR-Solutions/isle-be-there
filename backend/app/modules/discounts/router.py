@@ -16,6 +16,7 @@ from .service import (
     get_discount_by_id,
     check_package_discount_eligibility,
     calculate_discount_for_amount,
+    get_itinerary_total_estimated_cost,
 )
 
 from app.modules.itineraries.models import Itinerary
@@ -61,11 +62,10 @@ def discount_eligibility_endpoint(
         discount_for_response = eligibility["discount"]
         # Compute estimated discount amount for the itinerary and discount
         itinerary = db.get(Itinerary, itinerary_id)
-        price = getattr(itinerary, "total_price", 0.0) if itinerary else 0.0
+        price = get_itinerary_total_estimated_cost(itinerary) if itinerary else 0.0
         discount_percent = getattr(discount_for_response, "discount_percent", 0.0) or 0.0
         max_cap = getattr(discount_for_response, "max_discount_amount", None)
-        from .service import calculate_discount_for_amount as calculate_discount
-        estimated_discount = calculate_discount(price, discount_percent, max_cap)
+        estimated_discount = calculate_discount_for_amount(price, discount_percent, max_cap)
     else:
         # Return the requested discount, but mark as not eligible for this itinerary by default
         reason = eligibility.get("reason") or "Discount not eligible for this itinerary"

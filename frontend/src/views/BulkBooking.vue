@@ -262,7 +262,7 @@
                 <p class="font-semibold text-slate-900">${{ receiptSubtotal.toFixed(2) }}</p>
               </div>
               <div class="mt-3 flex items-center justify-between text-sm">
-                <p class="text-slate-500">Service fee</p>
+                <p class="text-slate-500">Service fee ({{ formatPercent(currentServiceFeePercent) }})</p>
                 <p class="font-semibold text-slate-900">${{ receiptServiceFee.toFixed(2) }}</p>
               </div>
             </div>
@@ -272,31 +272,39 @@
                 <div>
                   <p class="text-sm font-semibold text-slate-900">Discount</p>
                   <p class="mt-1 text-sm text-slate-500">
-                    Apply an eligible offer before confirming the booking.
+                    Eligible itinerary discounts are applied automatically from the active admin setting.
                   </p>
                 </div>
                 <span
-                  v-if="isDiscountEligible && selectedDiscount"
+                  v-if="packageDiscountEligibility?.eligible && packageDiscount"
                   class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700"
                 >
-                  {{ (selectedDiscount.discount_percent * 100).toFixed(0) }}% applied
+                  {{ formatPercent(normalizeFractionalPercent(packageDiscount.discount_percent) * 100) }} applied
                 </span>
               </div>
 
-              <template v-if="availableDiscounts.length === 0">
-                <p class="mt-4 text-sm text-slate-500">No discounts available.</p>
+              <template v-if="receiptPricingLoading || receiptDiscountLoading">
+                <p class="mt-4 text-sm text-slate-500">Checking live pricing and discount rules...</p>
+              </template>
+              <template v-else-if="!packageDiscount">
+                <p class="mt-4 text-sm text-slate-500">No active package discount is configured right now.</p>
+              </template>
+              <template v-else-if="packageDiscountEligibility?.eligible">
+                <div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p class="text-sm font-semibold text-emerald-700">
+                    {{ packageDiscount.name || 'Package Discount' }} is active for this itinerary.
+                  </p>
+                  <p class="mt-1 text-sm text-emerald-700/90">
+                    {{ formatPercent(normalizeFractionalPercent(packageDiscount.discount_percent) * 100) }} will be applied to each selected booking total.
+                  </p>
+                  <p class="mt-2 text-sm font-semibold text-emerald-700">
+                    Estimated savings: ${{ receiptDiscountAmount.toFixed(2) }}
+                  </p>
+                </div>
               </template>
               <template v-else>
-                <select
-                  v-model="selectedDiscountId"
-                  class="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                >
-                  <option v-for="discount in availableDiscounts" :key="discount.id" :value="discount.id">
-                    {{ discount.name }} ({{ (discount.discount_percent * 100).toFixed(0) }}% off)
-                  </option>
-                </select>
-                <p v-if="!isDiscountEligible" class="mt-3 text-xs font-medium text-amber-600">
-                  Select at least half of the available bookings to unlock the discount.
+                <p class="mt-4 text-sm text-amber-600">
+                  {{ packageDiscountEligibility?.reason || 'This itinerary does not currently qualify for the package discount.' }}
                 </p>
               </template>
             </div>
@@ -340,7 +348,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI, availabilityAPI } from '../services/api';
+import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI, availabilityAPI, pricingAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import BookingFormCard from '../components/BookingFormCard.vue';
@@ -360,13 +368,15 @@ const formDataMap = ref({});
 const formCardRefs = ref({});
 const activeTab = ref('');
 const showReceiptModal = ref(false);
-const availableDiscounts = ref([]);
-const selectedDiscountId = ref(null);
+const packageDiscount = ref(null);
+const packageDiscountEligibility = ref(null);
 const selectedItemsIds = ref(new Set());
 const servicesByListing = ref({});
 const servicesLoadingByListing = ref({});
 const serviceAvailability = ref({});
 const receiptDiscountLoading = ref(false);
+const receiptPricingLoading = ref(false);
+const currentServiceFeePercent = ref(0.10);
 
 // --- Selection Logic ---
 function isItemSelected(key) {
@@ -440,6 +450,19 @@ const bookerName = computed(() => {
   if (!user) return '';
   return [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || '';
 });
+
+const normalizeFractionalPercent = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  if (numeric > 1) return numeric / 100;
+  return Math.max(numeric, 0);
+};
+
+const formatPercent = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '-';
+  return `${numeric.toFixed(2).replace(/\.00$/, '')}%`;
+};
 
 // --- Computed: Bookable Items ---
 const bookableItems = computed(() => {
@@ -527,10 +550,24 @@ const filteredItems = computed(() => {
 // --- Receipt Computeds ---
 const receiptSubtotal = computed(() => selectedItems.value.reduce((total, item) => total + calculateItemTotal(item), 0));
 
-const isDiscountEligible = computed(() => selectedItemsIds.value.size >= bookableItems.value.length * 0.5);
-const selectedDiscount = computed(() => availableDiscounts.value.find((d) => d.id === selectedDiscountId.value));
-const receiptDiscountAmount = computed(() => isDiscountEligible.value ? receiptSubtotal.value * (selectedDiscount.value?.discount_percent || 0) : 0);
-const receiptServiceFee = computed(() => receiptSubtotal.value * 0.10);
+const receiptDiscountAmount = computed(() => {
+  if (!packageDiscount.value || !packageDiscountEligibility.value?.eligible) {
+    return 0;
+  }
+
+  const discountPercent = normalizeFractionalPercent(packageDiscount.value.discount_percent);
+  const maxDiscountAmount = packageDiscount.value.max_discount_amount;
+
+  return selectedItems.value.reduce((total, item) => {
+    const itemBasePrice = calculateItemTotal(item);
+    const itemDisplayPrice = itemBasePrice + (itemBasePrice * currentServiceFeePercent.value);
+    const rawDiscount = itemDisplayPrice * discountPercent;
+    const cappedDiscount =
+      maxDiscountAmount != null ? Math.min(rawDiscount, Number(maxDiscountAmount)) : rawDiscount;
+    return total + cappedDiscount;
+  }, 0);
+});
+const receiptServiceFee = computed(() => receiptSubtotal.value * currentServiceFeePercent.value);
 const receiptFinalTotal = computed(() => receiptSubtotal.value + receiptServiceFee.value - receiptDiscountAmount.value);
 
 const formatServiceName = (services, serviceId) => {
@@ -689,18 +726,60 @@ async function openReceiptModal() {
     }
   }
 
+  const firstSelectedItem = selectedItems.value[0];
+  const firstSelectedForm = firstSelectedItem ? formDataMap.value[firstSelectedItem.itemKey] : null;
+
   receiptDiscountLoading.value = true;
+  receiptPricingLoading.value = true;
   try {
-    const response = await discountsAPI.getPackageDiscounts();
-    availableDiscounts.value = response.data || [];
-    selectedDiscountId.value = availableDiscounts.value[0]?.id ?? null;
+    const [pricingResult, discountResult] = await Promise.allSettled([
+      firstSelectedItem && firstSelectedForm?.service_id
+        ? pricingAPI.getListingPrice(firstSelectedItem.listing_id, { service_id: firstSelectedForm.service_id })
+        : Promise.resolve({ data: { service_fee_percent: 0.10 } }),
+      discountsAPI.getPackageDiscounts(),
+    ]);
+
+    if (pricingResult.status === 'fulfilled') {
+      currentServiceFeePercent.value = normalizeFractionalPercent(
+        pricingResult.value.data?.service_fee_percent ?? 0.10,
+      );
+    } else {
+      currentServiceFeePercent.value = 0.10;
+    }
+
+    if (discountResult.status === 'fulfilled') {
+      const activePackageDiscounts = Array.isArray(discountResult.value.data) ? discountResult.value.data : [];
+      packageDiscount.value = activePackageDiscounts[0] ?? null;
+    } else {
+      packageDiscount.value = null;
+    }
+
+    if (packageDiscount.value?.id) {
+      try {
+        const eligibilityResponse = await discountsAPI.getDiscountEligibility(
+          packageDiscount.value.id,
+          route.params.itineraryId,
+        );
+        packageDiscountEligibility.value = eligibilityResponse.data;
+      } catch {
+        packageDiscountEligibility.value = {
+          eligible: false,
+          reason: 'This itinerary does not currently qualify for the package discount.',
+        };
+      }
+    } else {
+      packageDiscountEligibility.value = null;
+    }
+
     showReceiptModal.value = true;
   } catch {
-    availableDiscounts.value = [];
-    selectedDiscountId.value = null;
+    packageDiscount.value = null;
+    packageDiscountEligibility.value = null;
+    currentServiceFeePercent.value = 0.10;
     showReceiptModal.value = true;
   } finally {
     receiptDiscountLoading.value = false;
+    receiptPricingLoading.value = false;
   }
 }
 

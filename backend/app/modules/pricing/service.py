@@ -18,6 +18,15 @@ def now_utc() -> datetime:
     return datetime.utcnow()
 
 
+def normalize_fractional_percent(value: Optional[float]) -> float:
+    if value is None:
+        return 0.0
+    numeric = float(value)
+    if numeric > 1:
+        numeric = numeric / 100.0
+    return max(numeric, 0.0)
+
+
 def query_active_config(db: Session, business_type_id: Optional[UUID]) -> Optional[PlatformPricingConfig]:
     now = now_utc()
     # Active config for a specific business_type_id
@@ -86,6 +95,7 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
     service_fee_percent = getattr(config, "service_fee_percent", None) if config else None
     if service_fee_percent is None:
         service_fee_percent = 0.10  # default 10%
+    service_fee_percent = normalize_fractional_percent(service_fee_percent)
 
     service_fee_amount = float(base_price) * float(service_fee_percent)
     display_price = float(base_price) + service_fee_amount
@@ -98,16 +108,23 @@ def calculate_display_price(db: Session, listing_id: UUID, service_id: Optional[
     }
 
 
-def get_listing_display_price(db: Session, listing_id: UUID) -> dict:
-    """Wrapper to get display price for a listing using only listing_id."""
-    result = calculate_display_price(db, listing_id)
+def get_listing_display_price(
+    db: Session,
+    listing_id: UUID,
+    service_id: Optional[UUID] = None,
+) -> dict:
+    """Wrapper to get display price for a listing using listing and optional service."""
+    result = calculate_display_price(db, listing_id, service_id)
     result["listing_id"] = listing_id
     return result
 
 
 def create_pricing_config(db: Session, data: dict) -> PlatformPricingConfig:
     """Create new PlatformPricingConfig from provided data."""
-    config = PlatformPricingConfig(**data)  # type: ignore[arg-type]
+    payload = dict(data)
+    if "service_fee_percent" in payload and payload["service_fee_percent"] is not None:
+        payload["service_fee_percent"] = normalize_fractional_percent(payload["service_fee_percent"])
+    config = PlatformPricingConfig(**payload)  # type: ignore[arg-type]
     db.add(config)
     db.commit()
     db.refresh(config)
@@ -119,7 +136,10 @@ def update_pricing_config(db: Session, config_id: UUID, data: dict) -> PlatformP
     config = db.get(PlatformPricingConfig, config_id)
     if config is None:
         raise HTTPException(status_code=404, detail="Pricing config not found")
-    for key, value in data.items():
+    payload = dict(data)
+    if "service_fee_percent" in payload and payload["service_fee_percent"] is not None:
+        payload["service_fee_percent"] = normalize_fractional_percent(payload["service_fee_percent"])
+    for key, value in payload.items():
         setattr(config, key, value)
     db.add(config)
     db.commit()

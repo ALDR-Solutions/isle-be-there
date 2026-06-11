@@ -223,6 +223,13 @@ export const servicesAPI = {
   delete: (serviceId) => api.delete(`/api/services/${serviceId}`),
 };
 
+export const pricingAPI = {
+  getListingPrice: (listingId, params) => api.get(`/api/pricing/listing/${listingId}`, { params }),
+  listConfigs: () => api.get("/api/pricing/config"),
+  createConfig: (data) => api.post("/api/pricing/config", data),
+  updateConfig: (configId, data) => api.put(`/api/pricing/config/${configId}`, data),
+};
+
 export const uploadsAPI = {
   uploadImage: (formData, { folder = "misc" } = {}) => {
     formData.set("folder", folder);
@@ -246,6 +253,10 @@ export const uploadsAPI = {
 // Discounts API
 export const discountsAPI = {
   getPackageDiscounts: () => api.get("/api/discounts", { params: { discount_type: "package" } }),
+  getDiscountEligibility: (discountId, itineraryId) =>
+    api.get(`/api/discounts/${discountId}/eligibility`, { params: { itinerary_id: itineraryId } }),
+  create: (data) => api.post("/api/discounts", data),
+  update: (discountId, data) => api.put(`/api/discounts/${discountId}`, data),
 };
 
 // Availability API

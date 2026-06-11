@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-slate-50 text-slate-900">
     <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
       <div class="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:h-20 sm:px-6 lg:px-8">
-        <router-link to="/business" class="flex items-center gap-3">
+        <router-link to="/admin" class="flex items-center gap-3">
           <img
             src="/isle-logo-solo.png"
             alt="Isle Be There logo"
@@ -44,6 +44,18 @@
             <div
               v-if="desktopDropdownOpen"
               class="absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg">
+              <router-link
+                to="/admin"
+                @click="closeMenus"
+                class="block px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Moderation
+              </router-link>
+              <router-link
+                to="/admin/settings"
+                @click="closeMenus"
+                class="block px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Settings
+              </router-link>
               <button
                 @click="handleLogout"
                 class="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-50">
@@ -78,6 +90,18 @@
           <div class="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
             {{ authStore.user?.username }}
           </div>
+          <router-link
+            to="/admin"
+            @click="closeMenus"
+            class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+            Moderation
+          </router-link>
+          <router-link
+            to="/admin/settings"
+            @click="closeMenus"
+            class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+            Settings
+          </router-link>
           <button
             @click="handleLogout"
             class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-slate-100">
@@ -198,11 +222,15 @@ const mobileMenuOpen = ref(false);
 const showAuthPlaceholder = computed(() => authStore.isAuthPending);
 const showProtectedAuthShell = computed(() => authStore.isAuthPending);
 
+const closeMenus = () => {
+  desktopDropdownOpen.value = false;
+  mobileMenuOpen.value = false;
+};
+
 const handleLogout = () => {
   authStore.logout();
   toastStore.show('You have been logged out.', 'info');
-  desktopDropdownOpen.value = false;
-  mobileMenuOpen.value = false;
+  closeMenus();
   router.push('/');
 };
 </script>
