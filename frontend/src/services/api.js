@@ -101,6 +101,7 @@ export const listingsAPI = {
   getById: (id) => api.get(`/api/listings/${id}`),
   create: (data) => api.post("/api/listings", data),
   update: (id, data) => api.put(`/api/listings/${id}`, data),
+  moderate: (id, data) => api.patch(`/api/listings/${id}/moderate`, data),
   delete: (id) => api.delete(`/api/listings/${id}`),
   getPersonalized: (params) =>
     api.get("/api/listings/personalized", { params }),

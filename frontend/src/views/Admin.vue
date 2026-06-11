@@ -999,7 +999,7 @@ async function confirmDecision() {
 
   try {
     const nextStatus = confirmConfig.value.nextStatus
-    const response = await listingsAPI.update(confirmTarget.value.id, {
+    const response = await listingsAPI.moderate(confirmTarget.value.id, {
       status: nextStatus,
     })
 

@@ -5,10 +5,16 @@ from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
+from app.shared.domain import get_listing_or_404
 from app.shared.dependencies.permissions import require_listing_owner, require_roles
 
 from .models import Listing
-from .schemas import ListingCreate, ListingResponse, ListingUpdate
+from .schemas import (
+    ListingCreate,
+    ListingModerationUpdate,
+    ListingResponse,
+    ListingUpdate,
+)
 from .service import (
     create_listing,
     delete_listing,
@@ -107,6 +113,24 @@ def update_listing_endpoint(
     db: Session = Depends(get_db),
 ):
     update_data = listing_data.model_dump(exclude_unset=True)
+
+    return update_listing(
+        db,
+        listing,
+        update_data,
+        is_admin=current_user.user_type == "admin",
+    )
+
+
+@router.patch("/{listing_id}/moderate", response_model=ListingResponse)
+def moderate_listing_endpoint(
+    listing_id: str,
+    listing_data: ListingModerationUpdate,
+    current_user: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    listing = get_listing_or_404(db, listing_id)
+    update_data = listing_data.model_dump()
 
     return update_listing(
         db,
