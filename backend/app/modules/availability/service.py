@@ -127,10 +127,10 @@ def create_service_slot(db: Session, data: ServiceSlotsCreate) -> ServiceSlots:
         raise HTTPException(404, "Service not found")
 
     # Validate slot is within listing hours for the same day
-    _validate_slot_within_listing_hours(db, data.service_id, service.listing_id, data.day_of_week, data.start_time, data.end_time)
+    validate_slot_within_listing_hours(db, data.service_id, service.listing_id, data.day_of_week, data.start_time, data.end_time)
 
     # Check for overlapping slots
-    _check_slot_overlap(db, data.service_id, data.day_of_week, data.start_time, data.end_time)
+    check_slot_overlap(db, data.service_id, data.day_of_week, data.start_time, data.end_time)
 
     slot = ServiceSlots(**data.model_dump())
     db.add(slot)
@@ -154,7 +154,7 @@ def delete_service_slot(db: Session, service_id: UUID, slot_id: int) -> None:
 # ============================================================================
 
 
-def _validate_slot_within_listing_hours(
+def validate_slot_within_listing_hours(
     db: Session,
     service_id: UUID,
     listing_id: UUID,
@@ -174,7 +174,7 @@ def _validate_slot_within_listing_hours(
         )
 
 
-def _check_slot_overlap(
+def check_slot_overlap(
     db: Session,
     service_id: UUID,
     day: int,

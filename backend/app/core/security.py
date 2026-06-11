@@ -25,7 +25,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-def _encode_token(
+def encode_token(
     data: dict,
     secret_key: str,
     expires_at: datetime,
@@ -41,7 +41,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return _encode_token(data, settings.get_jwt_secret_key(), expire, "access")
+    return encode_token(data, settings.get_jwt_secret_key(), expire, "access")
 
 
 def create_refresh_token(data: dict) -> str:
@@ -49,7 +49,7 @@ def create_refresh_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
     )
-    return _encode_token(data, settings.get_jwt_secret_key(), expire, "refresh")
+    return encode_token(data, settings.get_jwt_secret_key(), expire, "refresh")
 
 
 def decode_token(token: str) -> dict | None:

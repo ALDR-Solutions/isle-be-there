@@ -38,7 +38,7 @@ class ItineraryPlanRequest(BaseModel):
     number_of_people: int = Field(default=1, ge=1, le=20)
 
     @model_validator(mode="after")
-    def _validate_dates_and_hours(self):
+    def validate_dates_and_hours(self):
         if self.end_date and self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
 
@@ -50,7 +50,7 @@ class ItineraryPlanRequest(BaseModel):
         if not self.end_date and self.trip_days is None:
             raise ValueError("Provide either end_date or trip_days")
 
-        self.interests = _normalize_strings(self.interests)
+        self.interests = normalize_strings(self.interests)
         return self
 
     @property
@@ -145,7 +145,7 @@ class SavedItineraryResponse(BaseModel):
     items: list[ItineraryItemResponse] = Field(default_factory=list)
 
 
-def _normalize_strings(items: list[str]) -> list[str]:
+def normalize_strings(items: list[str]) -> list[str]:
     normalized: list[str] = []
     seen = set()
     for item in items:

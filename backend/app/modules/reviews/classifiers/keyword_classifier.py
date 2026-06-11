@@ -342,17 +342,17 @@ def get_classification_approach(business_type_name: str) -> str:
     return "ml" if business_type_name.lower() in ML_CLASSIFICATION_TYPES else "keyword"
 
 
-_ALL_KEYWORDS = []
+all_keywords = []
 for categories in KEYWORD_CATEGORIES.values():
     for keywords in categories.values():
-        _ALL_KEYWORDS.extend(keywords)
+        all_keywords.extend(keywords)
 
-_PATTERN = re.compile("|".join(re.escape(kw) for kw in _ALL_KEYWORDS), re.I)
+keyword_pattern = re.compile("|".join(re.escape(kw) for kw in all_keywords), re.I)
 
 
 def classify_with_keywords(text: str, business_type_uuid: str) -> dict:
     text_lower = text.lower()
-    matches = set(_PATTERN.findall(text_lower))
+    matches = set(keyword_pattern.findall(text_lower))
 
     categories = KEYWORD_CATEGORIES.get(business_type_uuid, {})
     category_scores = {}

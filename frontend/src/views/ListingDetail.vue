@@ -662,7 +662,7 @@ const bookingForm = reactive({
   booking_from_time: '',
   booking_to_time: '',
   special_requests: '',
-  _selectedSlotId: '',  // internal tracking for slot selection
+  selectedSlotId: '',
 });
 
 const showReceiptModal = ref(false);
@@ -772,8 +772,8 @@ const modalDescription = computed(() => (
 const hotelCheckInDate = computed(() => bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : '')
 
 const selectedSlot = computed(() => {
-  if (!bookingForm._selectedSlotId) return null
-  return bookingAvailableSlots.value.find(s => String(s.slot_id) === String(bookingForm._selectedSlotId)) || null
+  if (!bookingForm.selectedSlotId) return null
+  return bookingAvailableSlots.value.find(s => String(s.slot_id) === String(bookingForm.selectedSlotId)) || null
 })
 
 const hotelCheckOutDate = computed(() => bookingForm.booking_to_time ? bookingForm.booking_to_time.slice(0, 10) : '')
@@ -783,7 +783,7 @@ const bookingDateValue = computed(() => {
   return bookingForm.booking_from_time ? bookingForm.booking_from_time.slice(0, 10) : ''
 })
 
-const selectedSlotIdValue = computed(() => bookingForm._selectedSlotId || '')
+const selectedSlotIdValue = computed(() => bookingForm.selectedSlotId || '')
 const noSlotsForSelectedDate = computed(() => (
   !isHotelType.value
   && !!bookingDateValue.value
@@ -1059,7 +1059,7 @@ function clearAvailabilityState() {
 function clearSelectedBookingSlot() {
   bookingForm.booking_from_time = '';
   bookingForm.booking_to_time = '';
-  bookingForm._selectedSlotId = '';
+  bookingForm.selectedSlotId = '';
 }
 
 function resetBookingForm() {
@@ -1274,7 +1274,7 @@ function formatSlotTime(time) {
 }
 
 function selectBookingSlot(slotId) {
-  bookingForm._selectedSlotId = slotId
+  bookingForm.selectedSlotId = slotId
   const slot = bookingAvailableSlots.value.find(s => String(s.slot_id) === String(slotId))
   if (!slot) return
   const date = bookingDateValue.value
@@ -1315,7 +1315,7 @@ async function fetchBookingAvailability() {
     bookingAvailability.value = response.data
     bookingAvailableSlots.value = (response.data?.slots || []).filter(s => s.is_available)
     if (
-      bookingForm._selectedSlotId
+      bookingForm.selectedSlotId
       && (!selectedSlot.value || selectedSlot.value.remaining_capacity < people)
     ) {
       clearSelectedBookingSlot()

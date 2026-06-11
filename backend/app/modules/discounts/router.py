@@ -65,8 +65,8 @@ def discount_eligibility_endpoint(
         price = getattr(itinerary, "total_price", 0.0) if itinerary else 0.0
         discount_percent = getattr(discount_for_response, "discount_percent", 0.0) or 0.0
         max_cap = getattr(discount_for_response, "max_discount_amount", None)
-        from .service import calculate_discount_for_amount as _calc
-        estimated_discount = _calc(price, discount_percent, max_cap)
+        from .service import calculate_discount_for_amount as calculate_discount
+        estimated_discount = calculate_discount(price, discount_percent, max_cap)
     else:
         # Return the requested discount, but mark as not eligible for this itinerary by default
         reason = eligibility.get("reason") or "Discount not eligible for this itinerary"

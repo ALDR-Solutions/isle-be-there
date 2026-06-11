@@ -30,7 +30,7 @@ from .models import Booking, BookingStatus
 logger = logging.getLogger(__name__)
 
 
-def _is_hotel_service(db: Session, service: Service) -> bool:
+def is_hotel_service(db: Session, service: Service) -> bool:
     """Check if a service belongs to a hotel business type."""
     if not service.listing_id:
         return False
@@ -77,8 +77,8 @@ def build_booking_response(
         listing_name=listing_name,
         listing_business_type_name=listing_business_type_name,
         paid_at=paid_at,
-        has_refund=_booking_has_refund(db, booking.id),
-        refund_date=_get_refund_date(db, booking.id),
+        has_refund=booking_has_refund(db, booking.id),
+        refund_date=get_refund_date(db, booking.id),
     )
 
 
@@ -99,7 +99,7 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
     ]
 
 
-def _booking_has_refund(db: Session, booking_id: UUID) -> bool:
+def booking_has_refund(db: Session, booking_id: UUID) -> bool:
     """Check if booking has any refund.* PaymentEvent."""
     refund_event = db.exec(
         select(PaymentEvent).where(
@@ -150,7 +150,7 @@ def list_bookings_for_listing(db: Session, listing_id: UUID) -> List[BookingResp
     ]
 
 
-def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
+def get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
     """Get the date of the first refund.* PaymentEvent for a booking."""
     refund_event = db.exec(
         select(PaymentEvent).where(
@@ -161,24 +161,24 @@ def _get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
     return refund_event.created_at if refund_event else None
 
 
-def _get_service_or_404(db: Session, service_id: UUID) -> Service:
+def get_service_for_booking_or_404(db: Session, service_id: UUID) -> Service:
     return get_service_or_404(db, service_id)
 
 
-def _validate_booking_window(booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]) -> None:
+def validate_booking_window(booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]) -> None:
     if booking_from_time is None or booking_to_time is None:
         raise HTTPException(status_code=400, detail="Booking start and end time are required")
     if booking_to_time <= booking_from_time:
         raise HTTPException(status_code=400, detail="Booking end time must be after start time")
 
 
-def _validate_service_for_booking(
+def validate_service_for_booking(
     db: Session,
     service_id: UUID,
     itinerary_item_id: Optional[UUID],
     user_id: UUID,
 ) -> tuple[Service, Optional[ItineraryItem]]:
-    service = _get_service_or_404(db, service_id)
+    service = get_service_for_booking_or_404(db, service_id)
     if service.status != StatusTypes.active:
         raise HTTPException(status_code=400, detail="Only active services can be booked")
 
@@ -198,7 +198,7 @@ def _validate_service_for_booking(
     return service, itinerary_item
 
 
-def _validate_service_capacity(
+def validate_service_capacity(
     db: Session,
     service: Service,
     booking_from_time: datetime,
@@ -226,7 +226,7 @@ def _validate_service_capacity(
         )
 
 
-def _calculate_hotel_days(booking_from_time: datetime, booking_to_time: datetime) -> int:
+def calculate_hotel_days(booking_from_time: datetime, booking_to_time: datetime) -> int:
     """Calculate number of nights for hotel booking (check-out day doesn't count)."""
     diff = booking_to_time - booking_from_time
     days = diff.days
@@ -253,13 +253,13 @@ def price_booking_from_itinerary_item(
     base_price = float(price_info.get("base_price", 0.0))
 
     # Apply per-person pricing for non-hotel services
-    is_hotel = _is_hotel_service(db, service)
+    is_hotel = is_hotel_service(db, service)
     if not is_hotel:
         base_price = base_price * amount_of_people
     else:
         # For hotels, multiply by number of nights
         if booking_from_time and booking_to_time:
-            hotel_days = _calculate_hotel_days(booking_from_time, booking_to_time)
+            hotel_days = calculate_hotel_days(booking_from_time, booking_to_time)
             base_price = base_price * hotel_days
 
     service_fee_percent = float(price_info.get("service_fee_percent", 0.0))
@@ -307,7 +307,7 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if booking.service_id is None:
         raise HTTPException(status_code=400, detail="Booking is missing a linked service")
 
-    service = _get_service_or_404(db, booking.service_id)
+    service = get_service_for_booking_or_404(db, booking.service_id)
     listing_id = service.listing_id
 
     # If tied to an itinerary item, use itinerary-based pricing
@@ -356,18 +356,18 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
 
 
 def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
-    return _create_booking_record(db, booking, user_id, commit=True)
+    return create_booking_record(db, booking, user_id, commit=True)
 
 
-def _create_booking_record(
+def create_booking_record(
     db: Session,
     booking: BookingCreate,
     user_id: UUID,
     *,
     commit: bool,
 ) -> Booking:
-    _validate_booking_window(booking.booking_from_time, booking.booking_to_time)
-    service, _ = _validate_service_for_booking(
+    validate_booking_window(booking.booking_from_time, booking.booking_to_time)
+    service, _ = validate_service_for_booking(
         db,
         booking.service_id,
         booking.itinerary_item_id,
@@ -420,14 +420,14 @@ def _create_booking_record(
         # Standalone booking: price via PricingService with no discount
         price_breakdown = calculate_display_price(db, service.listing_id, service.service_id)
         # Determine if this is a hotel service for per-person pricing
-        is_hotel = _is_hotel_service(db, service)
+        is_hotel = is_hotel_service(db, service)
         people = booking.amount_of_people or 1
 
         # base_price from pricing service is per-person (or per-room for hotels)
         # Multiply by people to get total for this booking (or by nights for hotels)
         per_person_base = float(price_breakdown.get("base_price", 0))
         if is_hotel:
-            hotel_days = _calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
+            hotel_days = calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
             total_base = per_person_base * hotel_days
         else:
             total_base = per_person_base * people
@@ -459,7 +459,7 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
     bookings = []
     try:
         for booking_data in items:
-            booking = _create_booking_record(db, booking_data, user_id, commit=False)
+            booking = create_booking_record(db, booking_data, user_id, commit=False)
             bookings.append(booking)
         db.commit()
         for booking in bookings:
@@ -484,7 +484,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
     )
 
     if time_changed:
-        _validate_booking_window(new_from_time, new_to_time)
+        validate_booking_window(new_from_time, new_to_time)
 
         # Conflict check - only approved bookings block
         if booking.service_id is not None and check_booking_conflict(
@@ -515,7 +515,7 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
                         detail="Not enough capacity for requested time",
                     )
     else:
-        _validate_booking_window(
+        validate_booking_window(
             update_data.get("booking_from_time", booking.booking_from_time),
             update_data.get("booking_to_time", booking.booking_to_time),
         )
@@ -557,8 +557,8 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
 
 def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     """Delegate to stripe_payment service (imported from there)."""
-    from app.modules.stripe_payment.service import create_payment_intent as _create_payment_intent
-    return _create_payment_intent(db, booking_id, user_id)
+    from app.modules.stripe_payment.service import create_payment_intent as stripe_create_payment_intent
+    return stripe_create_payment_intent(db, booking_id, user_id)
 
 
 def delete_booking(db: Session, booking: Booking) -> None:

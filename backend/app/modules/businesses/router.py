@@ -22,7 +22,7 @@ from .service import (
 router = APIRouter(prefix="/api/businesses", tags=["Businesses"])
 
 
-def _require_user_id(user_id: str | None):
+def require_user_id(user_id: str | None):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -53,7 +53,7 @@ def get_business_listings(
     current_user=Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(current_user.id)
+    require_user_id(current_user.id)
     return get_business_listings_service(db, current_user.id)
 
 
@@ -74,7 +74,7 @@ def create_business_endpoint(
     current_user=Depends(require_roles("business", "admin")),
     db: Session = Depends(get_db),
 ):
-    _require_user_id(current_user.id)
+    require_user_id(current_user.id)
     data = business_data.model_dump(exclude_unset=True)
     return create_business(db, data, current_user.id)
 

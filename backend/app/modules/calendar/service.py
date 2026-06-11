@@ -19,15 +19,15 @@ def list_calendar_events(
     start: datetime | None = None,
     end: datetime | None = None,
 ) -> list[CalendarEventResponse]:
-    start = _normalize_timestamp(start)
-    end = _normalize_timestamp(end)
-    booking_events = _load_booking_events(db, user_id, start, end)
-    itinerary_events = _load_itinerary_events(db, user_id, start, end)
+    start = normalize_timestamp(start)
+    end = normalize_timestamp(end)
+    booking_events = load_booking_events(db, user_id, start, end)
+    itinerary_events = load_itinerary_events(db, user_id, start, end)
     events = booking_events + itinerary_events
     return sorted(events, key=lambda event: (event.start, event.title))
 
 
-def _load_booking_events(
+def load_booking_events(
     db: Session,
     user_id: UUID,
     start: datetime | None,
@@ -63,7 +63,7 @@ def _load_booking_events(
         service = services_by_id.get(booking.service_id) if booking.service_id else None
         listing_id = service.listing_id if service else None
         listing = listings_by_id.get(listing_id) if listing_id else None
-        status = _booking_status_value(booking.status)
+        status = booking_status_value(booking.status)
 
         title_parts = ["Booking"]
         if service and service.name:
@@ -79,7 +79,7 @@ def _load_booking_events(
                 start=booking.booking_from_time,
                 end=booking.booking_to_time,
                 status=status,
-                color=_booking_color(status),
+                color=booking_color(status),
                 listing_id=listing_id,
                 service_id=booking.service_id,
                 booking_id=booking.id,
@@ -96,7 +96,7 @@ def _load_booking_events(
     return events
 
 
-def _load_itinerary_events(
+def load_itinerary_events(
     db: Session,
     user_id: UUID,
     start: datetime | None,
@@ -120,7 +120,7 @@ def _load_itinerary_events(
     for row in rows:
         item: ItineraryItem = row[0]
         itinerary: Itinerary = row[1]
-        status = _itinerary_status_value(itinerary.status)
+        status = itinerary_status_value(itinerary.status)
         events.append(
             CalendarEventResponse(
                 id=f"itinerary-{item.id}",
@@ -129,7 +129,7 @@ def _load_itinerary_events(
                 start=item.start_at,
                 end=item.end_at,
                 status=status,
-                color=_itinerary_color(status),
+                color=itinerary_color(status),
                 listing_id=item.listing_id,
                 booking_id=item.linked_booking_id,
                 itinerary_id=itinerary.id,
@@ -147,11 +147,11 @@ def _load_itinerary_events(
     return events
 
 
-def _booking_status_value(status) -> str:
+def booking_status_value(status) -> str:
     return status.value if hasattr(status, "value") else str(status)
 
 
-def _booking_color(status: str) -> str:
+def booking_color(status: str) -> str:
     if status == "approved":
         return "#16a34a"
     if status == "pending":
@@ -163,7 +163,7 @@ def _booking_color(status: str) -> str:
     return "#475569"
 
 
-def _itinerary_color(status: str) -> str:
+def itinerary_color(status: str) -> str:
     if status == "draft":
         return "#2563eb"
     if status == "saved":
@@ -171,11 +171,11 @@ def _itinerary_color(status: str) -> str:
     return "#64748b"
 
 
-def _itinerary_status_value(status) -> str:
+def itinerary_status_value(status) -> str:
     return status.value if hasattr(status, "value") else str(status)
 
 
-def _normalize_timestamp(value: datetime | None) -> datetime | None:
+def normalize_timestamp(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is None:

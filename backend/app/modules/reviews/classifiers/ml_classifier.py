@@ -24,12 +24,12 @@ LOCAL_MODEL_PATH = os.path.join(
     os.path.dirname(__file__), "ml_models", "all-MiniLM-L6-v2"
 )
 
-_models_cache = None
-_embedding_model_cache = None
+models_cache = None
+embedding_model_cache = None
 logger = logging.getLogger(__name__)
 
 
-def _get_numpy():
+def get_numpy():
     try:
         import numpy as np
     except ImportError:
@@ -37,7 +37,7 @@ def _get_numpy():
     return np
 
 
-def _get_sentence_transformer():
+def get_sentence_transformer():
     try:
         from sentence_transformers import SentenceTransformer
     except ImportError:
@@ -45,7 +45,7 @@ def _get_sentence_transformer():
     return SentenceTransformer
 
 
-def _get_langdetect_tools():
+def get_langdetect_tools():
     try:
         from langdetect import LangDetectException, detect
     except ImportError:
@@ -53,7 +53,7 @@ def _get_langdetect_tools():
     return detect, LangDetectException
 
 
-def _get_translator_class():
+def get_translator_class():
     try:
         from deep_translator import GoogleTranslator
     except ImportError:
@@ -61,15 +61,15 @@ def _get_translator_class():
     return GoogleTranslator
 
 
-def _get_embedding_model_with_timeout(
+def get_embedding_model_with_timeout(
     timeout: int = ML_TIMEOUT_SECONDS,
 ) -> Optional[Any]:
-    global _embedding_model_cache
+    global embedding_model_cache
 
-    if _embedding_model_cache is not None:
-        return _embedding_model_cache
+    if embedding_model_cache is not None:
+        return embedding_model_cache
 
-    sentence_transformer = _get_sentence_transformer()
+    sentence_transformer = get_sentence_transformer()
     if sentence_transformer is None:
         return None
 
@@ -95,12 +95,12 @@ def _get_embedding_model_with_timeout(
     if result["error"]:
         return None
 
-    _embedding_model_cache = result["model"]
-    return _embedding_model_cache
+    embedding_model_cache = result["model"]
+    return embedding_model_cache
 
 
 def detect_language(text: str) -> str:
-    detect, lang_detect_exception = _get_langdetect_tools()
+    detect, lang_detect_exception = get_langdetect_tools()
     if detect is None:
         return "en"
     try:
@@ -118,7 +118,7 @@ def translate_to_english(text: str, source_lang: str) -> str:
     if source_lang == "en":
         return text
 
-    translator_class = _get_translator_class()
+    translator_class = get_translator_class()
     if translator_class is None:
         return text
     try:
@@ -136,28 +136,28 @@ def translate_if_needed(text: str) -> tuple:
     return text, "en"
 
 
-def _load_models():
-    global _models_cache
-    if _models_cache is not None:
-        return _models_cache
+def load_models():
+    global models_cache
+    if models_cache is not None:
+        return models_cache
     if not os.path.exists(MODEL_PATH):
         return None
     try:
         with open(MODEL_PATH, "rb") as f:
-            _models_cache = pickle.load(f)
-        return _models_cache
+            models_cache = pickle.load(f)
+        return models_cache
     except Exception:
         return None
 
 
-def _get_embedding_model():
-    global _embedding_model_cache
-    if _embedding_model_cache is not None:
-        return _embedding_model_cache
-    return _get_embedding_model_with_timeout(ML_TIMEOUT_SECONDS)
+def get_embedding_model():
+    global embedding_model_cache
+    if embedding_model_cache is not None:
+        return embedding_model_cache
+    return get_embedding_model_with_timeout(ML_TIMEOUT_SECONDS)
 
 
-def _fallback_response(
+def fallback_response(
     business_type_id: int,
     business_type: str,
     detected_lang: str,
@@ -197,11 +197,11 @@ def classify_review(
 
     translated_text, detected_lang = translate_if_needed(text)
 
-    models_data = _load_models()
-    embedding_model = _get_embedding_model_with_timeout(ML_TIMEOUT_SECONDS)
+    models_data = load_models()
+    embedding_model = get_embedding_model_with_timeout(ML_TIMEOUT_SECONDS)
 
     if models_data is None or embedding_model is None:
-        return _fallback_response(
+        return fallback_response(
             business_type_id,
             business_type,
             detected_lang,
@@ -214,7 +214,7 @@ def classify_review(
     model_info = models_by_type.get(business_type_id)
 
     if model_info is None:
-        return _fallback_response(
+        return fallback_response(
             business_type_id,
             business_type,
             detected_lang,
@@ -229,7 +229,7 @@ def classify_review(
     mlb_all = model_info.get("mlb_all")
 
     if clf_main is None or mlb_main is None:
-        return _fallback_response(
+        return fallback_response(
             business_type_id,
             business_type,
             detected_lang,
@@ -238,9 +238,9 @@ def classify_review(
             hotel_name=hotel_name,
         )
 
-    np = _get_numpy()
+    np = get_numpy()
     if np is None:
-        return _fallback_response(
+        return fallback_response(
             business_type_id,
             business_type,
             detected_lang,

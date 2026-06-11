@@ -14,7 +14,7 @@ from app.modules.listings.models import Listing
 from app.modules.bookings.models import Booking
 
 
-def _enum_values(enum_cls: type[Enum]) -> list[str]:
+def enum_values(enum_cls: type[Enum]) -> list[str]:
     return [member.value for member in enum_cls]
 
 
@@ -60,7 +60,7 @@ class Itinerary(SQLModel, table=True):
     status: Optional[ItineraryStatus] = Field(
         default=None,
         sa_column=Column(
-            SAEnum(ItineraryStatus, values_callable=_enum_values),
+            SAEnum(ItineraryStatus, values_callable=enum_values),
             nullable=True,
             server_default=ItineraryStatus.DRAFT,
         ),

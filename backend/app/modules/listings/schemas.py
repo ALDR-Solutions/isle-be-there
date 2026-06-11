@@ -9,17 +9,17 @@ from app.shared.schemas import Location
 from .models import Statuses
 
 
-class _StrictDetailsBase(BaseModel):
+class StrictDetailsBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
-    def _require_at_least_one_field(self):
+    def require_at_least_one_field(self):
         if not any(v is not None for v in self.model_dump().values()):
             raise ValueError("details must include at least one field")
         return self
 
 
-class HotelListingJson(_StrictDetailsBase):
+class HotelListingJson(StrictDetailsBase):
     room_count: Optional[int] = None
     star_level: Optional[int] = None
     hotel_amenities: Optional[List[str]] = None
@@ -30,7 +30,7 @@ class HotelListingJson(_StrictDetailsBase):
     check_out_time: Optional[time] = None
 
 
-class TourListingJson(_StrictDetailsBase):
+class TourListingJson(StrictDetailsBase):
     duration: Optional[float] = None
     available_days: Optional[List[str]] = None
     max_capacity: Optional[int] = None
@@ -58,7 +58,7 @@ class RestaurantMenu(BaseModel):
     sections: List[RestaurantMenuSection]
 
 
-class RestaurantListingJson(_StrictDetailsBase):
+class RestaurantListingJson(StrictDetailsBase):
     table_seating: Optional[bool] = None
     has_delivery: Optional[bool] = None
     has_take_out: Optional[bool] = None
@@ -69,7 +69,7 @@ class RestaurantListingJson(_StrictDetailsBase):
     menu_items: Optional[List[str]] = None
 
 
-class ActivityListingJson(_StrictDetailsBase):
+class ActivityListingJson(StrictDetailsBase):
     estimated_duration: Optional[float] = None
     available_days: Optional[List[str]] = None
     is_indoor: Optional[bool] = None

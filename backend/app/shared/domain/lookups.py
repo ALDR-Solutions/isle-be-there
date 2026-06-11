@@ -17,13 +17,13 @@ from app.modules.users.models import User
 T = TypeVar("T")
 
 
-def _raise_not_found(detail: str) -> None:
+def raise_not_found(detail: str) -> None:
     raise HTTPException(status_code=404, detail=detail)
 
 
-def _get_or_404(entity: T | None, detail: str) -> T:
+def get_or_404(entity: T | None, detail: str) -> T:
     if entity is None:
-        _raise_not_found(detail)
+        raise_not_found(detail)
     return entity
 
 
@@ -36,7 +36,7 @@ def get_user_or_404(
     user_id: UUID | str,
     detail: str = "User not found",
 ) -> User:
-    return _get_or_404(get_user_by_id(db, user_id), detail)
+    return get_or_404(get_user_by_id(db, user_id), detail)
 
 
 def get_business_by_user_id(db: Session, user_id: UUID | str) -> Business | None:
@@ -48,7 +48,7 @@ def get_business_or_404(
     business_id: UUID | str,
     detail: str = "Business not found",
 ) -> Business:
-    return _get_or_404(db.get(Business, business_id), detail)
+    return get_or_404(db.get(Business, business_id), detail)
 
 
 def get_listing_or_404(
@@ -56,7 +56,7 @@ def get_listing_or_404(
     listing_id: UUID | str,
     detail: str = "Listing not found",
 ) -> Listing:
-    return _get_or_404(db.get(Listing, listing_id), detail)
+    return get_or_404(db.get(Listing, listing_id), detail)
 
 
 def get_service_or_404(
@@ -64,7 +64,7 @@ def get_service_or_404(
     service_id: UUID | str,
     detail: str = "Service not found",
 ) -> Service:
-    return _get_or_404(db.get(Service, service_id), detail)
+    return get_or_404(db.get(Service, service_id), detail)
 
 
 def get_booking_or_404(
@@ -72,7 +72,7 @@ def get_booking_or_404(
     booking_id: UUID | str,
     detail: str = "Booking not found",
 ) -> Booking:
-    return _get_or_404(db.get(Booking, booking_id), detail)
+    return get_or_404(db.get(Booking, booking_id), detail)
 
 
 def get_review_or_404(
@@ -80,7 +80,7 @@ def get_review_or_404(
     review_id,
     detail: str = "Review not found",
 ) -> Review:
-    return _get_or_404(db.get(Review, review_id), detail)
+    return get_or_404(db.get(Review, review_id), detail)
 
 
 def get_itinerary_or_404(
@@ -88,7 +88,7 @@ def get_itinerary_or_404(
     itinerary_id: UUID | str,
     detail: str = "Itinerary not found",
 ) -> Itinerary:
-    return _get_or_404(db.get(Itinerary, itinerary_id), detail)
+    return get_or_404(db.get(Itinerary, itinerary_id), detail)
 
 
 def get_itinerary_item_or_404(
@@ -96,4 +96,4 @@ def get_itinerary_item_or_404(
     itinerary_item_id: UUID | str,
     detail: str = "Itinerary item not found",
 ) -> ItineraryItem:
-    return _get_or_404(db.get(ItineraryItem, itinerary_item_id), detail)
+    return get_or_404(db.get(ItineraryItem, itinerary_item_id), detail)

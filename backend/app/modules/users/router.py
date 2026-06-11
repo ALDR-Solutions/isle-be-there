@@ -11,7 +11,7 @@ from .service import get_profile, mark_interests_handled, update_profile
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
 
-def _serialize_profile(user: User) -> UserResponse:
+def serialize_profile(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
         first_name=user.first_name,
@@ -34,7 +34,7 @@ def update_profile_endpoint(
     db: Session = Depends(get_db),
 ):
     user = update_profile(db, current_user.id, data)
-    return {"detail": "Profile updated", "profile": _serialize_profile(user)}
+    return {"detail": "Profile updated", "profile": serialize_profile(user)}
 
 
 @router.get("", response_model=UserResponse, status_code=200)
@@ -42,7 +42,7 @@ def get_profile_endpoint(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _serialize_profile(get_profile(db, current_user.id))
+    return serialize_profile(get_profile(db, current_user.id))
 
 
 @router.patch("/interests-handled", response_model=dict, status_code=200)

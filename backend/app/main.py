@@ -42,7 +42,7 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
-def _include_routers(app: FastAPI) -> None:
+def include_routers(app: FastAPI) -> None:
     app.include_router(auth_router)
     app.include_router(listings_router)
     app.include_router(bookings_router)
@@ -65,7 +65,7 @@ def _include_routers(app: FastAPI) -> None:
 class UploadCleanupRequest(BaseModel):
     urls: list[str]
 
-def _register_core_routes(app: FastAPI) -> None:
+def register_core_routes(app: FastAPI) -> None:
     @app.get("/health")
     async def health():
         return {"status": "ok"}
@@ -173,8 +173,8 @@ def create_app(*, background_jobs_enabled: bool | None = None) -> FastAPI:
             name="assets",
         )
 
-    _include_routers(app)
-    _register_core_routes(app)
+    include_routers(app)
+    register_core_routes(app)
     return app
 
 

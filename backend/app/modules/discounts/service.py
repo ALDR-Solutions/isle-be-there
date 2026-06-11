@@ -55,7 +55,7 @@ def get_discount_by_id(db: Session, discount_id: UUID) -> Discount:
     return discount
 
 
-def _collect_itinerary_business_types(itinerary_id: UUID, db: Session) -> set[str]:
+def collect_itinerary_business_types(itinerary_id: UUID, db: Session) -> set[str]:
     """Return a set of business_type names found in the itinerary's listings."""
     business_types: set[str] = set()
     stmt_items = select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)
@@ -90,7 +90,7 @@ def check_package_discount_eligibility(db: Session, itinerary_id: UUID) -> Dict:
     pkg_type = getattr(DiscountType, "PACKAGE", None)
     discounts = get_active_discounts(db, discount_type=pkg_type)
 
-    business_types = _collect_itinerary_business_types(itinerary_id, db)
+    business_types = collect_itinerary_business_types(itinerary_id, db)
 
     # Count services in itinerary
     stmt_items = select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)

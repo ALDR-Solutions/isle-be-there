@@ -53,8 +53,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if (error.response?.status === 401 && !originalRequest.retryAttempted) {
+      originalRequest.retryAttempted = true;
 
       const refreshToken = getRefreshToken();
       if (refreshToken) {

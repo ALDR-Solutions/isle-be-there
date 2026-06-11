@@ -24,7 +24,7 @@ from .schemas import ReviewCreate, ReviewUpdate
 import json
 
 
-def _build_business_reply_payload(
+def build_business_reply_payload(
     reply: BusinessReply | None, reply_username: str | None
 ) -> dict | None:
     if not reply:
@@ -91,13 +91,13 @@ def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
                 "classification_labels": review.classification_labels,
                 "classification_method": classification_method,
                 "created_at": review.created_at,
-                "business_reply": _build_business_reply_payload(reply, reply_username),
+                "business_reply": build_business_reply_payload(reply, reply_username),
             }
         )
     return reviews
 
 
-def _get_review_listing_context(
+def get_review_listing_context(
     db: Session,
     review_id: UUID,
 ) -> tuple[Review, Listing]:
@@ -112,7 +112,7 @@ def _get_review_listing_context(
     return review, listing
 
 
-def _authorize_reply_actor(
+def authorize_reply_actor(
     db: Session,
     listing: Listing,
     user: User,
@@ -308,8 +308,8 @@ def create_business_reply(
     current_user: User,
     description: str,
 ) -> dict:
-    review, listing = _get_review_listing_context(db, review_id)
-    business_id = _authorize_reply_actor(
+    review, listing = get_review_listing_context(db, review_id)
+    business_id = authorize_reply_actor(
         db,
         listing,
         current_user,
@@ -381,8 +381,8 @@ def update_business_reply(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
-    _, listing = _get_review_listing_context(db, reply.review_id)
-    business_id = _authorize_reply_actor(
+    _, listing = get_review_listing_context(db, reply.review_id)
+    business_id = authorize_reply_actor(
         db,
         listing,
         current_user,
@@ -422,8 +422,8 @@ def delete_business_reply(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
-    _, listing = _get_review_listing_context(db, reply.review_id)
-    business_id = _authorize_reply_actor(
+    _, listing = get_review_listing_context(db, reply.review_id)
+    business_id = authorize_reply_actor(
         db,
         listing,
         current_user,

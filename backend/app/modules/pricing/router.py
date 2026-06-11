@@ -36,7 +36,7 @@ def get_listing_pricing(listing_id: UUID, db: Session = Depends(get_db)):
 @router.get("/config", response_model=List[PlatformPricingConfigResponse])
 def list_pricing_configs(
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_roles("admin")),
+    admin_user: User = Depends(require_roles("admin")),
 ):
     """Admin endpoint: list all pricing configurations."""
     stmt = select(PlatformPricingConfig)
@@ -48,7 +48,7 @@ def list_pricing_configs(
 def create_pricing_config_endpoint(
     data: PlatformPricingConfigCreate,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_roles("admin")),
+    admin_user: User = Depends(require_roles("admin")),
 ):
     payload = data.model_dump(exclude_unset=True)
     config = create_pricing_config(db, payload)
@@ -60,7 +60,7 @@ def update_pricing_config_endpoint(
     config_id: UUID,
     data: PlatformPricingConfigCreate,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_roles("admin")),
+    admin_user: User = Depends(require_roles("admin")),
 ):
     payload = data.model_dump(exclude_unset=True)
     return update_pricing_config(db, config_id, payload)

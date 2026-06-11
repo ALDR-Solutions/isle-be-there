@@ -15,7 +15,7 @@ from app.modules.bookings.service import update_expired_bookings
 logger = logging.getLogger(__name__)
 
 
-def _build_jobstores() -> dict[str, SQLAlchemyJobStore]:
+def build_jobstores() -> dict[str, SQLAlchemyJobStore]:
     return {
         "default": SQLAlchemyJobStore(
             engine=get_engine(),
@@ -33,7 +33,7 @@ scheduler = BackgroundScheduler(
 )
 
 
-def _job_error_listener(event) -> None:
+def job_error_listener(event) -> None:
     """Log job errors for monitoring."""
     if event.exception:
         logger.error(
@@ -49,10 +49,10 @@ def _job_error_listener(event) -> None:
         logger.info("Scheduled job '%s' executed successfully", event.job_id)
 
 
-scheduler.add_listener(_job_error_listener, EVENT_JOB_ERROR)
+scheduler.add_listener(job_error_listener, EVENT_JOB_ERROR)
 
 
-def _run_update_expired_bookings() -> None:
+def run_update_expired_bookings() -> None:
     """Run update_expired_bookings with a managed database session."""
     logger.info("Running update_expired_bookings job")
     for db in get_db():
@@ -70,11 +70,11 @@ def _run_update_expired_bookings() -> None:
 def init_scheduler() -> None:
     """Start the scheduler if not already running, and register jobs."""
     if not scheduler.running:
-        scheduler.configure(jobstores=_build_jobstores())
+        scheduler.configure(jobstores=build_jobstores())
         scheduler.start()
 
     scheduler.add_job(
-        _run_update_expired_bookings,
+        run_update_expired_bookings,
         trigger="cron",
         minute="*/5",
         id="update_expired_bookings",

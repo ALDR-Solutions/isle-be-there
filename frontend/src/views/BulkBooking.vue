@@ -123,10 +123,10 @@
         <div class="grid gap-6">
           <div
             v-for="item in filteredItems"
-            :key="item._key"
+            :key="item.itemKey"
             :class="[
               'rounded-[1.9rem] border bg-white transition-all',
-              isItemSelected(item._key)
+              isItemSelected(item.itemKey)
                 ? 'border-cyan-300 bg-cyan-50/70 ring-1 ring-cyan-100'
                 : 'border-transparent bg-transparent'
             ]"
@@ -139,12 +139,12 @@
                   : 'cursor-pointer border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
               ]">
                 <span v-if="getServicesForItem(item).length === 0">Not bookable</span>
-                <span v-else>{{ isItemSelected(item._key) ? 'Selected' : 'Select' }}</span>
+                <span v-else>{{ isItemSelected(item.itemKey) ? 'Selected' : 'Select' }}</span>
                 <input
                   type="checkbox"
-                  :checked="isItemSelected(item._key)"
+                  :checked="isItemSelected(item.itemKey)"
                   :disabled="getServicesForItem(item).length === 0"
-                  @change="toggleItem(item._key)"
+                  @change="toggleItem(item.itemKey)"
                   :class="[
                     'h-5 w-5 rounded border-slate-300 focus:ring-cyan-500',
                     getServicesForItem(item).length === 0
@@ -157,24 +157,24 @@
 
             <HotelBookingFormCard
               v-if="item.isHotel"
-              :ref="el => { if (el) formCardRefs[item._key] = el }"
+              :ref="el => { if (el) formCardRefs[item.itemKey] = el }"
               :item="item"
-              :modelValue="formDataMap[item._key]"
+              :modelValue="formDataMap[item.itemKey]"
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
-              :availability="serviceAvailability[item._key]"
-              :is-selected="isItemSelected(item._key)"
-              @update:modelValue="val => formDataMap[item._key] = val"
+              :availability="serviceAvailability[item.itemKey]"
+              :is-selected="isItemSelected(item.itemKey)"
+              @update:modelValue="val => formDataMap[item.itemKey] = val"
             />
             <BookingFormCard
               v-else
-              :ref="el => { if (el) formCardRefs[item._key] = el }"
+              :ref="el => { if (el) formCardRefs[item.itemKey] = el }"
               :item="item"
-              :modelValue="formDataMap[item._key]"
+              :modelValue="formDataMap[item.itemKey]"
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
-              :availability="serviceAvailability[item._key]"
-              @update:modelValue="val => formDataMap[item._key] = val"
+              :availability="serviceAvailability[item.itemKey]"
+              @update:modelValue="val => formDataMap[item.itemKey] = val"
             />
           </div>
         </div>
@@ -242,14 +242,14 @@
 
           <div class="max-h-[65vh] overflow-y-auto px-6 py-6 sm:px-8">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div v-for="item in selectedItems" :key="item._key" class="flex items-start justify-between gap-4 py-3 text-sm first:pt-0 last:pb-0">
+              <div v-for="item in selectedItems" :key="item.itemKey" class="flex items-start justify-between gap-4 py-3 text-sm first:pt-0 last:pb-0">
                 <div class="min-w-0 flex-1">
                   <p class="font-semibold text-slate-900">
-                    {{ formatServiceName(getServicesForItem(item), formDataMap[item._key]?.service_id) || (item.title || item.name) }}
+                    {{ formatServiceName(getServicesForItem(item), formDataMap[item.itemKey]?.service_id) || (item.title || item.name) }}
                   </p>
                   <p class="mt-1 text-slate-500">
                     <template v-if="isHotelItem(item)">1 room × {{ getHotelNights(item) }} night{{ getHotelNights(item) > 1 ? 's' : '' }}</template>
-                    <template v-else>{{ formDataMap[item._key]?.amount_of_people || 1 }} person{{ (formDataMap[item._key]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
+                    <template v-else>{{ formDataMap[item.itemKey]?.amount_of_people || 1 }} person{{ (formDataMap[item.itemKey]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
                   </p>
                 </div>
                 <p class="shrink-0 font-semibold text-slate-900">${{ calculateItemTotal(item).toFixed(2) }}</p>
@@ -382,16 +382,16 @@ function toggleItem(key) {
 function toggleSelectAll() {
   const newSet = new Set(selectedItemsIds.value);
   filteredItems.value.forEach((item) => {
-    allVisibleSelected.value ? newSet.delete(item._key) : newSet.add(item._key);
+    allVisibleSelected.value ? newSet.delete(item.itemKey) : newSet.add(item.itemKey);
   });
   selectedItemsIds.value = newSet;
 }
 
-const allVisibleSelected = computed(() => filteredItems.value.length > 0 && filteredItems.value.every((item) => selectedItemsIds.value.has(item._key)));
-const someVisibleSelected = computed(() => filteredItems.value.some((item) => selectedItemsIds.value.has(item._key)));
+const allVisibleSelected = computed(() => filteredItems.value.length > 0 && filteredItems.value.every((item) => selectedItemsIds.value.has(item.itemKey)));
+const someVisibleSelected = computed(() => filteredItems.value.some((item) => selectedItemsIds.value.has(item.itemKey)));
 const selectedItems = computed(() => {
   return bookableItems.value.filter((item) => {
-    if (!selectedItemsIds.value.has(item._key)) return false;
+    if (!selectedItemsIds.value.has(item.itemKey)) return false;
     const services = getServicesForItem(item);
     return services.length > 0;
   });
@@ -399,7 +399,7 @@ const selectedItems = computed(() => {
 
 const unavailableItems = computed(() => {
   return bookableItems.value.filter((item) => {
-    if (!selectedItemsIds.value.has(item._key)) return false;
+    if (!selectedItemsIds.value.has(item.itemKey)) return false;
     const services = getServicesForItem(item);
     return services.length === 0;
   });
@@ -452,15 +452,15 @@ const bookableItems = computed(() => {
     if (isHotelItem(item)) {
       const key = item.listing_id;
       if (!hotelGroups[key]) {
-        hotelGroups[key] = { ...item, _key: `hotel-${key}`, isHotel: true, check_in_date: item.day_date, check_out_date: item.day_date, _originalItems: [item] };
+        hotelGroups[key] = { ...item, itemKey: `hotel-${key}`, isHotel: true, check_in_date: item.day_date, check_out_date: item.day_date, originalItems: [item] };
       } else {
         const existing = hotelGroups[key];
         existing.check_out_date = item.day_date;
         existing.estimated_cost = (existing.estimated_cost || 0) + (item.estimated_cost || 0);
-        existing._originalItems.push(item);
+        existing.originalItems.push(item);
       }
     } else {
-      result.push({ ...item, _key: `item-${item.id}`, isHotel: false });
+      result.push({ ...item, itemKey: `item-${item.id}`, isHotel: false });
     }
   }
 
@@ -541,7 +541,7 @@ const formatServiceName = (services, serviceId) => {
 
 // Helper to calculate hotel nights
 const getHotelNights = (item) => {
-  const formData = formDataMap.value[item._key];
+  const formData = formDataMap.value[item.itemKey];
   const checkIn = formData?.booking_from_time;
   const checkOut = formData?.booking_to_time;
   if (checkIn && checkOut) {
@@ -555,7 +555,7 @@ const getHotelNights = (item) => {
 };
 
 const calculateItemTotal = (item) => {
-  const formData = formDataMap.value[item._key];
+  const formData = formDataMap.value[item.itemKey];
   const services = getServicesForItem(item);
   const people = formData?.amount_of_people || 1;
   const serviceId = formData?.service_id;
@@ -594,7 +594,7 @@ watch(itinerary, (newItinerary) => {
 
   const newMap = {};
   for (const item of bookableItems.value) {
-    newMap[item._key] = {
+    newMap[item.itemKey] = {
       service_id: null,
       bookers_name: bookerName.value,
       amount_of_people: 1,
@@ -636,11 +636,11 @@ watch(bookableItems, async (items) => {
   const nextFormDataMap = { ...formDataMap.value };
   for (const item of items) {
     const availableServices = nextServices[item.listing_id] || [];
-    const currentServiceId = nextFormDataMap[item._key]?.service_id;
+    const currentServiceId = nextFormDataMap[item.itemKey]?.service_id;
     if (availableServices.length === 1) {
-      nextFormDataMap[item._key] = { ...nextFormDataMap[item._key], service_id: availableServices[0].service_id };
+      nextFormDataMap[item.itemKey] = { ...nextFormDataMap[item.itemKey], service_id: availableServices[0].service_id };
     } else if (!availableServices.some((s) => s.service_id === currentServiceId)) {
-      nextFormDataMap[item._key] = { ...nextFormDataMap[item._key], service_id: null };
+      nextFormDataMap[item.itemKey] = { ...nextFormDataMap[item.itemKey], service_id: null };
     }
   }
   formDataMap.value = nextFormDataMap;
@@ -654,7 +654,7 @@ watch(bookableItems, async (items) => {
 
 watch(formDataMap, (newMap) => {
   for (const [itemKey, formData] of Object.entries(newMap)) {
-    const item = bookableItems.value.find((i) => i._key === itemKey);
+    const item = bookableItems.value.find((i) => i.itemKey === itemKey);
     if (!item) continue;
     const serviceId = formData?.service_id;
     const date = formData?.booking_from_time?.slice(0, 10);
@@ -682,7 +682,7 @@ async function openReceiptModal() {
   if (!validateSelectedItems()) return;
 
   for (const item of selectedItems.value) {
-    const card = formCardRefs.value[item._key];
+    const card = formCardRefs.value[item.itemKey];
     if (card?.validate && !card.validate()) {
       toastStore.show('Please fix validation errors in the forms.', 'error');
       return;
@@ -706,9 +706,9 @@ async function openReceiptModal() {
 
 function validateSelectedItems() {
   for (const item of selectedItems.value) {
-    const formData = formDataMap.value[item._key];
+    const formData = formDataMap.value[item.itemKey];
     const services = getServicesForItem(item);
-    const availability = serviceAvailability.value[item._key];
+    const availability = serviceAvailability.value[item.itemKey];
 
     if (isServicesLoading(item)) {
       toastStore.show('Services are still loading for one or more selections.', 'error');
@@ -765,10 +765,10 @@ async function handleConfirmBooking() {
   let createdBookings = [];
   try {
     const results = await Promise.all(selectedItems.value.map((item) => {
-      const formData = formDataMap.value[item._key];
+      const formData = formDataMap.value[item.itemKey];
       return bookingsAPI.create({
         service_id: formData.service_id,
-        itinerary_item_id: item._originalItems?.[0]?.id || item.id,
+        itinerary_item_id: item.originalItems?.[0]?.id || item.id,
         booking_from_time: formData.booking_from_time,
         booking_to_time: formData.booking_to_time,
         bookers_name: formData.bookers_name,

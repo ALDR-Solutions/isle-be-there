@@ -14,7 +14,7 @@ from .classifiers.ml_classifier import classify_review as ml_classify_review
 logger = logging.getLogger(__name__)
 
 
-def _normalize_labels(classification_result: dict) -> dict:
+def normalize_labels(classification_result: dict) -> dict:
     main_label = classification_result.get("main_label") or "(none)"
     second_label = classification_result.get("second_label") or "(none)"
     third_label = classification_result.get("third_label") or "(none)"
@@ -27,8 +27,8 @@ def _normalize_labels(classification_result: dict) -> dict:
     }
 
 
-def _keyword_result(text: str, business_type_uuid: str, classification_method: str) -> dict:
-    normalized = _normalize_labels(classify_with_keywords(text, business_type_uuid))
+def keyword_result(text: str, business_type_uuid: str, classification_method: str) -> dict:
+    normalized = normalize_labels(classify_with_keywords(text, business_type_uuid))
     normalized.update(
         {
             "detected_lang": None,
@@ -48,7 +48,7 @@ def classify_review_text(
     verbose: bool = False,
 ) -> dict:
     if get_classification_approach(business_type_name) != "ml":
-        return _keyword_result(text, business_type_uuid, "keyword")
+        return keyword_result(text, business_type_uuid, "keyword")
 
     try:
         ml_result = ml_classify_review(
@@ -59,12 +59,12 @@ def classify_review_text(
         )
     except Exception:
         logger.exception("ML classification failed; falling back to keyword classifier")
-        return _keyword_result(text, business_type_uuid, "ml_fallback")
+        return keyword_result(text, business_type_uuid, "ml_fallback")
 
     if ml_result.get("main_label") is None:
-        return _keyword_result(text, business_type_uuid, "ml_fallback")
+        return keyword_result(text, business_type_uuid, "ml_fallback")
 
-    normalized = _normalize_labels(ml_result)
+    normalized = normalize_labels(ml_result)
     normalized.update(
         {
             "detected_lang": ml_result.get("detected_language", "en"),

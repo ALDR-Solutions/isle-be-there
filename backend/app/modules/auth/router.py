@@ -33,7 +33,7 @@ from .service import (
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
-def _require_subject(token: str) -> str:
+def require_subject(token: str) -> str:
     payload = decode_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -74,7 +74,7 @@ def reset_password(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    reset_authenticated_user_password(db, _require_subject(token), data)
+    reset_authenticated_user_password(db, require_subject(token), data)
     return {"detail": "Password updated"}
 
 
@@ -104,7 +104,7 @@ def get_me(
 ):
     from app.modules.users.service import get_user_by_id
 
-    user = get_user_by_id(db, _require_subject(token))
+    user = get_user_by_id(db, require_subject(token))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -115,7 +115,7 @@ def disable_account(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    user_id = _require_subject(token)
+    user_id = require_subject(token)
     disable_user_account(db, user_id)
     return {"detail": "Account disabled", "disabled_at": datetime.utcnow()}
 

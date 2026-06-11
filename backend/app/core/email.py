@@ -9,12 +9,12 @@ from app.core.config import settings
 from app.modules.itineraries.schemas import ItineraryPlanResponse
 
 
-def _configure_resend() -> None:
+def configure_resend() -> None:
     resend.api_key = settings.require_resend_api_key()
 
 
 def send_html_email(email: str, subject: str, html: str) -> None:
-    _configure_resend()
+    configure_resend()
     params: resend.Emails.SendParams = {
         "from": settings.MAIL_FROM,
         "to": [email],
@@ -83,15 +83,15 @@ def build_itinerary_email_html(
 ) -> str:
     title = escape(itinerary_title or "Your itinerary")
     location = escape(country or "Caribbean")
-    total_cost = _format_currency(itinerary.total_estimated_cost)
-    daily_budget = _format_currency(itinerary.daily_target_budget)
+    total_cost = format_currency(itinerary.total_estimated_cost)
+    daily_budget = format_currency(itinerary.daily_target_budget)
     trip_days = itinerary.trip_days
-    date_summary = _format_trip_dates(itinerary)
+    date_summary = format_trip_dates(itinerary)
     interest_html = "".join(
-        _render_chip(_title_case(interest), "#ecfeff", "#155e75", "#bae6fd")
+        render_chip(title_case(interest), "#ecfeff", "#155e75", "#bae6fd")
         for interest in interests
     )
-    day_sections = "".join(_render_day_section(day, index) for index, day in enumerate(itinerary.days))
+    day_sections = "".join(render_day_section(day, index) for index, day in enumerate(itinerary.days))
     cta_html = (
         f"""
         <div style="margin-top: 24px;">
@@ -344,24 +344,24 @@ def build_itinerary_email_html(
                     <table class="summary-table" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0 16px;">
                       <tr>
                         <td class="summary-cell summary-cell-left" style="width:33.33%;padding:0 8px 0 0;">
-                          {_render_summary_card("Destination", location)}
+                          {render_summary_card("Destination", location)}
                         </td>
                         <td class="summary-cell summary-cell-center" style="width:33.33%;padding:0 8px;">
-                          {_render_summary_card("Travel dates", escape(date_summary))}
+                          {render_summary_card("Travel dates", escape(date_summary))}
                         </td>
                         <td class="summary-cell summary-cell-right" style="width:33.33%;padding:0 0 0 8px;">
-                          {_render_summary_card("Trip style", f"{escape(itinerary.budget_level.value.title())} budget | {escape(itinerary.pace.value.title())} pace")}
+                          {render_summary_card("Trip style", f"{escape(itinerary.budget_level.value.title())} budget | {escape(itinerary.pace.value.title())} pace")}
                         </td>
                       </tr>
                       <tr>
                         <td class="summary-cell summary-cell-left" style="width:33.33%;padding:0 8px 0 0;">
-                          {_render_summary_card("Trip length", f"{trip_days} {'day' if trip_days == 1 else 'days'}")}
+                          {render_summary_card("Trip length", f"{trip_days} {'day' if trip_days == 1 else 'days'}")}
                         </td>
                         <td class="summary-cell summary-cell-center" style="width:33.33%;padding:0 8px;">
-                          {_render_summary_card("Estimated total", total_cost)}
+                          {render_summary_card("Estimated total", total_cost)}
                         </td>
                         <td class="summary-cell summary-cell-right" style="width:33.33%;padding:0 0 0 8px;">
-                          {_render_summary_card("Daily target", daily_budget)}
+                          {render_summary_card("Daily target", daily_budget)}
                         </td>
                       </tr>
                     </table>
@@ -392,7 +392,7 @@ def build_itinerary_email_html(
     """
 
 
-def _render_summary_card(label: str, value: str) -> str:
+def render_summary_card(label: str, value: str) -> str:
     return f"""
     <div class="summary-card" style="height:100%;border:1px solid #e2e8f0;border-radius:20px;background:#ffffff;padding:18px 18px 16px;">
       <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;">
@@ -405,10 +405,10 @@ def _render_summary_card(label: str, value: str) -> str:
     """
 
 
-def _render_day_section(day, index: int) -> str:
-    total_cost = _format_currency(day.total_estimated_cost)
+def render_day_section(day, index: int) -> str:
+    total_cost = format_currency(day.total_estimated_cost)
     total_hours = f"{day.total_duration_hours:g} hours"
-    stops_html = "".join(_render_stop(stop) for stop in day.stops)
+    stops_html = "".join(render_stop(stop) for stop in day.stops)
     return f"""
     <div class="day-card" style="margin-top:20px;overflow:hidden;border:1px solid #e2e8f0;border-radius:24px;background:#ffffff;">
       <div class="day-header" style="padding:20px 24px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
@@ -427,13 +427,13 @@ def _render_day_section(day, index: int) -> str:
     """
 
 
-def _render_stop(stop) -> str:
+def render_stop(stop) -> str:
     business_type = escape((stop.business_type_name or "stop").replace("_", " ").title())
     description = escape(stop.description or "")
     city = escape(str((stop.address or {}).get("city") or ""))
     country = escape(str((stop.address or {}).get("country") or ""))
     location = ", ".join(part for part in [city, country] if part)
-    tags_html = "".join(_render_reason_tag(tag) for tag in stop.reason_tags)
+    tags_html = "".join(render_reason_tag(tag) for tag in stop.reason_tags)
     description_html = (
         f'<div class="stop-copy" style="margin-top:10px;font-size:14px;line-height:1.7;color:#475569;">{description}</div>'
         if description
@@ -471,7 +471,7 @@ def _render_stop(stop) -> str:
           </td>
           <td class="stop-aside" style="width:110px;vertical-align:top;text-align:right;">
             <div style="font-size:16px;font-weight:700;color:#020617;">
-              {_format_currency(stop.estimated_cost)}
+              {format_currency(stop.estimated_cost)}
             </div>
             <div class="stop-aside-copy" style="margin-top:8px;font-size:13px;color:#64748b;">
               {stop.estimated_duration_hours:g} h
@@ -483,13 +483,13 @@ def _render_stop(stop) -> str:
     """
 
 
-def _render_reason_tag(tag: str) -> str:
+def render_reason_tag(tag: str) -> str:
     normalized = (tag or "").strip().lower()
-    label, colors = _reason_tag_meta(normalized)
-    return _render_chip(label, colors[0], colors[1], colors[2])
+    label, colors = reason_tag_meta(normalized)
+    return render_chip(label, colors[0], colors[1], colors[2])
 
 
-def _render_chip(label: str, background: str, text_color: str, border: str) -> str:
+def render_chip(label: str, background: str, text_color: str, border: str) -> str:
     return (
         f'<span style="display:inline-block;margin:0 8px 8px 0;padding:7px 12px;'
         f'border-radius:999px;background:{background};color:{text_color};'
@@ -497,7 +497,7 @@ def _render_chip(label: str, background: str, text_color: str, border: str) -> s
     )
 
 
-def _reason_tag_meta(tag: str) -> tuple[str, tuple[str, str, str]]:
+def reason_tag_meta(tag: str) -> tuple[str, tuple[str, str, str]]:
     mapped = {
         "interest_match": ("Matches interests", ("#ecfdf5", "#166534", "#bbf7d0")),
         "variety": ("Adds variety", ("#ecfeff", "#155e75", "#bae6fd")),
@@ -511,7 +511,7 @@ def _reason_tag_meta(tag: str) -> tuple[str, tuple[str, str, str]]:
 
     if ":" in tag:
         prefix, value = tag.split(":", maxsplit=1)
-        value_label = _title_case(value.replace("_", " ").replace("-", " "))
+        value_label = title_case(value.replace("_", " ").replace("-", " "))
         prefix = prefix.strip().lower()
         if prefix == "interest":
             return (
@@ -529,11 +529,11 @@ def _reason_tag_meta(tag: str) -> tuple[str, tuple[str, str, str]]:
                 ("#f1f5f9", "#475569", "#cbd5e1"),
             )
 
-    humanized = _title_case(tag.replace("_", " ").replace("-", " "))
+    humanized = title_case(tag.replace("_", " ").replace("-", " "))
     return humanized, ("#f1f5f9", "#475569", "#cbd5e1")
 
 
-def _format_trip_dates(itinerary: ItineraryPlanResponse) -> str:
+def format_trip_dates(itinerary: ItineraryPlanResponse) -> str:
     if not itinerary.days:
         return "Dates to be confirmed"
     start_date = itinerary.days[0].date.strftime("%b %d, %Y")
@@ -543,9 +543,9 @@ def _format_trip_dates(itinerary: ItineraryPlanResponse) -> str:
     return f"{start_date} to {end_date}"
 
 
-def _format_currency(value: float) -> str:
+def format_currency(value: float) -> str:
     return f"${float(value or 0):,.2f}"
 
 
-def _title_case(value: str) -> str:
+def title_case(value: str) -> str:
     return " ".join(word.capitalize() for word in value.split())

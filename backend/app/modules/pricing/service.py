@@ -13,13 +13,13 @@ from app.modules.listings.models import Listing
 from app.modules.services.service import get_service_by_id  # reference pattern
 
 
-def _now() -> datetime:
+def now_utc() -> datetime:
     # helper to centralize time source if needed later
     return datetime.utcnow()
 
 
-def _query_active_config(db: Session, business_type_id: Optional[UUID]) -> Optional[PlatformPricingConfig]:
-    now = _now()
+def query_active_config(db: Session, business_type_id: Optional[UUID]) -> Optional[PlatformPricingConfig]:
+    now = now_utc()
     # Active config for a specific business_type_id
     stmt = select(PlatformPricingConfig).where(
         PlatformPricingConfig.is_active == True,
@@ -40,11 +40,11 @@ def get_pricing_config(db: Session, business_type_id: Optional[UUID] = None) -> 
     """
     # Try specific business type first (if provided)
     if business_type_id is not None:
-        config = _query_active_config(db, business_type_id)
+        config = query_active_config(db, business_type_id)
         if config is not None:
             return config
     # Fallback to global (None) config
-    global_config = _query_active_config(db, None)
+    global_config = query_active_config(db, None)
     if global_config is not None:
         return global_config
     raise HTTPException(status_code=404, detail="Pricing config not found")

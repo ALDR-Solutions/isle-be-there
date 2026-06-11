@@ -33,7 +33,7 @@ from app.shared.domain import (
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
 
-def _get_user_from_token(
+def get_user_from_token(
     credentials: HTTPAuthorizationCredentials,
     db: Session,
 ) -> User:
@@ -69,7 +69,7 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    return _get_user_from_token(credentials, db)
+    return get_user_from_token(credentials, db)
 
 
 def get_optional_current_user(
@@ -78,7 +78,7 @@ def get_optional_current_user(
 ) -> User | None:
     if credentials is None:
         return None
-    return _get_user_from_token(credentials, db)
+    return get_user_from_token(credentials, db)
 
 
 def get_user_role(user: User) -> str:
@@ -96,7 +96,7 @@ def get_user_role(user: User) -> str:
 def require_roles(*roles: str) -> Callable[[User], User]:
     allowed = {role for role in roles if role}
 
-    def _dependency(user: User = Depends(get_current_user)) -> User:
+    def dependency(user: User = Depends(get_current_user)) -> User:
         role = get_user_role(user)
         if role not in allowed:
             raise HTTPException(
@@ -105,7 +105,7 @@ def require_roles(*roles: str) -> Callable[[User], User]:
             )
         return user
 
-    return _dependency
+    return dependency
 
 
 def require_booking_owner(
