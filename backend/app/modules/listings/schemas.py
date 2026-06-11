@@ -2,7 +2,7 @@ from datetime import datetime, time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.shared.schemas import Location
 
@@ -127,6 +127,21 @@ class ListingUpdate(BaseModel):
     interest_ids: Optional[List[UUID]] = None
     details: Optional[Dict[str, Any]] = None
     location: Optional[Location] = None
+
+
+class ListingModerationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Statuses
+
+    @field_validator("status")
+    @classmethod
+    def validate_moderation_status(cls, value: Statuses) -> Statuses:
+        allowed_statuses = {Statuses.active, Statuses.rejected, Statuses.suspended}
+        if value not in allowed_statuses:
+            allowed = ", ".join(status.value for status in allowed_statuses)
+            raise ValueError(f"status must be one of: {allowed}")
+        return value
 
 
 class ListingResponse(BaseModel):

@@ -1689,9 +1689,10 @@ function syncMapToManualCoordinates() {
 
 async function rollbackListingUpdate() {
   if (!editingId.value || !originalListingPayload.value) return;
+  const { business_type, ...rollbackPayload } = originalListingPayload.value;
   const rollbackResponse = await listingsAPI.update(
     editingId.value,
-    originalListingPayload.value,
+    rollbackPayload,
   );
   businessStore.updateListing(rollbackResponse.data);
 }
@@ -1720,7 +1721,6 @@ async function submitForm() {
     uploadedUrls = await uploadPendingImages();
     const payload = {
       title: form.value.title.trim(),
-      business_type: form.value.business_type,
       interest_ids: normalizeInterestIds(form.value.interest_ids),
       description: form.value.description.trim(),
       base_price: Number(form.value.base_price),
@@ -1739,6 +1739,10 @@ async function submitForm() {
         ? form.value.details
         : null,
     };
+
+    if (!isEditing.value) {
+      payload.business_type = form.value.business_type;
+    }
 
     if (isEditing.value) {
       const removedOriginalUrls = getRemovedOriginalUrls(payload.image_urls);
