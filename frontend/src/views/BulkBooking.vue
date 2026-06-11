@@ -111,13 +111,25 @@
             ]"
           >
             <div class="flex items-center justify-end px-4 pt-4 pb-3">
-              <label class="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm">
-                <span>{{ isItemSelected(item._key) ? 'Selected' : 'Select' }}</span>
+              <label :class="[
+                'inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium shadow-sm',
+                getServicesForItem(item).length === 0
+                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                  : 'cursor-pointer border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              ]">
+                <span v-if="getServicesForItem(item).length === 0">Not bookable</span>
+                <span v-else>{{ isItemSelected(item._key) ? 'Selected' : 'Select' }}</span>
                 <input
                   type="checkbox"
                   :checked="isItemSelected(item._key)"
+                  :disabled="getServicesForItem(item).length === 0"
                   @change="toggleItem(item._key)"
-                  class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                  :class="[
+                    'h-5 w-5 rounded border-slate-300 focus:ring-cyan-500',
+                    getServicesForItem(item).length === 0
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'text-cyan-600'
+                  ]"
                 />
               </label>
             </div>
@@ -154,6 +166,9 @@
               </p>
               <p class="mt-1 text-sm text-slate-500">
                 {{ filteredItems.length }} booking{{ filteredItems.length === 1 ? '' : 's' }} visible in this section.
+              </p>
+              <p v-if="unavailableItems.length > 0" class="mt-1 text-sm text-amber-600">
+                {{ unavailableItems.length }} item{{ unavailableItems.length === 1 ? '' : 's' }} cannot be booked (no services) and {{ unavailableItems.length === 1 ? 'was' : 'were' }} excluded.
               </p>
             </div>
 
@@ -353,7 +368,21 @@ function toggleSelectAll() {
 
 const allVisibleSelected = computed(() => filteredItems.value.length > 0 && filteredItems.value.every((item) => selectedItemsIds.value.has(item._key)));
 const someVisibleSelected = computed(() => filteredItems.value.some((item) => selectedItemsIds.value.has(item._key)));
-const selectedItems = computed(() => bookableItems.value.filter((item) => selectedItemsIds.value.has(item._key)));
+const selectedItems = computed(() => {
+  return bookableItems.value.filter((item) => {
+    if (!selectedItemsIds.value.has(item._key)) return false;
+    const services = getServicesForItem(item);
+    return services.length > 0;
+  });
+});
+
+const unavailableItems = computed(() => {
+  return bookableItems.value.filter((item) => {
+    if (!selectedItemsIds.value.has(item._key)) return false;
+    const services = getServicesForItem(item);
+    return services.length === 0;
+  });
+});
 
 // --- Helpers ---
 const isHotelItem = (item) => item.extra_metadata?.business_type_name?.toLowerCase() === 'hotel';
