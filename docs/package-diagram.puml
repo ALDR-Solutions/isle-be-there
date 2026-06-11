@@ -1,0 +1,61 @@
+# PlantUML Activity Diagram: IsleBeThere Package Diagram
+
+```plantuml
+@startuml
+
+title IsleBeThere - Module Architecture
+
+rectangle "backend.app" #LightBlue {
+    rectangle "core" #AliceBlue
+    rectangle "infrastructure" #AliceBlue
+    rectangle "shared" #AliceBlue
+    rectangle "api" #AliceBlue
+    rectangle "repositories" #AliceBlue
+    rectangle "schemas" #AliceBlue
+    rectangle "services" #AliceBlue
+    rectangle "workers" #AliceBlue
+    rectangle "ml" #AliceBlue
+    rectangle "models" #AliceBlue
+    rectangle "database" #AliceBlue
+
+    rectangle "modules" #White {
+        rectangle "users" #LightYellow
+        rectangle "businesses" #LightYellow
+        rectangle "listings" #LightYellow
+        rectangle "bookings" #LightYellow
+        rectangle "reviews" #LightYellow
+        rectangle "itineraries" #LightYellow
+        rectangle "favourites" #LightYellow
+        rectangle "interests" #LightYellow
+        rectangle "availability" #LightYellow
+        rectangle "pricing" #LightYellow
+        rectangle "discounts" #LightYellow
+        rectangle "employees" #LightYellow
+        rectangle "auth" #LightYellow
+        rectangle "calendar" #LightYellow
+        rectangle "recommendations" #LightYellow
+        rectangle "services" #LightYellow
+        rectangle "stripe_payment" #LightYellow
+    }
+}
+
+rectangle "frontend.src" #LightGreen {
+    rectangle "components" #HoneyDew
+    rectangle "views" #HoneyDew
+    rectangle "composables" #HoneyDew
+    rectangle "stores" #HoneyDew
+    rectangle "services" #HoneyDew
+    rectangle "utils" #HoneyDew
+    rectangle "layouts" #HoneyDew
+}
+
+frontend.src --> backend.app : REST API
+
+legend right
+  * Blue: Core application packages
+  * Yellow: Feature modules (backend.app.modules)
+  * Green: Frontend packages
+endlegend
+
+@enduml
+```

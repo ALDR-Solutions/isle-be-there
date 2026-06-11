@@ -10,7 +10,10 @@ from sqlmodel import Session
 from app.infrastructure.database.session import get_db
 from app.modules.listings.models import Listing
 from app.modules.services.models import Service
-from app.shared.dependencies.permissions import require_listing_owner, require_service_access
+from app.shared.dependencies.permissions import (
+    require_listing_owner,
+    require_service_access,
+)
 
 from .schemas import (
     ListingHoursCreate,
@@ -33,7 +36,9 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-@router.post("/listings/{listing_id}/hours", response_model=ListingHoursResponse, status_code=201)
+@router.post(
+    "/listings/{listing_id}/hours", response_model=ListingHoursResponse, status_code=201
+)
 def create_listing_hours(
     listing_id: UUID,
     data: ListingHoursCreate,
@@ -84,7 +89,9 @@ def delete_listing_hours(
 # ============================================================================
 
 
-@router.post("/services/{service_id}/slots", response_model=ServiceSlotsResponse, status_code=201)
+@router.post(
+    "/services/{service_id}/slots", response_model=ServiceSlotsResponse, status_code=201
+)
 def create_service_slot(
     service_id: UUID,
     data: ServiceSlotsCreate,
@@ -107,7 +114,9 @@ def list_service_slots(
     return availability_service.list_service_slots(db, service_id)
 
 
-@router.put("/services/{service_id}/slots/{slot_id}", response_model=ServiceSlotsResponse)
+@router.put(
+    "/services/{service_id}/slots/{slot_id}", response_model=ServiceSlotsResponse
+)
 def update_service_slot(
     service_id: UUID,
     slot_id: int,
@@ -143,8 +152,6 @@ def get_service_availability_endpoint(
     db: Session = Depends(get_db),
 ):
     """Get service availability for a specific date and party size."""
-    if date_param < date_class.today():
-        raise HTTPException(400, "Date cannot be in the past")
     try:
         return get_service_availability(db, service_id, date_param, people)
     except HTTPException:
@@ -155,3 +162,33 @@ def get_service_availability_endpoint(
             service_id,
         )
         raise HTTPException(500, "Unable to load service availability")
+
+
+# ============================================================================
+# Mass Availability Endpoint (Lightweight, no slot details)
+# ============================================================================
+
+
+@router.get("/services/{service_id}/available/mass")
+def get_mass_availability_endpoint(
+    service_id: UUID,
+    start_date: date_class = Query(..., description="Start date in YYYY-MM-DD format"),
+    end_date: date_class = Query(..., description="End date in YYYY-MM-DD format"),
+    people: int = Query(1, ge=1, description="Number of people"),
+    db: Session = Depends(get_db),
+):
+    """Get availability for a service across a date range (lightweight, no slot details)."""
+    if end_date < start_date:
+        raise HTTPException(400, "end_date must be on or after start_date")
+    try:
+        return availability_service.get_mass_availability(
+            db, service_id, start_date, end_date, people
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception(
+            "Unexpected failure while loading mass availability for service %s",
+            service_id,
+        )
+        raise HTTPException(500, "Unable to load mass availability")

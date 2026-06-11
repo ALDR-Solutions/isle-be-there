@@ -1,0 +1,92 @@
+# PlantUML Activity Diagram: IsleBeThere Full Architecture
+
+```plantuml
+@startuml
+
+title IsleBeThere - Full Package Architecture
+
+rectangle "backend.app" #LightBlue {
+    rectangle "core" #AliceBlue
+    rectangle "infrastructure" #AliceBlue
+    rectangle "shared" #AliceBlue
+    rectangle "api" #AliceBlue
+    rectangle "repositories" #AliceBlue
+    rectangle "schemas" #AliceBlue
+    rectangle "services" #AliceBlue
+    rectangle "workers" #AliceBlue
+    rectangle "ml" #AliceBlue
+    rectangle "models" #AliceBlue
+    rectangle "database" #AliceBlue
+
+    rectangle "modules" #White {
+        rectangle "users" #LightYellow
+        rectangle "businesses" #LightYellow
+        rectangle "listings" #LightYellow
+        rectangle "bookings" #LightYellow
+        rectangle "reviews" #LightYellow
+        rectangle "itineraries" #LightYellow
+        rectangle "favourites" #LightYellow
+        rectangle "interests" #LightYellow
+        rectangle "availability" #LightYellow
+        rectangle "pricing" #LightYellow
+        rectangle "discounts" #LightYellow
+        rectangle "employees" #LightYellow
+        rectangle "auth" #LightYellow
+        rectangle "calendar" #LightYellow
+        rectangle "recommendations" #LightYellow
+        rectangle "services" #LightYellow
+        rectangle "stripe_payment" #LightYellow
+    }
+}
+
+rectangle "Reviews Module Detail" #LightGray {
+    rectangle "models.py" #White
+    rectangle "schemas.py" #White
+    rectangle "router.py" #White
+    rectangle "service.py" #White
+    rectangle "classification.py" #White
+    rectangle "ml_adapter.py" #White
+    rectangle "review_classifier.py" #White
+    rectangle "profanity.py" #White
+    rectangle "keyword_classifier.py" #White
+    rectangle "classifiers/" #LightYellow
+}
+
+rectangle "frontend.src" #LightGreen {
+    rectangle "components/" #HoneyDew
+    rectangle "views/" #HoneyDew
+    rectangle "composables/" #HoneyDew
+    rectangle "stores/" #HoneyDew
+    rectangle "services/" #HoneyDew
+    rectangle "utils/" #HoneyDew
+    rectangle "layouts/" #HoneyDew
+    rectangle "router.js" #HoneyDew
+    rectangle "main.js" #HoneyDew
+    rectangle "App.vue" #HoneyDew
+}
+
+rectangle "External Services" #Orange {
+    rectangle "PostgreSQL" #LightYellow
+    rectangle "File Storage" #LightYellow
+    rectangle "Email Service" #LightYellow
+    rectangle "Stripe Payment" #LightYellow
+    rectangle "ML Classification Models" #LightYellow
+}
+
+frontend.src --> backend.app : REST API
+backend.app --> "PostgreSQL" : reads/writes
+backend.app --> "ML Classification Models" : review classification
+backend.app --> "Email Service" : sends emails
+backend.app --> "Stripe Payment" : payment processing
+backend.app --> "File Storage" : file uploads
+backend.app --> "Reviews Module Detail" : contains
+
+legend right
+  * Blue: Core application packages
+  * Yellow: Feature modules
+  * Green: Frontend packages
+  * Gray: Detailed module breakdown
+endlegend
+
+@enduml
+```

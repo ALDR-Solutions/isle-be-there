@@ -274,6 +274,8 @@ export const availabilityAPI = {
   // Service Availability
   getServiceAvailability: (serviceId, date, people = 1) =>
     api.get(`/api/availability/services/${serviceId}/available`, { params: { date_param: date, people } }),
+  getMassAvailability: (serviceId, startDate, endDate, people = 1) =>
+    api.get(`/api/availability/services/${serviceId}/available/mass`, { params: { start_date: startDate, end_date: endDate, people } }),
 };
 
 export default api;

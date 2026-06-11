@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 from dataclasses import dataclass
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -19,6 +19,8 @@ from app.modules.availability.schemas import (
     ServiceSlotsResponse,
     ServiceAvailableResponse,
     SlotAvailability,
+    MassAvailabilityItem,
+    MassAvailabilityResponse,
 )
 from app.modules.bookings.models import Booking, BookingStatus
 from app.modules.businesses.models import BusinessType
@@ -33,20 +35,28 @@ from app.modules.services.models import Service
 
 def get_listing_hours(db: Session, listing_id: UUID, day: int) -> ListingHours | None:
     """Get listing hours for a specific day."""
-    return db.exec(
-        select(ListingHours)
-        .where(ListingHours.listing_id == listing_id)
-        .where(ListingHours.day_of_week == day)
-    ).scalars().first()
+    return (
+        db.exec(
+            select(ListingHours)
+            .where(ListingHours.listing_id == listing_id)
+            .where(ListingHours.day_of_week == day)
+        )
+        .scalars()
+        .first()
+    )
 
 
 def list_listing_hours(db: Session, listing_id: UUID) -> list[ListingHours]:
     """List all hours for a listing."""
-    return db.exec(
-        select(ListingHours)
-        .where(ListingHours.listing_id == listing_id)
-        .order_by(ListingHours.day_of_week)
-    ).scalars().all()
+    return (
+        db.exec(
+            select(ListingHours)
+            .where(ListingHours.listing_id == listing_id)
+            .order_by(ListingHours.day_of_week)
+        )
+        .scalars()
+        .all()
+    )
 
 
 def create_listing_hours(db: Session, data: ListingHoursCreate) -> ListingHours:
@@ -63,7 +73,9 @@ def create_listing_hours(db: Session, data: ListingHoursCreate) -> ListingHours:
     return hours
 
 
-def update_listing_hours(db: Session, listing_id: UUID, day: int, data: ListingHoursUpdate) -> ListingHours:
+def update_listing_hours(
+    db: Session, listing_id: UUID, day: int, data: ListingHoursUpdate
+) -> ListingHours:
     """Update hours for a specific day."""
     hours = get_listing_hours(db, listing_id, day)
     if not hours:
@@ -94,7 +106,11 @@ def delete_listing_hours(db: Session, listing_id: UUID, day: int) -> None:
 
 def get_service_slot(db: Session, slot_id: int) -> ServiceSlots | None:
     """Get a service slot by ID."""
-    return db.exec(select(ServiceSlots).where(ServiceSlots.id == slot_id)).scalars().first()
+    return (
+        db.exec(select(ServiceSlots).where(ServiceSlots.id == slot_id))
+        .scalars()
+        .first()
+    )
 
 
 def get_service_slot_for_service(
@@ -103,34 +119,55 @@ def get_service_slot_for_service(
     slot_id: int,
 ) -> ServiceSlots | None:
     """Get a service slot scoped to a specific service."""
-    return db.exec(
-        select(ServiceSlots)
-        .where(ServiceSlots.id == slot_id)
-        .where(ServiceSlots.service_id == service_id)
-    ).scalars().first()
+    return (
+        db.exec(
+            select(ServiceSlots)
+            .where(ServiceSlots.id == slot_id)
+            .where(ServiceSlots.service_id == service_id)
+        )
+        .scalars()
+        .first()
+    )
 
 
 def list_service_slots(db: Session, service_id: UUID) -> list[ServiceSlots]:
     """List all slots for a service."""
-    return db.exec(
-        select(ServiceSlots)
-        .where(ServiceSlots.service_id == service_id)
-        .order_by(ServiceSlots.day_of_week, ServiceSlots.start_time)
-    ).scalars().all()
+    return (
+        db.exec(
+            select(ServiceSlots)
+            .where(ServiceSlots.service_id == service_id)
+            .order_by(ServiceSlots.day_of_week, ServiceSlots.start_time)
+        )
+        .scalars()
+        .all()
+    )
 
 
 def create_service_slot(db: Session, data: ServiceSlotsCreate) -> ServiceSlots:
     """Create a new service slot."""
     # Get the service to find its listing_id
-    service = db.exec(select(Service).where(Service.service_id == data.service_id)).scalars().first()
+    service = (
+        db.exec(select(Service).where(Service.service_id == data.service_id))
+        .scalars()
+        .first()
+    )
     if not service:
         raise HTTPException(404, "Service not found")
 
     # Validate slot is within listing hours for the same day
-    validate_slot_within_listing_hours(db, data.service_id, service.listing_id, data.day_of_week, data.start_time, data.end_time)
+    validate_slot_within_listing_hours(
+        db,
+        data.service_id,
+        service.listing_id,
+        data.day_of_week,
+        data.start_time,
+        data.end_time,
+    )
 
     # Check for overlapping slots
-    check_slot_overlap(db, data.service_id, data.day_of_week, data.start_time, data.end_time)
+    check_slot_overlap(
+        db, data.service_id, data.day_of_week, data.start_time, data.end_time
+    )
 
     slot = ServiceSlots(**data.model_dump())
     db.add(slot)
@@ -150,7 +187,11 @@ def update_service_slot(
     if not slot:
         raise HTTPException(404, "Slot not found")
 
-    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    service = (
+        db.exec(select(Service).where(Service.service_id == service_id))
+        .scalars()
+        .first()
+    )
     if not service:
         raise HTTPException(404, "Service not found")
 
@@ -160,12 +201,18 @@ def update_service_slot(
     next_end = payload.get("end_time", slot.end_time)
     next_capacity = payload.get("capacity", slot.capacity)
 
-    future_linked_bookings = db.exec(
-        select(Booking)
-        .where(Booking.service_slot_id == slot.id)
-        .where(col(Booking.status).in_([BookingStatus.pending, BookingStatus.approved]))
-        .where(Booking.booking_to_time >= datetime.utcnow())
-    ).scalars().all()
+    future_linked_bookings = (
+        db.exec(
+            select(Booking)
+            .where(Booking.service_slot_id == slot.id)
+            .where(
+                col(Booking.status).in_([BookingStatus.pending, BookingStatus.approved])
+            )
+            .where(Booking.booking_to_time >= datetime.utcnow())
+        )
+        .scalars()
+        .all()
+    )
 
     schedule_changed = (
         next_day != slot.day_of_week
@@ -191,7 +238,10 @@ def update_service_slot(
             .group_by(Booking.booking_from_time, Booking.booking_to_time)
         ).all()
 
-        if any(int(booked_people) > next_capacity for _, _, booked_people in approved_booking_loads):
+        if any(
+            int(booked_people) > next_capacity
+            for _, _, booked_people in approved_booking_loads
+        ):
             raise HTTPException(
                 409,
                 "Cannot reduce slot capacity below approved bookings already assigned to this slot",
@@ -254,7 +304,7 @@ def validate_slot_within_listing_hours(
     if start_time < listing_hours.open_time or end_time > listing_hours.close_time:
         raise HTTPException(
             422,
-            f"Slot times must be within listing hours ({listing_hours.open_time} to {listing_hours.close_time})"
+            f"Slot times must be within listing hours ({listing_hours.open_time} to {listing_hours.close_time})",
         )
 
 
@@ -281,7 +331,10 @@ def check_slot_overlap(
 
     overlapping = db.exec(query).scalars().first()
     if overlapping:
-        raise HTTPException(422, f"Slot overlaps with existing slot ({overlapping.start_time} to {overlapping.end_time})")
+        raise HTTPException(
+            422,
+            f"Slot overlaps with existing slot ({overlapping.start_time} to {overlapping.end_time})",
+        )
 
 
 # ============================================================================
@@ -299,10 +352,14 @@ def get_booked_count(
     result = db.exec(
         select(func.coalesce(func.sum(Booking.amount_of_people), 0))
         .where(Booking.service_id == service_id)
-        .where(col(Booking.status).notin_([
-            BookingStatus.cancelled,
-            BookingStatus.pending,
-        ]))
+        .where(
+            col(Booking.status).notin_(
+                [
+                    BookingStatus.cancelled,
+                    BookingStatus.pending,
+                ]
+            )
+        )
         .where(Booking.booking_from_time < end_dt)
         .where(Booking.booking_to_time > start_dt)
     ).scalar_one()
@@ -364,7 +421,10 @@ def is_available(
     requested_quantity: int = 1,
 ) -> bool:
     """Check if service is available for requested quantity."""
-    return get_available_slots(db, service_id, capacity, start_dt, end_dt) >= requested_quantity
+    return (
+        get_available_slots(db, service_id, capacity, start_dt, end_dt)
+        >= requested_quantity
+    )
 
 
 # ============================================================================
@@ -377,19 +437,31 @@ def is_hotel_service(db: Session, service_id: UUID) -> bool:
     Traverse Service → Listing → BusinessType to determine if this is a hotel service.
     Returns True if BusinessType.name contains 'hotel' (case-insensitive).
     """
-    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    service = (
+        db.exec(select(Service).where(Service.service_id == service_id))
+        .scalars()
+        .first()
+    )
     if not service or not service.listing_id:
         return False
 
-    listing = db.exec(select(Listing).where(Listing.id == service.listing_id)).scalars().first()
+    listing = (
+        db.exec(select(Listing).where(Listing.id == service.listing_id))
+        .scalars()
+        .first()
+    )
     if not listing or not listing.business_type:
         return False
 
-    business_type = db.exec(select(BusinessType).where(BusinessType.id == listing.business_type)).scalars().first()
+    business_type = (
+        db.exec(select(BusinessType).where(BusinessType.id == listing.business_type))
+        .scalars()
+        .first()
+    )
     if not business_type or not business_type.name:
         return False
 
-    return "hotel" in business_type.name.lower()
+    return business_type.name.lower() == "hotel"
 
 
 # ============================================================================
@@ -410,7 +482,11 @@ def get_service_availability(
     If all slots are unavailable, sets closed_reason='fully_booked'.
     """
     # 1. Fetch Service to get listing_id
-    service = db.exec(select(Service).where(Service.service_id == service_id)).scalars().first()
+    service = (
+        db.exec(select(Service).where(Service.service_id == service_id))
+        .scalars()
+        .first()
+    )
     if not service:
         # Return empty availability instead of 404 - treats deleted service as "unavailable"
         return ServiceAvailableResponse(
@@ -431,11 +507,15 @@ def get_service_availability(
     db_day_of_week = (python_weekday + 1) % 7  # Convert Monday-based to Sunday-based
 
     # 4. Fetch ServiceSlots for that service + day-of-week
-    slots = db.exec(
-        select(ServiceSlots)
-        .where(ServiceSlots.service_id == service_id)
-        .where(ServiceSlots.day_of_week == db_day_of_week)
-    ).scalars().all()
+    slots = (
+        db.exec(
+            select(ServiceSlots)
+            .where(ServiceSlots.service_id == service_id)
+            .where(ServiceSlots.day_of_week == db_day_of_week)
+        )
+        .scalars()
+        .all()
+    )
 
     # 5. If no slots found, try falling back to listing hours
     if not slots:
@@ -445,7 +525,18 @@ def get_service_availability(
         service_capacity = service.capacity if service.capacity is not None else 999
         if listing_hours:
             # Create virtual slot from listing hours using namedtuple
-            VirtualSlot = namedtuple('VirtualSlot', ['id', 'service_id', 'day_of_week', 'start_time', 'end_time', 'capacity', 'is_virtual'])
+            VirtualSlot = namedtuple(
+                "VirtualSlot",
+                [
+                    "id",
+                    "service_id",
+                    "day_of_week",
+                    "start_time",
+                    "end_time",
+                    "capacity",
+                    "is_virtual",
+                ],
+            )
             slots = [
                 VirtualSlot(
                     id=-1,  # Virtual slot ID
@@ -460,7 +551,19 @@ def get_service_availability(
         else:
             # No slots and no listing hours - service is available anytime (24h)
             from datetime import time as time_class
-            VirtualSlot = namedtuple('VirtualSlot', ['id', 'service_id', 'day_of_week', 'start_time', 'end_time', 'capacity', 'is_virtual'])
+
+            VirtualSlot = namedtuple(
+                "VirtualSlot",
+                [
+                    "id",
+                    "service_id",
+                    "day_of_week",
+                    "start_time",
+                    "end_time",
+                    "capacity",
+                    "is_virtual",
+                ],
+            )
             slots = [
                 VirtualSlot(
                     id=-1,  # Virtual slot ID
@@ -481,8 +584,10 @@ def get_service_availability(
         slot_date = datetime.combine(date, slot.start_time)
 
         # For virtual slots (from listing hours fallback), use slot capacity directly
-        if getattr(slot, 'is_virtual', False):
-            remaining = slot.capacity  # Use high capacity (999) for listing-hour-based slots
+        if getattr(slot, "is_virtual", False):
+            remaining = (
+                slot.capacity
+            )  # Use high capacity (999) for listing-hour-based slots
         else:
             remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
 
@@ -493,15 +598,17 @@ def get_service_availability(
         if is_available:
             all_unavailable = False
 
-        slot_availabilities.append(SlotAvailability(
-            slot_id=slot.id,
-            day_of_week=db_day_of_week,
-            start_time=slot.start_time,
-            end_time=slot.end_time,
-            capacity=slot.capacity,
-            remaining_capacity=remaining,
-            is_available=is_available,
-        ))
+        slot_availabilities.append(
+            SlotAvailability(
+                slot_id=slot.id,
+                day_of_week=db_day_of_week,
+                start_time=slot.start_time,
+                end_time=slot.end_time,
+                capacity=slot.capacity,
+                remaining_capacity=remaining,
+                is_available=is_available,
+            )
+        )
 
     # 8. If ALL slots have is_available: false, set closed_reason: 'fully_booked'
     closed_reason = "fully_booked" if all_unavailable else None
@@ -515,4 +622,56 @@ def get_service_availability(
         is_open=not all_unavailable,
         slots=slot_availabilities,
         closed_reason=closed_reason,
+    )
+
+
+def get_mass_availability(
+    db: Session,
+    service_id: UUID,
+    start_date: date,
+    end_date: date,
+    people: int,
+) -> MassAvailabilityResponse:
+    """
+    Get availability for a service across a date range (lightweight, no slot details).
+    For each date, checks if the service has any availability (open slots or capacity).
+    Returns is_open=false for past dates or dates with no availability.
+    """
+    availability_items = []
+    current_date = start_date
+    today = date.today()
+
+    while current_date <= end_date:
+        if current_date < today:
+            availability_items.append(
+                MassAvailabilityItem(
+                    date=current_date.isoformat(),
+                    is_open=False,
+                )
+            )
+        else:
+            try:
+                service_avail = get_service_availability(
+                    db, service_id, current_date, people
+                )
+                availability_items.append(
+                    MassAvailabilityItem(
+                        date=current_date.isoformat(),
+                        is_open=service_avail.is_open,
+                    )
+                )
+            except Exception:
+                availability_items.append(
+                    MassAvailabilityItem(
+                        date=current_date.isoformat(),
+                        is_open=False,
+                    )
+                )
+        current_date = current_date + timedelta(days=1)
+
+    return MassAvailabilityResponse(
+        service_id=service_id,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        availability=availability_items,
     )

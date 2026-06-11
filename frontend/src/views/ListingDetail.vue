@@ -466,32 +466,41 @@
               </div>
 
               <!-- Slot Selector -->
-              <label v-if="bookingAvailableSlots.length > 0" class="block mt-3">
+              <div v-if="bookingAvailableSlots.length > 0" class="mt-3">
                 <span class="text-sm font-semibold text-slate-700">
                   {{ isRestaurantType ? 'Choose a reservation time' : 'Choose a time slot' }}
                 </span>
-                <select
-                  :value="selectedSlotIdValue"
-                  class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                  @change="selectBookingSlot($event.target.value)"
-                >
-                  <option value="">-- Select a time slot --</option>
-                  <option
+                <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <button
                     v-for="slot in bookingAvailableSlots"
                     :key="slot.slot_id"
-                    :value="String(slot.slot_id)"
+                    type="button"
                     :disabled="slot.remaining_capacity < (bookingForm.amount_of_people || 1)"
+                    :class="[
+                      'rounded-2xl border px-4 py-3 text-center text-sm font-semibold transition',
+                      bookingForm.selectedSlotId === String(slot.slot_id)
+                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 ring-2 ring-cyan-200'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50',
+                      slot.remaining_capacity < (bookingForm.amount_of_people || 1)
+                        ? 'cursor-not-allowed opacity-50'
+                        : ''
+                    ]"
+                    @click="selectBookingSlot(String(slot.slot_id))"
                   >
-                    {{ formatSlotTime(slot.start_time) }} - {{ formatSlotTime(slot.end_time) }}
-                    <span v-if="slot.remaining_capacity < (bookingForm.amount_of_people || 1)">
-                      ({{ slot.remaining_capacity }} left - not enough for {{ bookingForm.amount_of_people || 1 }} people)
-                    </span>
-                    <span v-else>
-                      ({{ slot.remaining_capacity }} spots left)
-                    </span>
-                  </option>
-                </select>
-              </label>
+                    <div class="text-base">{{ formatSlotTime(slot.start_time) }}</div>
+                    <div class="text-xs text-slate-400">{{ formatSlotTime(slot.end_time) }}</div>
+                    <div
+                      v-if="slot.remaining_capacity < (bookingForm.amount_of_people || 1)"
+                      class="mt-1 text-xs text-red-500"
+                    >
+                      {{ slot.remaining_capacity }} left
+                    </div>
+                    <div v-else class="mt-1 text-xs text-green-600">
+                      {{ slot.remaining_capacity }} spots
+                    </div>
+                  </button>
+                </div>
+              </div>
 
               <div
                 v-else-if="noSlotsForSelectedDate"

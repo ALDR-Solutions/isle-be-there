@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class SlotAvailability(BaseModel):
     """Individual slot availability with remaining capacity."""
+
     slot_id: int
     day_of_week: int
     start_time: time
@@ -18,6 +19,7 @@ class SlotAvailability(BaseModel):
 
 class ServiceAvailableResponse(BaseModel):
     """Response for service availability query."""
+
     service_id: UUID
     date: str  # ISO format date
     day_of_week: int
@@ -25,6 +27,22 @@ class ServiceAvailableResponse(BaseModel):
     is_open: bool
     slots: list[SlotAvailability]
     closed_reason: Optional[str] = None
+
+
+class MassAvailabilityItem(BaseModel):
+    """Individual date availability for mass endpoint."""
+
+    date: str
+    is_open: bool
+
+
+class MassAvailabilityResponse(BaseModel):
+    """Response for mass availability query (lightweight, no slot details)."""
+
+    service_id: UUID
+    start_date: str
+    end_date: str
+    availability: list[MassAvailabilityItem]
 
 
 class ListingHoursBase(BaseModel):

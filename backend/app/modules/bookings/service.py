@@ -124,7 +124,7 @@ def booking_has_refund(db: Session, booking_id: UUID) -> bool:
     refund_event = db.exec(
         select(PaymentEvent).where(
             PaymentEvent.booking_id == booking_id,
-            PaymentEvent.event_type.like("refund.%")
+            PaymentEvent.event_type.like("refund.%"),
         )
     ).first()
     return refund_event is not None
@@ -173,10 +173,12 @@ def list_bookings_for_listing(db: Session, listing_id: UUID) -> List[BookingResp
 def get_refund_date(db: Session, booking_id: UUID) -> Optional[datetime]:
     """Get the date of the first refund.* PaymentEvent for a booking."""
     refund_event = db.exec(
-        select(PaymentEvent).where(
+        select(PaymentEvent)
+        .where(
             PaymentEvent.booking_id == booking_id,
-            PaymentEvent.event_type.like("refund.%")
-        ).order_by(PaymentEvent.created_at)
+            PaymentEvent.event_type.like("refund.%"),
+        )
+        .order_by(PaymentEvent.created_at)
     ).first()
     return refund_event.created_at if refund_event else None
 
@@ -185,11 +187,17 @@ def get_service_for_booking_or_404(db: Session, service_id: UUID) -> Service:
     return get_service_or_404(db, service_id)
 
 
-def validate_booking_window(booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]) -> None:
+def validate_booking_window(
+    booking_from_time: Optional[datetime], booking_to_time: Optional[datetime]
+) -> None:
     if booking_from_time is None or booking_to_time is None:
-        raise HTTPException(status_code=400, detail="Booking start and end time are required")
+        raise HTTPException(
+            status_code=400, detail="Booking start and end time are required"
+        )
     if booking_to_time <= booking_from_time:
-        raise HTTPException(status_code=400, detail="Booking end time must be after start time")
+        raise HTTPException(
+            status_code=400, detail="Booking end time must be after start time"
+        )
 
 
 def get_booking_day_of_week(booking_time: datetime) -> int:
@@ -203,6 +211,10 @@ def booking_requires_slot_selection(
     booking_from_time: Optional[datetime],
 ) -> bool:
     if booking_from_time is None:
+        return False
+
+    service = db.exec(select(Service).where(Service.service_id == service_id)).first()
+    if service and is_hotel_service(db, service):
         return False
 
     day_of_week = get_booking_day_of_week(booking_from_time)
@@ -234,9 +246,12 @@ def resolve_booking_slot_context(
     if service_slot_id == -1:
         service = get_service_or_404(db, service_id)
         if not service.listing_id:
-            raise HTTPException(status_code=400, detail="Service has no listing associated")
+            raise HTTPException(
+                status_code=400, detail="Service has no listing associated"
+            )
 
         from app.modules.availability.service import get_listing_hours
+
         listing_hours = get_listing_hours(db, service.listing_id, booking_day_of_week)
         if not listing_hours:
             raise HTTPException(
@@ -244,14 +259,20 @@ def resolve_booking_slot_context(
                 detail="No listing hours found for the selected date - cannot use virtual slot",
             )
 
-        slot_start = datetime.combine(booking_date_source.date(), listing_hours.open_time)
-        slot_end = datetime.combine(booking_date_source.date(), listing_hours.close_time)
+        slot_start = datetime.combine(
+            booking_date_source.date(), listing_hours.open_time
+        )
+        slot_end = datetime.combine(
+            booking_date_source.date(), listing_hours.close_time
+        )
         # Return None for slot since it's a virtual slot (no actual ServiceSlots record)
         return None, slot_start, slot_end
 
     slot = get_service_slot_for_service(db, service_id, service_slot_id)
     if slot is None:
-        raise HTTPException(status_code=400, detail="Selected service slot is invalid for this service")
+        raise HTTPException(
+            status_code=400, detail="Selected service slot is invalid for this service"
+        )
 
     if booking_day_of_week != slot.day_of_week:
         raise HTTPException(
@@ -274,12 +295,16 @@ def validate_slot_capacity(
     exclude_booking_id: UUID | None = None,
 ) -> None:
     if amount_of_people < 1:
-        raise HTTPException(status_code=400, detail="Amount of people must be at least 1")
+        raise HTTPException(
+            status_code=400, detail="Amount of people must be at least 1"
+        )
 
     booked_count_query = (
         select(func.coalesce(func.sum(Booking.amount_of_people), 0))
         .where(Booking.service_id == slot.service_id)
-        .where(col(Booking.status).notin_([BookingStatus.cancelled, BookingStatus.pending]))
+        .where(
+            col(Booking.status).notin_([BookingStatus.cancelled, BookingStatus.pending])
+        )
         .where(Booking.booking_from_time < booking_to_time)
         .where(Booking.booking_to_time > booking_from_time)
     )
@@ -306,7 +331,9 @@ def validate_service_for_booking(
 ) -> tuple[Service, Optional[ItineraryItem]]:
     service = get_service_for_booking_or_404(db, service_id)
     if service.status != StatusTypes.active:
-        raise HTTPException(status_code=400, detail="Only active services can be booked")
+        raise HTTPException(
+            status_code=400, detail="Only active services can be booked"
+        )
 
     itinerary_item = None
     if itinerary_item_id is not None:
@@ -334,7 +361,9 @@ def validate_service_capacity(
     if service.capacity is None:
         return
     if amount_of_people < 1:
-        raise HTTPException(status_code=400, detail="Amount of people must be at least 1")
+        raise HTTPException(
+            status_code=400, detail="Amount of people must be at least 1"
+        )
     available_slots = get_available_slots(
         db,
         service.service_id,
@@ -397,7 +426,9 @@ def price_booking_from_itinerary_item(
     discount_percent = 0.0
     discount_amount = 0.0
     if discount is not None:
-        discount_percent = normalize_discount_percent(getattr(discount, "discount_percent", 0.0))
+        discount_percent = normalize_discount_percent(
+            getattr(discount, "discount_percent", 0.0)
+        )
         max_discount_amount = getattr(discount, "max_discount_amount", None)
         discount_amount = calculate_discount_for_amount(
             display_price,
@@ -425,7 +456,9 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if booking.service_id is None:
-        raise HTTPException(status_code=400, detail="Booking is missing a linked service")
+        raise HTTPException(
+            status_code=400, detail="Booking is missing a linked service"
+        )
 
     service = get_service_for_booking_or_404(db, booking.service_id)
     listing_id = service.listing_id
@@ -434,7 +467,7 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     if booking.itinerary_item_id is not None:
         # Use stored amount_of_people if available, otherwise default to 1
         # (for existing bookings, base_price is already multiplied)
-        people = getattr(booking, 'amount_of_people', None) or 1
+        people = getattr(booking, "amount_of_people", None) or 1
         return price_booking_from_itinerary_item(
             db,
             booking.itinerary_item_id,
@@ -460,7 +493,9 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
         service_fee_amount = base_price * service_fee_percent
         display_price = base_price + service_fee_amount
 
-    discount_percent = normalize_discount_percent(float(booking.discount_percent or 0.0))
+    discount_percent = normalize_discount_percent(
+        float(booking.discount_percent or 0.0)
+    )
     discount_amount = float(booking.discount_amount or 0.0)
     final_price = display_price - discount_amount
 
@@ -528,6 +563,7 @@ def create_booking_record(
     elif service.service_id is not None and service.capacity is not None:
         # Capacity fallback for services without explicit slots
         from app.modules.availability.service import get_booked_count
+
         booked_count = get_booked_count(
             db,
             service.service_id,
@@ -576,7 +612,9 @@ def create_booking_record(
         booking_record.final_price = price_breakdown.get("final_price")
     else:
         # Standalone booking: price via PricingService with no discount
-        price_breakdown = calculate_display_price(db, service.listing_id, service.service_id)
+        price_breakdown = calculate_display_price(
+            db, service.listing_id, service.service_id
+        )
         # Determine if this is a hotel service for per-person pricing
         is_hotel = is_hotel_service(db, service)
         people = booking.amount_of_people or 1
@@ -612,7 +650,9 @@ def create_booking_record(
     return booking_record
 
 
-def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID) -> List[Booking]:
+def create_bulk_bookings(
+    db: Session, items: List[BookingCreate], user_id: UUID
+) -> List[Booking]:
     """Create multiple bookings atomically. All succeed or all fail."""
     bookings = []
     try:
@@ -628,7 +668,9 @@ def create_bulk_bookings(db: Session, items: List[BookingCreate], user_id: UUID)
         raise
     except Exception:
         db.rollback()
-        logger.exception("Unexpected failure while creating bulk bookings for user %s", user_id)
+        logger.exception(
+            "Unexpected failure while creating bulk bookings for user %s", user_id
+        )
         raise HTTPException(status_code=500, detail="Bulk booking failed")
 
 
@@ -662,8 +704,8 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
             )
 
     time_changed = (
-        new_from_time != booking.booking_from_time or
-        new_to_time != booking.booking_to_time
+        new_from_time != booking.booking_from_time
+        or new_to_time != booking.booking_to_time
     )
     slot_changed = new_service_slot_id != booking.service_slot_id
     people_changed = (
@@ -677,7 +719,11 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
         if time_changed:
             # Conflict check - only approved bookings block
             if booking.service_id is not None and check_booking_conflict(
-                db, booking.service_id, new_from_time, new_to_time, exclude_booking_id=booking.id
+                db,
+                booking.service_id,
+                new_from_time,
+                new_to_time,
+                exclude_booking_id=booking.id,
             ):
                 raise HTTPException(
                     status_code=409,
@@ -706,7 +752,9 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
                 ).one_or_none()
 
                 available = booking.service.capacity - int(booked_count)
-                if available < (update_data.get("amount_of_people", booking.amount_of_people or 1)):
+                if available < (
+                    update_data.get("amount_of_people", booking.amount_of_people or 1)
+                ):
                     raise HTTPException(
                         status_code=409,
                         detail="Not enough capacity for requested time",
@@ -743,7 +791,9 @@ def cancel_booking(
     if booking.status == BookingStatus.cancelled:
         raise HTTPException(status_code=400, detail="Booking is already cancelled")
     if booking.status == BookingStatus.completed:
-        raise HTTPException(status_code=400, detail="Completed bookings cannot be cancelled")
+        raise HTTPException(
+            status_code=400, detail="Completed bookings cannot be cancelled"
+        )
 
     # If booking is approved AND has stripe_payment_intent_id, process refund first
     if booking.status == BookingStatus.approved and booking.stripe_payment_intent_id:
@@ -772,7 +822,10 @@ def cancel_booking(
 
 def create_payment_intent(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     """Delegate to stripe_payment service (imported from there)."""
-    from app.modules.stripe_payment.service import create_payment_intent as stripe_create_payment_intent
+    from app.modules.stripe_payment.service import (
+        create_payment_intent as stripe_create_payment_intent,
+    )
+
     return stripe_create_payment_intent(db, booking_id, user_id)
 
 
@@ -785,10 +838,11 @@ def delete_booking(db: Session, booking: Booking) -> None:
         )
     # Check if booking has a refund via PaymentEvent
     from app.modules.stripe_payment.models import PaymentEvent
+
     refund_event = db.exec(
         select(PaymentEvent).where(
             PaymentEvent.booking_id == booking.id,
-            PaymentEvent.event_type.like("refund.%")
+            PaymentEvent.event_type.like("refund.%"),
         )
     ).first()
     if refund_event:
@@ -830,7 +884,9 @@ def is_available(
     requested_quantity: int = 1,
 ) -> bool:
     """Check if service is available for requested quantity."""
-    return availability_is_available(db, service_id, capacity, start_dt, end_dt, requested_quantity)
+    return availability_is_available(
+        db, service_id, capacity, start_dt, end_dt, requested_quantity
+    )
 
 
 def check_booking_conflict(
