@@ -46,6 +46,19 @@ def is_hotel_service(db: Session, service: Service) -> bool:
     return business_type.name.lower() == "hotel"
 
 
+def is_restaurant_service(db: Session, service: Service) -> bool:
+    """Check if a service belongs to a restaurant business type."""
+    if not service.listing_id:
+        return False
+    listing = db.get(Listing, service.listing_id)
+    if not listing or not listing.business_type:
+        return False
+    business_type = db.get(BusinessType, listing.business_type)
+    if not business_type:
+        return False
+    return business_type.name.lower() == "restaurant"
+
+
 def booking_summary_query():
     return (
         select(
@@ -387,63 +400,6 @@ def price_booking_from_itinerary_item(
     }
 
 
-def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
-    # Retrieve booking to determine pricing path
-    booking = db.get(Booking, booking_id)
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    if booking.service_id is None:
-        raise HTTPException(status_code=400, detail="Booking is missing a linked service")
-
-    service = get_service_for_booking_or_404(db, booking.service_id)
-    listing_id = service.listing_id
-
-    # If tied to an itinerary item, use itinerary-based pricing
-    if booking.itinerary_item_id is not None:
-        # Use stored amount_of_people if available, otherwise default to 1
-        # (for existing bookings, base_price is already multiplied)
-        people = getattr(booking, 'amount_of_people', None) or 1
-        return price_booking_from_itinerary_item(
-            db,
-            booking.itinerary_item_id,
-            user_id,
-            service,
-            people,
-            booking_from_time=booking.booking_from_time,
-            booking_to_time=booking.booking_to_time,
-        )
-
-    # Use stored base_price if available, otherwise recalculate
-    if booking.base_price is not None:
-        base_price = float(booking.base_price)
-        # Recalculate fee amounts since they may not be stored
-        price_info = calculate_display_price(db, listing_id, booking.service_id)
-        service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
-        service_fee_amount = base_price * service_fee_percent
-        display_price = base_price + service_fee_amount
-    else:
-        price_info = calculate_display_price(db, listing_id, booking.service_id)
-        base_price = float(price_info.get("base_price", 0.0))
-        service_fee_percent = float(price_info.get("service_fee_percent", 0.10))
-        service_fee_amount = base_price * service_fee_percent
-        display_price = base_price + service_fee_amount
-
-    discount_percent = float(booking.discount_percent or 0.0)
-    discount_amount = float(booking.discount_amount or 0.0)
-    final_price = display_price - discount_amount
-
-    return {
-        "base_price": base_price,
-        "service_fee_percent": service_fee_percent,
-        "service_fee_amount": service_fee_amount,
-        "discount_percent": discount_percent,
-        "discount_amount": discount_amount,
-        "display_price": display_price,
-        "final_price": final_price,
-    }
-
-
 def create_booking(db: Session, booking: BookingCreate, user_id: UUID) -> Booking:
     return create_booking_record(db, booking, user_id, commit=True)
 
@@ -513,6 +469,8 @@ def create_booking_record(
     booking_record.user_id = user_id
     booking_record.booking_from_time = booking_from_time
     booking_record.booking_to_time = booking_to_time
+    if is_restaurant_service(db, service):
+        booking_record.status = BookingStatus.approved
 
     # If booking is tied to an itinerary item, calculate price accordingly
     price_breakdown: Optional[dict] = None
@@ -681,11 +639,22 @@ def update_booking(db: Session, booking: Booking, update_data: dict) -> Booking:
     return booking
 
 
-def cancel_booking(db: Session, booking: Booking) -> Booking:
+def cancel_booking(
+    db: Session,
+    booking: Booking,
+    *,
+    cancelled_by_role: str | None = None,
+    cancellation_reason: str | None = None,
+) -> Booking:
     """
     Cancel a booking. If booking is approved and has payment, process refund first.
     If refund fails, booking stays approved and HTTPException is raised.
     """
+    if booking.status == BookingStatus.cancelled:
+        raise HTTPException(status_code=400, detail="Booking is already cancelled")
+    if booking.status == BookingStatus.completed:
+        raise HTTPException(status_code=400, detail="Completed bookings cannot be cancelled")
+
     # If booking is approved AND has stripe_payment_intent_id, process refund first
     if booking.status == BookingStatus.approved and booking.stripe_payment_intent_id:
         # Import process_refund from stripe_payment
@@ -702,6 +671,9 @@ def cancel_booking(db: Session, booking: Booking) -> Booking:
 
     # Update booking status to cancelled
     booking.status = BookingStatus.cancelled
+    booking.cancelled_by_role = cancelled_by_role
+    booking.cancellation_reason = cancellation_reason
+    booking.cancelled_at = datetime.utcnow()
 
     db.commit()
     db.refresh(booking)

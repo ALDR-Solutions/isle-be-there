@@ -6,7 +6,11 @@ from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from app.modules.users.models import User
-from app.shared.dependencies.permissions import require_review_owner, require_roles
+from app.shared.dependencies.permissions import (
+    get_optional_current_user,
+    require_review_owner,
+    require_roles,
+)
 from .schemas import (
     ReviewCreate,
     ReviewResponse,
@@ -42,10 +46,11 @@ logger = logging.getLogger(__name__)
 )
 def get_reviews_for_listing_route(
     listing_id: UUID,
+    current_user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """Get all reviews for a specific listing."""
-    reviews = list_reviews(db, listing_id)
+    reviews = list_reviews(db, listing_id, current_user=current_user)
     return reviews
 
 

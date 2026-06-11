@@ -1422,7 +1422,11 @@ async function submitBooking() {
       const response = await bookingsAPI.create(pendingBookingData.value);
       const createdBooking = response.data;
       const bookingId = createdBooking.booking_id || createdBooking.id;
-      toastStore.show('Reservation created successfully.', 'success');
+      const isApprovedReservation = createdBooking.status === 'approved';
+      toastStore.show(
+        isApprovedReservation ? 'Reservation confirmed.' : 'Reservation created successfully.',
+        'success',
+      );
       pendingBookingData.value = null;
       handleCloseBooking();
       router.push(`/bookings/${bookingId}`);

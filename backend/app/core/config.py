@@ -31,6 +31,9 @@ class AppSettings(BaseSettings):
     ENABLE_BACKGROUND_JOBS: bool = True
     DATABASE_URL: str | None = None
     SQL_ECHO: bool = False
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 0
+    DB_POOL_TIMEOUT: int = 30
 
     STRIPE_SECRET_KEY: str | None = None
     STRIPE_PUBLISHABLE_KEY: str | None = None

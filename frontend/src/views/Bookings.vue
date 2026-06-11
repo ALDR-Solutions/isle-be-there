@@ -220,6 +220,18 @@
             {{ bookingStatusMessage(booking) }}
           </p>
 
+          <div
+            v-if="shouldShowCancellationReason(booking)"
+            class="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-rose-500">
+              Cancellation Reason
+            </p>
+            <p class="mt-2 text-sm text-rose-700">
+              {{ booking.cancellation_reason }}
+            </p>
+          </div>
+
           <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <router-link
               :to="'/bookings/' + booking.id"
@@ -455,11 +467,31 @@ function bookingStatusMessage(booking) {
     return "This booking is still awaiting confirmation.";
   }
   if (value === "cancelled") {
+    if (booking.cancelled_by_role === "guest") {
+      return booking.has_refund
+        ? "You cancelled this booking and received a refund."
+        : "You cancelled this booking.";
+    }
+    if (booking.cancelled_by_role) {
+      return booking.has_refund
+        ? "This booking was cancelled by the business and refunded."
+        : "This booking was cancelled by the business.";
+    }
     return booking.has_refund
       ? "This booking was cancelled and refunded."
       : "This booking has been cancelled.";
   }
   return "Your booking status is up to date.";
+}
+
+function shouldShowCancellationReason(booking) {
+  return (
+    normalizedStatus(booking?.status) === "cancelled"
+    && booking?.cancelled_by_role
+    && booking.cancelled_by_role !== "guest"
+    && typeof booking.cancellation_reason === "string"
+    && booking.cancellation_reason.trim().length > 0
+  );
 }
 
 function normalizedStatus(status) {

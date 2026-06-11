@@ -115,11 +115,11 @@ export const listingsAPI = {
 export const bookingsAPI = {
   getAll: (params) => api.get("/api/bookings", { params }),
   getById: (id) => api.get(`/api/bookings/${id}`),
-  getPrice: (id) => api.get(`/api/bookings/${id}/price`),
   create: (data) => api.post("/api/bookings", data),
   createBulk: (data) => api.post("/api/bookings/bulk", data),
   update: (id, data) => api.put(`/api/bookings/${id}`, data),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
+  cancelByBusiness: (id, data) => api.post(`/api/bookings/${id}/cancel-by-business`, data),
   delete: (id) => api.delete(`/api/bookings/${id}`),
   getBookingsForListing: (id) => api.get(`/api/bookings/listing/${id}`),
 };
@@ -258,6 +258,7 @@ export const availabilityAPI = {
   // ServiceSlots
   getServiceSlots: (serviceId) => api.get(`/api/availability/services/${serviceId}/slots`),
   createServiceSlot: (serviceId, data) => api.post(`/api/availability/services/${serviceId}/slots`, data),
+  updateServiceSlot: (serviceId, slotId, data) => api.put(`/api/availability/services/${serviceId}/slots/${slotId}`, data),
   deleteServiceSlot: (serviceId, slotId) => api.delete(`/api/availability/services/${serviceId}/slots/${slotId}`),
   // Service Availability
   getServiceAvailability: (serviceId, date, people = 1) =>

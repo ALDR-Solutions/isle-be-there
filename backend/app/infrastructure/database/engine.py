@@ -14,6 +14,8 @@ def get_engine():
         settings.require_database_url(),
         echo=settings.SQL_ECHO,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_use_lifo=True,
     )

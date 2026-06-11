@@ -5,15 +5,16 @@ from sqlmodel import Session
 
 from app.infrastructure.database import get_db
 from app.modules.listings.models import Listing
-from app.modules.users.models import User
+from app.modules.users.models import User, UserTypes
 from app.shared.dependencies.permissions import (
+    require_booking_listing_manager,
     require_booking_owner,
     require_listing_service_manager,
     require_roles,
 )
 
 from .models import Booking
-from .schemas import BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BookingPriceResponse, BulkBookingCreateRequest, BulkBookingCreateResponse, PaymentIntentResponse
+from .schemas import BusinessBookingCancelRequest, BookingCreate, BookingCreateResponse, BookingUpdate, BookingResponse, BulkBookingCreateRequest, BulkBookingCreateResponse, PaymentIntentResponse
 from .service import (
     cancel_booking,
     create_booking,
@@ -24,7 +25,6 @@ from .service import (
     list_bookings_for_listing,
     list_bookings,
     update_booking,
-    price_booking_by_id,
 )
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
@@ -93,11 +93,31 @@ def update_booking_endpoint(
 
 @router.post("/{booking_id}/cancel", status_code=204)
 def cancel_booking_endpoint(
+    current_user: User = Depends(require_roles("regular", "admin")),
     booking: Booking = Depends(require_booking_owner),
     db: Session = Depends(get_db),
 ):
+    cancelled_by_role = "guest" if current_user.user_type == UserTypes.regular else current_user.user_type.value
+    cancel_booking(db, booking, cancelled_by_role=cancelled_by_role)
+    return Response(status_code=204)
 
-    cancel_booking(db, booking)
+
+@router.post("/{booking_id}/cancel-by-business", status_code=204)
+def cancel_booking_by_business_endpoint(
+    payload: BusinessBookingCancelRequest,
+    current_user: User = Depends(require_roles("business", "employee", "admin")),
+    booking: Booking = Depends(require_booking_listing_manager),
+    db: Session = Depends(get_db),
+):
+    reason = payload.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="Cancellation reason is required")
+    cancel_booking(
+        db,
+        booking,
+        cancelled_by_role=current_user.user_type.value,
+        cancellation_reason=reason,
+    )
     return Response(status_code=204)
 
 
@@ -133,13 +153,3 @@ def delete_booking_endpoint(
 ):
     delete_booking(db, booking)
     return Response(status_code=204)
-
-
-@router.get("/{booking_id}/price", response_model=BookingPriceResponse)
-def get_booking_price_endpoint(
-    current_user: User = Depends(require_roles("regular", "admin")),
-    booking: Booking = Depends(require_booking_owner),
-    db: Session = Depends(get_db),
-):
-    price = price_booking_by_id(db, booking.id, current_user.id)
-    return BookingPriceResponse(**price)

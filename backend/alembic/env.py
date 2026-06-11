@@ -11,6 +11,8 @@ from sqlmodel import SQLModel
 # Add backend to path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from app.core.config import get_settings
+
 # Import all models here
 from app.modules.users.models import User, UserTypes
 from app.modules.businesses.models import Business, BusinessType
@@ -29,6 +31,10 @@ from app.modules.availability.models import ListingHours, ServiceSlots
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+settings = get_settings()
+
+if settings.DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

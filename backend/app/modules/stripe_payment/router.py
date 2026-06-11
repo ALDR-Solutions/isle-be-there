@@ -123,7 +123,7 @@ def list_refunds(
         select(PaymentEvent).where(
             PaymentEvent.event_type.like("refund.%")
         ).order_by(PaymentEvent.created_at.desc())
-    ).all()
+    ).scalars().all()
     return refunds
 
 

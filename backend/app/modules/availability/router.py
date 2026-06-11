@@ -107,6 +107,18 @@ def list_service_slots(
     return availability_service.list_service_slots(db, service_id)
 
 
+@router.put("/services/{service_id}/slots/{slot_id}", response_model=ServiceSlotsResponse)
+def update_service_slot(
+    service_id: UUID,
+    slot_id: int,
+    data: ServiceSlotsUpdate,
+    service: Service = Depends(require_service_access),
+    db: Session = Depends(get_db),
+):
+    """Update an existing service slot."""
+    return availability_service.update_service_slot(db, service_id, slot_id, data)
+
+
 @router.delete("/services/{service_id}/slots/{slot_id}", status_code=204)
 def delete_service_slot(
     service_id: UUID,

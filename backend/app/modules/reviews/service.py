@@ -9,6 +9,7 @@ from app.modules.listings.models import EmployeeListings, Listing, Statuses
 from app.modules.businesses.models import BusinessType
 from app.modules.users.models import User, UserTypes
 from app.shared.domain import (
+    ensure_listing_service_manager,
     get_business_employee_link_or_404,
     get_business_by_user_id,
     get_listing_for_business_or_404,
@@ -42,15 +43,46 @@ def build_business_reply_payload(
     }
 
 
-def list_reviews(db: Session, listing_id: UUID) -> list[dict]:
-    listing_status = db.exec(
-        select(Listing.status).where(Listing.id == listing_id)
+def ensure_listing_reviews_visible(
+    db: Session,
+    listing: Listing,
+    current_user: User | None,
+) -> None:
+    if listing.status in {Statuses.active, Statuses.approved}:
+        return
+
+    if current_user is None:
+        raise HTTPException(status_code=400, detail="Listing is not active")
+
+    try:
+        ensure_listing_service_manager(
+            db,
+            current_user,
+            listing,
+            detail="Listing is not active",
+        )
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise HTTPException(
+                status_code=400,
+                detail="Listing is not active",
+            ) from exc
+        raise
+
+
+def list_reviews(
+    db: Session,
+    listing_id: UUID,
+    current_user: User | None = None,
+) -> list[dict]:
+    listing = db.exec(
+        select(Listing).where(Listing.id == listing_id)
     ).first()
 
-    if listing_status is None:
+    if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
-    if listing_status != Statuses.active:
-        raise HTTPException(status_code=400, detail="Listing is not active")
+
+    ensure_listing_reviews_visible(db, listing, current_user)
 
     review_author = aliased(User)
     reply_author = aliased(User)
