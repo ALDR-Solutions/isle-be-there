@@ -1,10 +1,15 @@
 {
   "name": "isle-be-there",
   "version": "1.0.0",
-  "description": "Isle Be There workspace metadata",
+  "description": "Isle Be There workspace helper scripts",
   "private": true,
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "frontend:install": "npm --prefix frontend install",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:preview": "npm --prefix frontend run preview"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC"

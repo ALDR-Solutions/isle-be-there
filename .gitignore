@@ -156,6 +156,8 @@ node_modules/
 .env.local
 .envrc
 *.secret
+!.env.example
+!frontend/.env.example
 
 .sisyphus/
 alembic/versions/
