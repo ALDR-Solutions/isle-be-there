@@ -279,7 +279,7 @@
                   v-if="packageDiscountEligibility?.eligible && packageDiscount"
                   class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700"
                 >
-                  {{ formatPercent(normalizeFractionalPercent(packageDiscount.discount_percent) * 100) }} applied
+                  {{ formatPercent(packageDiscount.discount_percent) }} applied
                 </span>
               </div>
 
@@ -295,7 +295,7 @@
                     {{ packageDiscount.name || 'Package Discount' }} is active for this itinerary.
                   </p>
                   <p class="mt-1 text-sm text-emerald-700/90">
-                    {{ formatPercent(normalizeFractionalPercent(packageDiscount.discount_percent) * 100) }} will be applied to each selected booking total.
+                    {{ formatPercent(packageDiscount.discount_percent) }} will be applied to each selected booking total.
                   </p>
                   <p class="mt-2 text-sm font-semibold text-emerald-700">
                     Estimated savings: ${{ receiptDiscountAmount.toFixed(2) }}
@@ -459,9 +459,9 @@ const normalizeFractionalPercent = (value) => {
 };
 
 const formatPercent = (value) => {
-  const numeric = Number(value);
+  const numeric = normalizeFractionalPercent(value);
   if (!Number.isFinite(numeric)) return '-';
-  return `${numeric.toFixed(2).replace(/\.00$/, '')}%`;
+  return `${(numeric * 100).toFixed(2).replace(/\.00$/, '')}%`;
 };
 
 // --- Computed: Bookable Items ---

@@ -891,7 +891,7 @@ def update_expired_bookings(db: Session) -> dict:
         update(Booking)
         .where(Booking.status == BookingStatus.pending)
         .where(Booking.booking_to_time.isnot(None))
-        .where(Booking.booking_from_time < now)
+        .where(Booking.booking_to_time < now)
         .values(status=BookingStatus.cancelled)
     )
     pending_count = pending_result.rowcount

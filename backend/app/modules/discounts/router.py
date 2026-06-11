@@ -8,6 +8,7 @@ from app.infrastructure.database import get_db
 from app.modules.users.models import User
 from app.shared.dependencies.permissions import require_roles
 
+from .models import Discount
 from .schemas import DiscountCreate, DiscountResponse, DiscountUpdate, DiscountEligibilityResponse
 from .service import (
     create_discount,

@@ -565,8 +565,16 @@
 
             <!-- Service Fee -->
             <div class="mt-2 flex justify-between text-sm">
-              <span class="text-slate-600">Service Fee</span>
+              <span class="text-slate-600">Service Fee ({{ formatPercent(currentServiceFeePercent) }})</span>
               <span class="font-medium text-slate-900">${{ receiptServiceFee.toFixed(2) }}</span>
+            </div>
+
+            <div v-if="receiptPricingLoading" class="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-500">
+              Refreshing live pricing for this service...
+            </div>
+
+            <div v-else-if="receiptPricingFallbackNotice" class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              {{ receiptPricingFallbackNotice }}
             </div>
 
             <!-- Discount -->
@@ -621,7 +629,7 @@ import ReviewModal from '../components/ReviewModal.vue';
 import ListingReviewsPanel from '../components/reviews/ListingReviewsPanel.vue';
 import { ref, computed, onBeforeUnmount, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI } from '../services/api'
+import { bookingsAPI, listingsAPI, reviewsAPI, servicesAPI, availabilityAPI, pricingAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useEmployeeStore } from '../stores/employee'
 import { useToastStore } from '../stores/toast'
@@ -669,6 +677,9 @@ const showReceiptModal = ref(false);
 const pendingBookingData = ref(null);
 const confirming = ref(false);
 const receiptError = ref('');
+const receiptPricingLoading = ref(false);
+const currentServiceFeePercent = ref(0.10);
+const receiptPricingFallbackNotice = ref('');
 
 const showReviewModal = ref(false);
 const editingReview = ref(null);
@@ -943,7 +954,18 @@ function refreshBookingAvailability() {
   fetchBookingAvailability()
 }
 
-const SERVICE_FEE_PERCENT = 0.10;
+function normalizeFractionalPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  if (numeric > 1) return numeric / 100;
+  return Math.max(numeric, 0);
+}
+
+function formatPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '-';
+  return `${(numeric * 100).toFixed(2).replace(/\.00$/, '')}%`;
+}
 
 const receiptSubtotal = computed(() => {
   if (!selectedService.value) return 0;
@@ -974,7 +996,7 @@ const hotelNightsForReceipt = computed(() => {
   return 1;
 });
 
-const receiptServiceFee = computed(() => receiptSubtotal.value * SERVICE_FEE_PERCENT);
+const receiptServiceFee = computed(() => receiptSubtotal.value * currentServiceFeePercent.value);
 
 const receiptDiscountAmount = computed(() => {
   // For now, no discount for direct listing bookings
@@ -1440,6 +1462,21 @@ async function submitBooking() {
   }
 
   receiptError.value = '';
+  receiptPricingFallbackNotice.value = '';
+  receiptPricingLoading.value = true;
+  try {
+    const response = await pricingAPI.getListingPrice(route.params.id, {
+      service_id: selectedServiceId.value,
+    });
+    currentServiceFeePercent.value = normalizeFractionalPercent(
+      response.data?.service_fee_percent ?? 0.10,
+    );
+  } catch {
+    currentServiceFeePercent.value = 0.10;
+    receiptPricingFallbackNotice.value = 'Live pricing could not be loaded, so this quote is using the default 10% service fee.'
+  } finally {
+    receiptPricingLoading.value = false;
+  }
   showReceiptModal.value = true;
 }
 
