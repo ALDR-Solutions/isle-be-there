@@ -991,19 +991,29 @@ function formatPercent(value) {
   return `${(numeric * 100).toFixed(2).replace(/\.00$/, '')}%`;
 }
 
+function calculateCalendarNightCount(fromTime, toTime) {
+  if (!fromTime || !toTime) return 1;
+  const checkIn = new Date(fromTime);
+  const checkOut = new Date(toTime);
+  if (!(checkIn instanceof Date) || Number.isNaN(checkIn.getTime())) return 1;
+  if (!(checkOut instanceof Date) || Number.isNaN(checkOut.getTime())) return 1;
+  if (checkOut <= checkIn) return 1;
+
+  const startDate = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate());
+  const endDate = new Date(checkOut.getFullYear(), checkOut.getMonth(), checkOut.getDate());
+  const diffMs = endDate.getTime() - startDate.getTime();
+  return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+}
+
 const receiptSubtotal = computed(() => {
   if (!selectedService.value) return 0;
   const price = Number(selectedService.value.price) || 0;
   const people = bookingForm.amount_of_people || 1;
   if (isHotelType.value) {
-    // Calculate number of nights for hotel booking
-    const checkIn = bookingForm.booking_from_time ? new Date(bookingForm.booking_from_time) : null;
-    const checkOut = bookingForm.booking_to_time ? new Date(bookingForm.booking_to_time) : null;
-    let nights = 1;
-    if (checkIn && checkOut && checkOut > checkIn) {
-      const diffMs = checkOut.getTime() - checkIn.getTime();
-      nights = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-    }
+    const nights = calculateCalendarNightCount(
+      bookingForm.booking_from_time,
+      bookingForm.booking_to_time,
+    );
     return price * nights;
   }
   return price * people;
@@ -1011,13 +1021,10 @@ const receiptSubtotal = computed(() => {
 
 // Helper to calculate hotel nights for receipt display
 const hotelNightsForReceipt = computed(() => {
-  const checkIn = bookingForm.booking_from_time ? new Date(bookingForm.booking_from_time) : null;
-  const checkOut = bookingForm.booking_to_time ? new Date(bookingForm.booking_to_time) : null;
-  if (checkIn && checkOut && checkOut > checkIn) {
-    const diffMs = checkOut.getTime() - checkIn.getTime();
-    return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-  }
-  return 1;
+  return calculateCalendarNightCount(
+    bookingForm.booking_from_time,
+    bookingForm.booking_to_time,
+  );
 });
 
 const receiptServiceFee = computed(() => receiptSubtotal.value * currentServiceFeePercent.value);

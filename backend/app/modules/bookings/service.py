@@ -399,10 +399,9 @@ def validate_service_capacity(
 
 
 def calculate_hotel_days(booking_from_time: datetime, booking_to_time: datetime) -> int:
-    """Calculate number of nights for hotel booking (check-out day doesn't count)."""
-    diff = booking_to_time - booking_from_time
-    days = diff.days
-    return max(1, days)
+    """Calculate hotel nights using calendar dates, not floored elapsed hours."""
+    nights = (booking_to_time.date() - booking_from_time.date()).days
+    return max(1, nights)
 
 
 def price_booking_from_itinerary_item(
