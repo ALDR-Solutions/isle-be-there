@@ -55,6 +55,11 @@ watch(
     }
 
     if (!isAuthenticated) {
+      const logoutRedirect = authStore.consumeLogoutRedirect();
+      if (logoutRedirect) {
+        await router.replace(logoutRedirect);
+        return;
+      }
       if (route.name !== 'Login') {
         await router.replace({
           name: 'Login',

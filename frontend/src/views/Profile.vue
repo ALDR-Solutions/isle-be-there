@@ -366,9 +366,10 @@ async function confirmSave() {
     editing.value = false;
     showSaveModal.value = false;
     if (emailWasChanged) {
-      authStore.logout();
+      authStore.logout({
+        redirectTo: { path: '/login', query: { email: nextEmail } },
+      });
       toastStore.show('Email updated. Verify your new email before signing in again.', 'info');
-      router.push({ path: '/login', query: { email: nextEmail } });
       return;
     }
     await authStore.fetchUser();
@@ -386,7 +387,7 @@ async function confirmDisable() {
   disabling.value = true;
   try{
     await authAPI.disableAccount();
-    authStore.logout();
+    authStore.logout({ redirectTo: '/' });
     toastStore.show('Your account has been disabled.', 'success');
     router.push('/');
   }catch (err){

@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const bootstrapped = ref(false);
   const authResolving = ref(false);
   const authResolved = ref(false);
+  const logoutRedirectTarget = ref(null);
   let authResolutionPromise = null;
 
   const hasToken = computed(() => !!accessToken.value);
@@ -63,6 +64,12 @@ export const useAuthStore = defineStore('auth', () => {
     authResolutionPromise = null;
     syncTokensToStorage();
     favouritesStore.reset();
+  }
+
+  function consumeLogoutRedirect() {
+    const target = logoutRedirectTarget.value;
+    logoutRedirectTarget.value = null;
+    return target;
   }
 
   function hydrateFromStorage() {
@@ -146,7 +153,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   }
 
-  function logout() {
+  function logout(options = {}) {
+    logoutRedirectTarget.value = options.redirectTo ?? null;
     clearSessionState();
   }
 
@@ -218,6 +226,7 @@ export const useAuthStore = defineStore('auth', () => {
     bootstrapped,
     authResolving,
     authResolved,
+    logoutRedirectTarget,
     hasToken,
     isAuthPending,
     role,
@@ -232,6 +241,7 @@ export const useAuthStore = defineStore('auth', () => {
     resolveCurrentUser,
     setInterestsHandled,
     clearSessionState,
+    consumeLogoutRedirect,
     login,
     register,
     fetchUser,

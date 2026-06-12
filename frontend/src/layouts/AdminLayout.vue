@@ -228,7 +228,7 @@ const closeMenus = () => {
 };
 
 const handleLogout = () => {
-  authStore.logout();
+  authStore.logout({ redirectTo: '/' });
   toastStore.show('You have been logged out.', 'info');
   closeMenus();
   router.push('/');

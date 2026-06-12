@@ -421,7 +421,7 @@ const submitSearch = async () => {
 };
 
 const handleLogout = () => {
-  authStore.logout();
+  authStore.logout({ redirectTo: '/' });
   toastStore.show('You have been logged out.', 'info');
   desktopDropdownOpen.value = false;
   mobileMenuOpen.value = false;

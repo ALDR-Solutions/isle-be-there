@@ -184,6 +184,10 @@ router.beforeEach((to, from, next) => {
 
   // Not logged in trying to access a protected route
   if ((to.meta.requiresAuth || to.meta.role) && !authStore.hasToken) {
+    const logoutRedirect = authStore.consumeLogoutRedirect()
+    if (logoutRedirect) {
+      return next(logoutRedirect)
+    }
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
@@ -206,6 +210,10 @@ router.beforeEach((to, from, next) => {
   }
 
   if ((to.meta.requiresAuth || to.meta.role) && authStore.authResolved && !authStore.isAuthenticated) {
+    const logoutRedirect = authStore.consumeLogoutRedirect()
+    if (logoutRedirect) {
+      return next(logoutRedirect)
+    }
     return next({ name: 'Login', query: { redirect: to.fullPath } })
   }
 
