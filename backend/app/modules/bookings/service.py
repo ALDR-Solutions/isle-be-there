@@ -428,10 +428,10 @@ def price_booking_from_itinerary_item(
     if not is_hotel:
         base_price = base_price * amount_of_people
     else:
-        # For hotels, multiply by number of nights
+        # For hotels, multiply by number of rooms and nights
         if booking_from_time and booking_to_time:
             hotel_days = calculate_hotel_days(booking_from_time, booking_to_time)
-            base_price = base_price * hotel_days
+            base_price = base_price * amount_of_people * hotel_days
 
     service_fee_percent = float(price_info.get("service_fee_percent", 0.0))
     service_fee_amount = base_price * service_fee_percent
@@ -507,7 +507,7 @@ def price_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> dict:
     
     if is_hotel:
         hotel_days = calculate_hotel_days(booking.booking_from_time, booking.booking_to_time)
-        total_base = per_person_base * hotel_days
+        total_base = per_person_base * people * hotel_days
     else:
         total_base = per_person_base * people
     
@@ -645,7 +645,7 @@ def create_booking_record(
         per_person_base = float(price_breakdown.get("base_price", 0))
         if is_hotel:
             hotel_days = calculate_hotel_days(booking_from_time, booking_to_time)
-            total_base = per_person_base * hotel_days
+            total_base = per_person_base * people * hotel_days
         else:
             total_base = per_person_base * people
 
