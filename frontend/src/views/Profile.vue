@@ -253,6 +253,10 @@
         {{ itineraryToDelete?.title || "this itinerary" }}
       </span>.
     </p>
+    <p class="mt-2 text-sm text-slate-500">
+      If this itinerary has already been used for one or more bookings, it may
+      not be possible to delete it.
+    </p>
 
     <div class="mt-6 flex flex-col gap-3 sm:flex-row">
       <button
@@ -573,8 +577,11 @@ async function confirmDeleteItinerary() {
     closeDeleteItineraryModal({ force: true });
     toastStore.show("Itinerary deleted.", "success");
   } catch (err) {
+    const detail = err.response?.data?.detail;
     toastStore.show(
-      err.response?.data?.detail || "Failed to delete itinerary.",
+      typeof detail === "string" && detail.includes("linked bookings")
+        ? "This itinerary cannot be deleted because one or more bookings already use it."
+        : detail || "Failed to delete itinerary.",
       "error",
     );
   } finally {
