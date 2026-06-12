@@ -372,15 +372,32 @@ const statusTabs = computed(() => [
   { label: "Refunded", value: "refunded", count: bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && b.has_refund).length },
 ]);
 
+function parseBookingCreatedAt(booking) {
+  const timestamp = new Date(booking?.created_at).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
+function compareBookingsNewestFirst(left, right) {
+  const timestampDelta = parseBookingCreatedAt(right) - parseBookingCreatedAt(left);
+  if (timestampDelta !== 0) {
+    return timestampDelta;
+  }
+
+  return String(right?.id || "").localeCompare(String(left?.id || ""));
+}
+
 const filteredBookings = computed(() => {
-  if (activeTab.value === "all") return bookings.value;
+  let filtered = bookings.value;
+
   if (activeTab.value === "cancelled") {
-    return bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && !b.has_refund);
+    filtered = bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && !b.has_refund);
+  } else if (activeTab.value === "refunded") {
+    filtered = bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && b.has_refund);
+  } else if (activeTab.value !== "all") {
+    filtered = bookings.value.filter(b => normalizedStatus(b.status) === activeTab.value);
   }
-  if (activeTab.value === "refunded") {
-    return bookings.value.filter(b => normalizedStatus(b.status) === "cancelled" && b.has_refund);
-  }
-  return bookings.value.filter(b => normalizedStatus(b.status) === activeTab.value);
+
+  return [...filtered].sort(compareBookingsNewestFirst);
 });
 
 async function fetchBookings() {
