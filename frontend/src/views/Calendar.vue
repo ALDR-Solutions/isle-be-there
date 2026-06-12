@@ -2,7 +2,7 @@
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <div class="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-700">
+        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700">
           Trips
         </p>
         <h1 class="mt-2 text-3xl font-bold text-slate-900">Travel Calendar</h1>
@@ -16,11 +16,11 @@
           to="/bookings"
           class="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
         >
-          View Bookings
+          View Itinerary booked
         </router-link>
         <button
           type="button"
-          class="inline-flex items-center rounded-2xl bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+          class="inline-flex items-center rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
           @click="refreshCalendar"
         >
           Refresh
@@ -38,17 +38,33 @@
     <div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.7fr)_340px]">
       <div class="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-wrap items-center gap-4 border-b border-slate-200 px-6 py-4">
-          <div class="flex items-center gap-3 text-sm text-slate-600">
+          <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600">
             <span class="inline-flex items-center gap-2">
               <span class="h-3 w-3 rounded-full bg-emerald-600"></span>
-              Bookings
+              Itinerary booked
             </span>
             <span class="inline-flex items-center gap-2">
               <span class="h-3 w-3 rounded-full bg-violet-600"></span>
-              Saved itineraries
+              Saved
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full" style="background-color: #16a34a"></span>
+              Approved
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full" style="background-color: #d97706"></span>
+              Pending
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full" style="background-color: #dc2626"></span>
+              Cancelled
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full" style="background-color: #0891b2"></span>
+              Completed
             </span>
           </div>
-          <p v-if="calendarLoading" class="text-sm text-cyan-700">Updating calendar...</p>
+          <p v-if="calendarLoading" class="text-sm text-emerald-700">Updating calendar...</p>
         </div>
 
         <div class="calendar-shell px-2 py-4 sm:px-4">
@@ -60,7 +76,7 @@
         <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700">
+              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">
                 Selected Event
               </p>
               <h2 class="mt-2 text-lg font-bold text-slate-900">
@@ -150,14 +166,14 @@
         <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700">
+              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">
                 Saved Itineraries
               </p>
               <h2 class="mt-2 text-lg font-bold text-slate-900">Trip Plans</h2>
             </div>
             <button
               type="button"
-              class="text-sm font-semibold text-cyan-700 transition hover:text-cyan-900"
+              class="text-sm font-semibold text-emerald-700 transition hover:text-emerald-900"
               @click="fetchItineraries"
             >
               Reload
@@ -173,14 +189,14 @@
           </div>
 
           <div v-else-if="itineraries.length === 0" class="mt-5 rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
-            Saved itineraries will appear here once you persist them through the itinerary planner flow.
+            Saved will appear here once you persist them through the itinerary planner flow.
           </div>
 
           <div v-else class="mt-5 space-y-3">
             <article
               v-for="itinerary in itineraries"
               :key="itinerary.id"
-              class="rounded-2xl border border-cyan-100 bg-cyan-50/40 px-4 py-4"
+              class="rounded-2xl border border-emerald-100 bg-emerald-50/40 px-4 py-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -348,16 +364,16 @@ onMounted(() => {
 
 .calendar-shell :deep(.fc-button:hover),
 .calendar-shell :deep(.fc-button:focus) {
-  background: #ecfeff;
-  border-color: #67e8f9;
-  color: #164e63;
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #064e3b;
   box-shadow: none;
 }
 
 .calendar-shell :deep(.fc-button-primary:not(:disabled).fc-button-active) {
-  background: #06b6d4;
-  border-color: #06b6d4;
-  color: #082f49;
+  background: #10b981;
+  border-color: #10b981;
+  color: #022c22;
 }
 
 .calendar-shell :deep(.fc-theme-standard td),
