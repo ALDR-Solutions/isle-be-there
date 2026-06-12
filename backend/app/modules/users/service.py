@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import secrets
 import logging
 from uuid import UUID
@@ -70,15 +70,26 @@ def update_profile(db: Session, user_id: UUID, data: ProfileUpdate) -> User:
             raise HTTPException(status_code=400, detail="Username already taken")
 
     email = updates.get("email")
-    if email is not None:
+    email_changed = email is not None and email != user.email
+    if email_changed:
         existing = get_user_by_email(db, email)
         if existing and existing.id != user.id:
             raise HTTPException(status_code=400, detail="Email already registered")
+        user.verification_token = secrets.token_urlsafe(32)
+        user.is_verified = False
 
     for key, value in updates.items():
         setattr(user, key, value)
 
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
+
+    if email_changed:
+        try:
+            send_verification_email(user.email, user.verification_token)
+        except Exception:
+            logger.exception("Failed to send verification email for updated user %s", user.email)
+            raise HTTPException(status_code=502, detail="Failed to send verification email")
+
     db.add(user)
     db.commit()
     db.refresh(user)
