@@ -109,6 +109,8 @@ export const listingsAPI = {
     api.get("/api/listings/search", {
       params: query?.trim() ? { q: query.trim() } : {},
     }),
+  getCitiesByCountry: (country) =>
+    api.get(`/api/listings/cities/${encodeURIComponent(country)}`),
 };
 
 // Bookings API

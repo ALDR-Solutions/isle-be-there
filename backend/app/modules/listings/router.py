@@ -1,3 +1,4 @@
+from datetime import date as date_class
 from typing import List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -18,6 +19,7 @@ from .schemas import (
 from .service import (
     create_listing,
     delete_listing,
+    get_cities_for_country,
     get_listing_by_id,
     get_personalized_listings,
     list_listings,
@@ -26,8 +28,6 @@ from .service import (
 )
 
 router = APIRouter(prefix="/api/listings", tags=["Listings"])
-
-
 
 
 @router.get("", response_model=List[ListingResponse])
@@ -42,6 +42,10 @@ def get_listings(
     sort_by: str | None = Query(default=None),
     sort_order: Literal["asc", "desc"] = Query(default="asc"),
     status: str | None = Query(default=None),
+    availability_date: date_class | None = Query(default=None),
+    city_lat: float | None = Query(default=None, ge=-90, le=90),
+    city_lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0),
     db: Session = Depends(get_db),
 ):
     return list_listings(
@@ -56,6 +60,10 @@ def get_listings(
         sort_by=sort_by,
         sort_order=sort_order,
         status=status,
+        availability_date=availability_date,
+        city_lat=city_lat,
+        city_lng=city_lng,
+        radius_km=radius_km,
     )
 
 
@@ -78,7 +86,9 @@ def search_listings(
     db: Session = Depends(get_db),
 ):
     if (lat is None) != (lng is None):
-        raise HTTPException(status_code=400, detail="Both lat and lng are required together")
+        raise HTTPException(
+            status_code=400, detail="Both lat and lng are required together"
+        )
 
     return search_listings_combined(
         db=db,
@@ -88,6 +98,12 @@ def search_listings(
         radius_km=radius_km,
         limit=limit,
     )
+
+
+@router.get("/cities/{country}")
+def get_cities_by_country(country: str, db: Session = Depends(get_db)):
+    """Get cities with listings for a given country, with geo centers and radius options."""
+    return get_cities_for_country(db, country)
 
 
 @router.get("/{listing_id}", response_model=ListingResponse)
@@ -101,7 +117,7 @@ def create_listing_endpoint(
     current_user: User = Depends(require_roles("business")),
     db: Session = Depends(get_db),
 ):
-    
+
     return create_listing(db, listing_data, current_user.id)
 
 
@@ -145,5 +161,5 @@ def delete_listing_endpoint(
     listing: Listing = Depends(require_listing_owner),
     db: Session = Depends(get_db),
 ):
-    delete_listing(db,listing)
+    delete_listing(db, listing)
     return Response(status_code=204)

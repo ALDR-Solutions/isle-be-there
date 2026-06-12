@@ -10,7 +10,11 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, asc, col, desc, select
 
 from app.modules.bookings.models import Booking, BookingStatus
-from app.modules.interests.models import BusinessTypeInterest, ListingInterest, UserInterest
+from app.modules.interests.models import (
+    BusinessTypeInterest,
+    ListingInterest,
+    UserInterest,
+)
 from app.modules.listings.schemas import ListingCreate
 from app.modules.reviews.models import Review
 from app.modules.services.models import Service, StatusTypes as ServiceStatusTypes
@@ -52,10 +56,7 @@ def batch_review_stats(db: Session, listing_ids: list) -> dict:
     }
 
     for listing_id in listing_ids:
-        stats.setdefault(
-            listing_id,
-            {"avg_rating": None, "review_count": 0}
-        )
+        stats.setdefault(listing_id, {"avg_rating": None, "review_count": 0})
 
     return stats
 
@@ -150,7 +151,9 @@ def validate_interest_ids_for_business_type(
     return normalized_interest_ids
 
 
-def sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UUID]) -> None:
+def sync_listing_interests(
+    db: Session, listing_id: UUID, interest_ids: list[UUID]
+) -> None:
     """
     Synchronize the interests associated with a listing by adding new interests and removing old ones.
 
@@ -189,7 +192,9 @@ def sync_listing_interests(db: Session, listing_id: UUID, interest_ids: list[UUI
         db.add(ListingInterest(listing_id=listing_id, interest_id=interest_id))
 
 
-def batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UUID, list[UUID]]:
+def batch_listing_interest_ids(
+    db: Session, listing_ids: list[UUID]
+) -> dict[UUID, list[UUID]]:
     if not listing_ids:
         return {}
 
@@ -198,7 +203,9 @@ def batch_listing_interest_ids(db: Session, listing_ids: list[UUID]) -> dict[UUI
             ListingInterest.__table__.c.listing_id.in_(listing_ids)
         )
     ).all()
-    interest_map: dict[UUID, list[UUID]] = {listing_id: [] for listing_id in listing_ids}
+    interest_map: dict[UUID, list[UUID]] = {
+        listing_id: [] for listing_id in listing_ids
+    }
     for row in rows:
         interest_map[row.listing_id].append(row.interest_id)
     return interest_map
@@ -278,6 +285,10 @@ def list_listings(
     sort_by: str | None = None,
     sort_order: str = "asc",
     status: str | None = None,
+    availability_date=None,
+    city_lat: float | None = None,
+    city_lng: float | None = None,
+    radius_km: float | None = None,
 ):
     query = select(Listing)
 
@@ -295,10 +306,18 @@ def list_listings(
         query = query.where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
     elif status:
         query = query.where(Listing.status == status)
+
+    # Radius filter using geolocation
+    if city_lat is not None and city_lng is not None and radius_km is not None:
+        point = func.ST_SetSRID(func.ST_MakePoint(city_lng, city_lat), 4326)
+        query = query.where(func.ST_DWithin(Listing.location, point, radius_km * 1000))
+
     if sort_by:
         sort_column = getattr(Listing, sort_by, None)
         if sort_column is not None:
-            query = query.order_by(asc(sort_column) if sort_order == "asc" else desc(sort_column))
+            query = query.order_by(
+                asc(sort_column) if sort_order == "asc" else desc(sort_column)
+            )
 
     query = query.options(
         selectinload(Listing.business_type_rel),
@@ -307,6 +326,13 @@ def list_listings(
     if limit is not None:
         query = query.limit(limit)
     listings = db.exec(query).all()
+
+    # Availability date filter - applied after SQL query
+    if availability_date is not None:
+        start_dt = datetime.combine(availability_date, datetime.min.time())
+        end_dt = datetime.combine(availability_date, datetime.max.time())
+        listings = filter_by_availability(db, listings, start_dt, end_dt)
+
     return serialize_listings(db, listings)
 
 
@@ -340,8 +366,7 @@ def create_listing(db: Session, data: ListingCreate, user_id: str):
         data.interest_ids,
     )
     listing = Listing(
-        business_id=business.id,
-        **data.model_dump(exclude={"location", "interest_ids"})
+        business_id=business.id, **data.model_dump(exclude={"location", "interest_ids"})
     )
 
     if data.location:
@@ -383,7 +408,9 @@ def update_listing(
                     detail="Business owners can only archive or restore their listings",
                 )
         if requested_status is None:
-            send_back_to_pending = should_send_listing_back_to_pending(listing, update_data)
+            send_back_to_pending = should_send_listing_back_to_pending(
+                listing, update_data
+            )
 
     should_update_interests = "interest_ids" in update_data
     requested_interest_ids = update_data.pop("interest_ids", None)
@@ -417,7 +444,7 @@ def update_listing(
     return serialize_listing(listing, review_stats, interest_map.get(listing.id, []))
 
 
-def delete_listing(db: Session,listing: Listing):
+def delete_listing(db: Session, listing: Listing):
 
     listing.status = Statuses.deleted
     listing.updated_at = func.now()
@@ -425,7 +452,6 @@ def delete_listing(db: Session,listing: Listing):
     db.commit()
     db.refresh(listing)
     return listing
-
 
 
 def get_active_listings(db: Session, limit: int = 20):
@@ -450,7 +476,9 @@ def get_business_listings(db: Session, user_id: str):
 
 def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
     user_interests = list(
-        db.exec(select(UserInterest.interest_id).where(UserInterest.user_id == user_id)).all()
+        db.exec(
+            select(UserInterest.interest_id).where(UserInterest.user_id == user_id)
+        ).all()
     )
 
     if not user_interests:
@@ -473,7 +501,7 @@ def get_personalized_listings(db: Session, user_id: str, limit: int = 20):
 
         # Get IDs with random ordering using a subquery approach
         ids_with_random = db.exec(
-            select(Listing.id, func.random().label('rand'))
+            select(Listing.id, func.random().label("rand"))
             .join(ListingInterest, ListingInterest.listing_id == Listing.id)
             .where(ListingInterest.__table__.c.interest_id.in_(user_interests))
             .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
@@ -555,10 +583,7 @@ def search_listings_combined(
     if not rows:
         return []
 
-    listings = [
-        row[0] if isinstance(row, tuple) else row
-        for row in rows
-    ]
+    listings = [row[0] if isinstance(row, tuple) else row for row in rows]
 
     serialized = serialize_listings(db, listings)
     listing_data_by_id = {item["id"]: item for item in serialized}
@@ -578,6 +603,7 @@ def search_listings_combined(
             payload["distance_m"] = float(dist_val) if dist_val is not None else None
 
     return serialized
+
 
 def filter_by_availability(
     db: Session,
@@ -610,10 +636,14 @@ def filter_by_availability(
     booked_rows = db.exec(
         select(Booking.service_id, func.coalesce(func.sum(Booking.amount_of_people), 0))
         .where(col(Booking.service_id).in_(service_ids))
-        .where(col(Booking.status).notin_([
-            BookingStatus.cancelled,
-            BookingStatus.pending,
-        ]))
+        .where(
+            col(Booking.status).notin_(
+                [
+                    BookingStatus.cancelled,
+                    BookingStatus.pending,
+                ]
+            )
+        )
         .where(Booking.booking_from_time < end_dt)
         .where(Booking.booking_to_time > start_dt)
         .group_by(Booking.service_id)
@@ -630,3 +660,133 @@ def filter_by_availability(
 
     return [l for l in listings if l.id in available_listing_ids]
 
+
+def get_cities_for_country(db: Session, country: str) -> dict:
+    """
+    Returns cities with listings for a given country, including geo centroids and
+    dynamic radius options computed from listing spread.
+    """
+    listings_in_country = db.exec(
+        select(Listing)
+        .where(Listing.address["country"].astext.ilike(country))
+        .where(Listing.status.in_(ACTIVE_LIKE_STATUSES))
+        .where(Listing.location.isnot(None))
+    ).all()
+
+    if not listings_in_country:
+        return {
+            "country": country,
+            "country_center": None,
+            "cities": [],
+            "radius_options": [],
+        }
+
+    # Group listings by city
+    city_listings: dict[str, list] = {}
+    all_lats = []
+    all_lngs = []
+
+    for listing in listings_in_country:
+        lat_lng = extract_lat_lng(listing.location)
+        if not lat_lng:
+            continue
+        city = (listing.address or {}).get("city", "Unknown")
+        if city not in city_listings:
+            city_listings[city] = []
+        city_listings[city].append(lat_lng)
+        all_lats.append(lat_lng["lat"])
+        all_lngs.append(lat_lng["lng"])
+
+    # Compute country centroid
+    country_center = {
+        "lat": sum(all_lats) / len(all_lats),
+        "lng": sum(all_lngs) / len(all_lngs),
+    }
+
+    # Compute per-city centroids and distances
+    city_data = []
+    all_distances = []
+
+    for city_name, lats_lngs in city_listings.items():
+        lat = sum(l["lat"] for l in lats_lngs) / len(lats_lngs)
+        lng = sum(l["lng"] for l in lats_lngs) / len(lats_lngs)
+
+        # Compute centroid of this city's listings
+        centroid_lat = lat
+        centroid_lng = lng
+
+        # Compute distances from centroid for spread analysis
+        distances = []
+        for l in lats_lngs:
+            dist = haversine_distance(centroid_lat, centroid_lng, l["lat"], l["lng"])
+            distances.append(dist)
+            all_distances.append(dist)
+
+        distances.sort()
+        city_data.append(
+            {
+                "name": city_name,
+                "lat": centroid_lat,
+                "lng": centroid_lng,
+                "listing_count": len(lats_lngs),
+                "max_distance_km": distances[-1] if distances else 0,
+            }
+        )
+
+    # Compute global radius options from quartiles
+    if all_distances:
+        all_distances.sort()
+        n = len(all_distances)
+        radius_options = [
+            round_to_nice(all_distances[int(n * 0.25)]),
+            round_to_nice(all_distances[int(n * 0.50)]),
+            round_to_nice(all_distances[int(n * 0.75)]),
+            round_to_nice(all_distances[n - 1]),
+        ]
+        # Deduplicate and ensure ascending
+        radius_options = sorted(set(r for r in radius_options if r > 0))
+    else:
+        radius_options = []
+
+    city_data.sort(key=lambda c: c["name"])
+
+    return {
+        "country": country,
+        "country_center": country_center,
+        "cities": city_data,
+        "radius_options": radius_options,
+    }
+
+
+def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate great-circle distance in km between two points."""
+    import math
+
+    R = 6371  # Earth's radius in km
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lng2 - lng1)
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def round_to_nice(value: float) -> float:
+    """Round to a nice round number for display."""
+    if value <= 1:
+        return 1.0
+    if value <= 5:
+        return 5.0
+    if value <= 10:
+        return 10.0
+    if value <= 25:
+        return 25.0
+    if value <= 50:
+        return 50.0
+    if value <= 100:
+        return 100.0
+    return round(value / 50) * 50

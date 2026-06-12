@@ -103,30 +103,107 @@
                       </button>
                     </div>
 
-                    <div class="mt-4 grid grid-cols-2 gap-3">
-                      <label class="block">
-                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
-                        <input
-                          v-model="minPriceInput"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputmode="decimal"
-                          placeholder="0"
-                          class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
-                        />
+                    <div class="mt-4 px-1">
+                      <Slider v-model="priceRange" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
+                      <div class="flex justify-between text-xs text-gray-500">
+                        <span>${{ priceRange[0] }}</span>
+                        <span>${{ priceRange[1] }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- City Filter -->
+                  <div v-if="selectedCountry && cityOptions.length > 0" class="border-t border-gray-200 px-4 py-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-sm font-semibold text-gray-900">City</h3>
+                      <button
+                        v-if="selectedCity"
+                        type="button"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        @click="clearCitySelection">
+                        Clear
+                      </button>
+                    </div>
+                    <select
+                      v-model="selectedCity"
+                      class="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                    >
+                      <option value="">All cities</option>
+                      <option v-for="city in cityOptions" :key="city.value" :value="city.label">
+                        {{ city.label }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Radius Filter -->
+                  <div v-if="selectedCity && radiusOptions.length > 0" class="border-t border-gray-200 px-4 py-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-sm font-semibold text-gray-900">Distance</h3>
+                      <button
+                        v-if="selectedRadius"
+                        type="button"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        @click="clearRadiusSelection">
+                        Clear
+                      </button>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <button
+                        v-for="radius in radiusOptions"
+                        :key="radius"
+                        type="button"
+                        :class="[
+                          'rounded-full px-3 py-1.5 text-xs font-medium border transition',
+                          selectedRadius === radius
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50'
+                        ]"
+                        @click="selectRadius(radius)"
+                      >
+                        {{ radius }}km
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Date Availability -->
+                  <div class="border-t border-gray-200 px-4 py-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-sm font-semibold text-gray-900">Availability</h3>
+                      <button
+                        v-if="availabilityDateInput"
+                        type="button"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        @click="clearDateFilter">
+                        Clear
+                      </button>
+                    </div>
+                    <input
+                      v-model="availabilityDateInput"
+                      type="date"
+                      class="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                    />
+                  </div>
+
+                  <!-- Rating Filter -->
+                  <div class="border-t border-gray-200 px-4 py-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-sm font-semibold text-gray-900">Rating</h3>
+                      <button
+                        v-if="minRating !== null"
+                        type="button"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        @click="clearRatingFilter">
+                        Clear
+                      </button>
+                    </div>
+                    <div class="mt-3 space-y-2">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input v-model="minRating" type="radio" :value="null" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                        <span class="text-sm text-gray-600">Any rating</span>
                       </label>
-                      <label class="block">
-                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
-                        <input
-                          v-model="maxPriceInput"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputmode="decimal"
-                          placeholder="Any"
-                          class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
-                        />
+                      <label v-for="stars in [4, 3, 2]" :key="stars" class="flex items-center gap-2 cursor-pointer">
+                        <input v-model="minRating" type="radio" :value="stars" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                        <span class="text-sm text-gray-600">{{ stars }}+ stars</span>
                       </label>
                     </div>
                   </div>
@@ -165,16 +242,12 @@
                               :name="`${section.id}[]`"
                               :value="option.value"
                               type="checkbox"
-                              :checked="
-                                isFilterSelected(section.id, option.value)
-                              "
+                              :checked="selectedCountry === option.value"
                               class="h-4 w-4 rounded-sm border border-gray-300 text-indigo-600 focus:ring-indigo-500"
                               @change="
-                                setFilterSelection(
-                                  section.id,
-                                  option.value,
-                                  $event.target.checked,
-                                )
+                                section.id === 'country'
+                                  ? ($event.target.checked ? selectCountry(option.label) : clearCountrySelection())
+                                  : setFilterSelection(section.id, option.value, $event.target.checked)
                               "
                             />
                           </div>
@@ -422,28 +495,117 @@
                   </button>
                 </div>
 
-                <div class="mt-4 grid grid-cols-2 gap-3">
-                  <label class="block">
-                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
+                <div class="mt-4 px-1">
+                  <Slider v-model="priceRange" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
+                  <div class="flex justify-between text-xs text-gray-500">
+                    <span>${{ priceRange[0] }}</span>
+                    <span>${{ priceRange[1] }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- City Filter -->
+              <div v-if="selectedCountry && cityOptions.length > 0" class="border-b border-gray-200 py-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-medium text-gray-900">City</h3>
+                  <button
+                    v-if="selectedCity"
+                    type="button"
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearCitySelection">
+                    Clear
+                  </button>
+                </div>
+                <select
+                  v-model="selectedCity"
+                  class="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">All cities</option>
+                  <option v-for="city in cityOptions" :key="city.value" :value="city.label">
+                    {{ city.label }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Radius Filter -->
+              <div v-if="selectedCity && radiusOptions.length > 0" class="border-b border-gray-200 py-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-medium text-gray-900">Distance</h3>
+                  <button
+                    v-if="selectedRadius"
+                    type="button"
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearRadiusSelection">
+                    Clear
+                  </button>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="radius in radiusOptions"
+                    :key="radius"
+                    type="button"
+                    :class="[
+                      'rounded-full px-3 py-1.5 text-xs font-medium border transition',
+                      selectedRadius === radius
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50'
+                    ]"
+                    @click="selectRadius(radius)"
+                  >
+                    {{ radius }}km
+                  </button>
+                </div>
+              </div>
+
+              <!-- Date Availability Filter -->
+              <div class="border-b border-gray-200 py-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-medium text-gray-900">Availability</h3>
+                  <button
+                    v-if="availabilityDateInput"
+                    type="button"
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearDateFilter">
+                    Clear
+                  </button>
+                </div>
+                <input
+                  v-model="availabilityDateInput"
+                  type="date"
+                  class="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+
+              <!-- Min Rating Filter -->
+              <div class="border-b border-gray-200 py-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-medium text-gray-900">Rating</h3>
+                  <button
+                    v-if="minRating !== null"
+                    type="button"
+                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    @click="clearRatingFilter">
+                    Clear
+                  </button>
+                </div>
+                <div class="mt-3 space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
                     <input
-                      v-model="minPriceInput"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      inputmode="decimal"
-                      placeholder="0"
-                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"/>
+                      v-model="minRating"
+                      type="radio"
+                      :value="null"
+                      class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span class="text-sm text-gray-600">Any rating</span>
                   </label>
-                  <label class="block">
-                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
+                  <label v-for="stars in [4, 3, 2]" :key="stars" class="flex items-center gap-2 cursor-pointer">
                     <input
-                      v-model="maxPriceInput"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      inputmode="decimal"
-                      placeholder="Any"
-                      class="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"/>
+                      v-model="minRating"
+                      type="radio"
+                      :value="stars"
+                      class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span class="text-sm text-gray-600">{{ stars }}+ stars</span>
                   </label>
                 </div>
               </div>
@@ -481,14 +643,12 @@
                           :name="`${section.id}[]`"
                           :value="option.value"
                           type="checkbox"
-                          :checked="isFilterSelected(section.id, option.value)"
+                          :checked="selectedCountry === option.value"
                           class="h-4 w-4 rounded-sm border border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           @change="
-                            setFilterSelection(
-                              section.id,
-                              option.value,
-                              $event.target.checked,
-                            )
+                            section.id === 'country'
+                              ? ($event.target.checked ? selectCountry(option.label) : clearCountrySelection())
+                              : setFilterSelection(section.id, option.value, $event.target.checked)
                           "/>
                       </div>
                       <label
@@ -599,6 +759,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from "@headlessui/vue";
+import Slider from "@vueform/slider";
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import {
   ChevronDownIcon,
@@ -618,6 +779,15 @@ const selectedCategoryIds = ref([]);
 const activeSort = ref("popular");
 const minPriceInput = ref("");
 const maxPriceInput = ref("");
+const priceRange = ref([0, 1000]);
+const priceMax = ref(2000);
+const selectedCountry = ref("");
+const cityCentroids = ref({});
+const selectedCity = ref("");
+const radiusOptions = ref([]);
+const selectedRadius = ref(null);
+const availabilityDateInput = ref("");
+const minRating = ref(null);
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -676,6 +846,7 @@ const countryOptions = computed(() => {
   const uniqueCountries = new Map();
 
   for (const listing of listings.value) {
+    if (!listing?.location?.lat || !listing?.location?.lng) continue;
     const rawCountry = listing?.address?.country;
     const label = typeof rawCountry === "string" ? rawCountry.trim() : "";
     if (!label) continue;
@@ -690,24 +861,61 @@ const countryOptions = computed(() => {
     .sort((a, b) => a.label.localeCompare(b.label));
 });
 
-const filters = computed(() => [
-  {
-    id: "country",
-    name: "Country",
-    options: countryOptions.value,
-  },
-]);
+/** City options derived from selected country. */
+const cityOptions = computed(() => {
+  if (!selectedCountry.value) return [];
+  const normalizedCountry = normalizeFilterValue(selectedCountry.value);
+  const citiesInCountry = new Map();
+
+  for (const listing of listings.value) {
+    if (!listing?.location?.lat || !listing?.location?.lng) continue;
+    const rawCountry = listing?.address?.country;
+    const countryNorm = normalizeFilterValue(typeof rawCountry === "string" ? rawCountry.trim() : "");
+    if (countryNorm !== normalizedCountry) continue;
+
+    const rawCity = listing?.address?.city;
+    const cityLabel = typeof rawCity === "string" ? rawCity.trim() : "";
+    if (!cityLabel) continue;
+
+    const normalizedCity = normalizeFilterValue(cityLabel);
+    if (!normalizedCity || citiesInCountry.has(normalizedCity)) continue;
+    citiesInCountry.set(normalizedCity, cityLabel);
+  }
+
+  return [...citiesInCountry.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+});
+
+/** Selected city centroid data. */
+const selectedCityData = computed(() => {
+  if (!selectedCity.value) return null;
+  const normalizedCity = normalizeFilterValue(selectedCity.value);
+  return cityCentroids.value[normalizedCity] || null;
+});
+
+const filters = computed(() => {
+  const sections = [];
+  if (countryOptions.value.length > 0) {
+    sections.push({ id: "country", name: "Country", options: countryOptions.value });
+  }
+  return sections;
+});
 
 const minPrice = computed(() => parsePriceInput(minPriceInput.value));
 const maxPrice = computed(() => parsePriceInput(maxPriceInput.value));
 
 const hasPriceRangeFilter = computed(
-  () => minPrice.value !== null || maxPrice.value !== null,
+  () => priceRange.value[0] > 0 || priceRange.value[1] < priceMax,
 );
 
 const hasActiveExtraFilters = computed(() =>
   hasPriceRangeFilter.value ||
-  Object.values(selectedFilters.value).some((values) => values.size > 0),
+  Object.values(selectedFilters.value).some((values) => values.size > 0) ||
+  selectedCountry.value !== "" ||
+  selectedRadius.value !== null ||
+  availabilityDateInput.value !== "" ||
+  minRating.value !== null,
 );
 
 const filteredListings = computed(() => {
@@ -719,7 +927,15 @@ const filteredListings = computed(() => {
     result = result.filter((listing) => selected.has(listing.business_type));
   }
 
-  // Any extra accordion filters
+  // City filter (country already filtered via API, city from dropdown)
+  if (selectedCity.value) {
+    const normalizedCity = normalizeFilterValue(selectedCity.value);
+    result = result.filter((listing) =>
+      normalizeFilterValue(listing?.address?.city) === normalizedCity,
+    );
+  }
+
+  // Any extra accordion filters (country)
   for (const [sectionId, values] of Object.entries(selectedFilters.value)) {
     if (values.size === 0) continue;
     result = result.filter((listing) =>
@@ -727,13 +943,22 @@ const filteredListings = computed(() => {
     );
   }
 
+  // Price range filter (slider)
   if (hasPriceRangeFilter.value) {
     result = result.filter((listing) => {
       const price = listingPriceValue(listing?.base_price);
       if (price === null) return false;
-      if (minPrice.value !== null && price < minPrice.value) return false;
-      if (maxPrice.value !== null && price > maxPrice.value) return false;
+      if (price < priceRange.value[0]) return false;
+      if (priceRange.value[1] < priceMax && price > priceRange.value[1]) return false;
       return true;
+    });
+  }
+
+  // Min rating filter (client-side - avg_rating not in DB)
+  if (minRating.value !== null) {
+    result = result.filter((listing) => {
+      const rating = numberValue(listing?.avg_rating);
+      return rating >= minRating.value;
     });
   }
 
@@ -771,7 +996,12 @@ const activeFilterCount = computed(() => {
   const extraCount = Object.values(selectedFilters.value).filter(
     (s) => s.size > 0,
   ).length;
-  return categoryCount + priceCount + extraCount;
+  const countryCount = selectedCountry.value ? 1 : 0;
+  const cityCount = selectedCity.value ? 1 : 0;
+  const radiusCount = selectedRadius.value ? 1 : 0;
+  const dateCount = availabilityDateInput.value ? 1 : 0;
+  const ratingCount = minRating.value !== null ? 1 : 0;
+  return categoryCount + priceCount + extraCount + countryCount + cityCount + radiusCount + dateCount + ratingCount;
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -852,6 +1082,92 @@ function getFilterValue(listing, sectionId) {
   return normalizeFilterValue(listing?.[sectionId]);
 }
 
+// ── Country / City / Radius helpers ─────────────────────────────────────────
+async function fetchCitiesForCountry(country) {
+  if (!country) {
+    cityCentroids.value = {};
+    radiusOptions.value = [];
+    return;
+  }
+  try {
+    const normalizedCountry = normalizeFilterValue(country);
+    const response = await listingsAPI.getCitiesByCountry(country);
+    const data = response.data;
+    const lookup = {};
+    for (const city of (data.cities || [])) {
+      lookup[normalizeFilterValue(city.name)] = city;
+    }
+    cityCentroids.value = lookup;
+    radiusOptions.value = data.radius_options || [];
+  } catch (err) {
+    console.error("Failed to load cities for country", err);
+    cityCentroids.value = {};
+    radiusOptions.value = [];
+  }
+}
+
+function selectCountry(countryLabel) {
+  const normalized = normalizeFilterValue(countryLabel);
+  if (selectedCountry.value === normalized) {
+    return;
+  }
+  selectedCountry.value = normalized;
+  selectedCity.value = "";
+  selectedRadius.value = null;
+  cityCentroids.value = {};
+  radiusOptions.value = [];
+  fetchCitiesForCountry(countryLabel);
+}
+
+function clearCountrySelection() {
+  selectedCountry.value = "";
+  selectedCity.value = "";
+  selectedRadius.value = null;
+  cityCentroids.value = {};
+  radiusOptions.value = [];
+}
+
+function selectCity(cityName) {
+  selectedCity.value = cityName;
+  selectedRadius.value = null;
+}
+
+function clearCitySelection() {
+  selectedCity.value = "";
+  selectedRadius.value = null;
+}
+
+function selectRadius(radius) {
+  selectedRadius.value = radius;
+}
+
+function clearRadiusSelection() {
+  selectedRadius.value = null;
+}
+
+function clearAllFilters() {
+  clearQuickCategory();
+  clearPriceRange();
+  selectedFilters.value = {};
+  clearCountrySelection();
+  availabilityDateInput.value = "";
+  minRating.value = null;
+}
+
+function clearDateFilter() {
+  availabilityDateInput.value = "";
+}
+
+function clearRatingFilter() {
+  minRating.value = null;
+}
+
+function clearPriceRange() {
+  minPriceInput.value = "";
+  maxPriceInput.value = "";
+  priceRange.value = [0, priceMax];
+}
+
 // ── Category (quick-filter) helpers ───────────────────────────────────────────
 function isCategorySelected(categoryId) {
   return selectedCategoryIds.value.includes(categoryId);
@@ -881,17 +1197,6 @@ function toggleQuickCategory(categoryId) {
 function clearQuickCategory() {
   selectedCategoryIds.value = [];
   updateCategoryQuery(null);
-}
-
-function clearAllFilters() {
-  clearQuickCategory();
-  clearPriceRange();
-  selectedFilters.value = {};
-}
-
-function clearPriceRange() {
-  minPriceInput.value = "";
-  maxPriceInput.value = "";
 }
 
 // ── Extra accordion filter helpers ────────────────────────────────────────────
@@ -938,9 +1243,35 @@ async function fetchBusinessTypes() {
 async function fetchListings() {
   loading.value = true;
   try {
+    const params = { status: "active" };
+    if (selectedCountry.value) {
+      params.country = selectedCountry.value;
+    }
+    if (selectedCityData.value) {
+      params.city_lat = selectedCityData.value.lat;
+      params.city_lng = selectedCityData.value.lng;
+      params.radius_km = selectedRadius.value;
+    }
+    if (availabilityDateInput.value) {
+      params.availability_date = availabilityDateInput.value;
+    }
+    if (hasPriceRangeFilter.value) {
+      if (minPrice.value !== null) params.min_price = minPrice.value;
+      if (maxPrice.value !== null) params.max_price = maxPrice.value;
+    }
+    if (activeSort.value === "price_low") {
+      params.sort_by = "base_price";
+      params.sort_order = "asc";
+    } else if (activeSort.value === "price_high") {
+      params.sort_by = "base_price";
+      params.sort_order = "desc";
+    } else if (activeSort.value === "newest") {
+      params.sort_by = "created_at";
+      params.sort_order = "desc";
+    }
     const response = hasSearchQuery.value
       ? await listingsAPI.search(searchQuery.value)
-      : await listingsAPI.getAll({ status: "active" });
+      : await listingsAPI.getAll(params);
     listings.value = Array.isArray(response.data) ? response.data : [];
   } catch (err) {
     console.error("Failed to load listings", err);
@@ -1010,5 +1341,17 @@ watch(
   { immediate: true },
 );
 
+// Re-fetch when area filters change
+watch(
+  [selectedCountry, selectedCity, selectedRadius, availabilityDateInput, hasPriceRangeFilter, activeSort],
+  () => {
+    fetchListings();
+  },
+  { deep: true },
+);
+
 fetchBusinessTypes();
 </script>
+<style>
+@import '@vueform/slider/themes/default.css';
+</style>
