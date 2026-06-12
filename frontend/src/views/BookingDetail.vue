@@ -151,7 +151,7 @@
 
                   <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Amount of People
+                      {{ isHotelBooking ? 'Number of Rooms' : 'Amount of People' }}
                     </p>
                     <p class="mt-1 text-sm font-medium text-slate-700">
                       {{ booking.amount_of_people }}
@@ -276,6 +276,7 @@ const error = ref('')
 const clientSecret = ref('')
 
 const isRestaurantBooking = computed(() => booking.value?.listing_business_type_name === 'Restaurant')
+const isHotelBooking = computed(() => booking.value?.listing_business_type_name === 'Hotel')
 const displayTotal = computed(() => {
   if (!booking.value) return 0
   if (isRestaurantBooking.value) {

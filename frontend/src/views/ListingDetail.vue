@@ -407,7 +407,7 @@
               </label>
 
               <label class="block">
-                <span class="text-sm font-semibold text-slate-700">Number of people</span>
+                <span class="text-sm font-semibold text-slate-700">{{ isHotelType ? 'Number of rooms' : 'Number of people' }}</span>
                 <input
                   v-model.number="bookingForm.amount_of_people"
                   type="number"
@@ -580,10 +580,10 @@
             <!-- Per-person or flat fee breakdown -->
             <div class="mt-2 text-sm text-slate-500">
               <template v-if="isHotelType">
-                <p>1 room x ${{ (selectedService?.price || 0).toFixed(2) }} x {{ hotelNightsForReceipt }} night{{ hotelNightsForReceipt !== 1 ? 's' : '' }}</p>
+                <p>{{ bookingForm.amount_of_people || 1 }} room x ${{ (selectedService?.price || 0).toFixed(2) }} x {{ hotelNightsForReceipt }} night{{ hotelNightsForReceipt !== 1 ? 's' : '' }}</p>
               </template>
               <template v-else>
-                <p>${{ (selectedService?.price || 0).toFixed(2) }} x {{ bookingForm.amount_of_people || 1 }} people</p>
+                <p>${{ (selectedService?.price || 0).toFixed(2) }} x {{ bookingForm.amount_of_people || 1 }} {{ isHotelType ? 'rooms' : 'people' }}</p>
               </template>
             </div>
 
@@ -1014,7 +1014,7 @@ const receiptSubtotal = computed(() => {
       bookingForm.booking_from_time,
       bookingForm.booking_to_time,
     );
-    return price * nights;
+    return price * people * nights;
   }
   return price * people;
 });
