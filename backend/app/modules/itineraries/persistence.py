@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, desc
 from sqlmodel import Session, select
 
+from app.modules.bookings.models import Booking
 from app.modules.bookings.schemas import BookingCreate
 from app.modules.bookings.service import create_booking as booking_service_create
 from app.modules.discounts.service import check_package_discount_eligibility
@@ -143,6 +144,19 @@ def save_itinerary(
 
 def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> None:
     itinerary = get_owned_itinerary_or_404(db, itinerary_id, user_id)
+    linked_booking = db.exec(
+        select(Booking.id)
+        .join(ItineraryItem, Booking.itinerary_item_id == ItineraryItem.id)
+        .where(ItineraryItem.itinerary_id == itinerary.id)
+    ).first()
+
+    if linked_booking is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This itinerary already has linked bookings and cannot be deleted."
+            ),
+        )
 
     try:
         # Delete child rows first so SQLAlchemy does not attempt to null out
