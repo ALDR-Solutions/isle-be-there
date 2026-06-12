@@ -104,10 +104,28 @@
                     </div>
 
                     <div class="mt-4 px-1">
-                      <Slider v-model="priceRange" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
-                      <div class="flex justify-between text-xs text-gray-500">
-                        <span>${{ priceRange[0] }}</span>
-                        <span>${{ priceRange[1] }}</span>
+                      <Slider v-model="priceRangeModel" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
+                      <div class="flex justify-between gap-4">
+                        <label class="flex-1">
+                          <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
+                          <input
+                            v-model.number="priceRangeModel[0]"
+                            type="number"
+                            min="0"
+                            :max="priceRangeModel[1]"
+                            class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </label>
+                        <label class="flex-1">
+                          <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
+                          <input
+                            v-model.number="priceRangeModel[1]"
+                            type="number"
+                            :min="priceRangeModel[0]"
+                            :max="priceMax"
+                            class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -496,10 +514,28 @@
                 </div>
 
                 <div class="mt-4 px-1">
-                  <Slider v-model="priceRange" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
-                  <div class="flex justify-between text-xs text-gray-500">
-                    <span>${{ priceRange[0] }}</span>
-                    <span>${{ priceRange[1] }}</span>
+                  <Slider v-model="priceRangeModel" :min="0" :max="priceMax" :step="5" class="mb-3" showTooltip="drag" />
+                  <div class="flex justify-between gap-4">
+                    <label class="flex-1">
+                      <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Min</span>
+                      <input
+                        v-model.number="priceRangeModel[0]"
+                        type="number"
+                        min="0"
+                        :max="priceRangeModel[1]"
+                        class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                      />
+                    </label>
+                    <label class="flex-1">
+                      <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Max</span>
+                      <input
+                        v-model.number="priceRangeModel[1]"
+                        type="number"
+                        :min="priceRangeModel[0]"
+                        :max="priceMax"
+                        class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -779,8 +815,8 @@ const selectedCategoryIds = ref([]);
 const activeSort = ref("popular");
 const minPriceInput = ref("");
 const maxPriceInput = ref("");
-const priceRange = ref([0, 1000]);
-const priceMax = ref(2000);
+const priceRange = ref([0, 900]);
+const priceMax = ref(900);
 const selectedCountry = ref("");
 const cityCentroids = ref({});
 const selectedCity = ref("");
@@ -906,8 +942,19 @@ const minPrice = computed(() => parsePriceInput(minPriceInput.value));
 const maxPrice = computed(() => parsePriceInput(maxPriceInput.value));
 
 const hasPriceRangeFilter = computed(
-  () => priceRange.value[0] > 0 || priceRange.value[1] < priceMax,
+  () => priceRangeModel.value[0] > 0 || priceRangeModel.value[1] < priceMax,
 );
+
+const priceRangeModel = computed({
+  get: () => priceRange.value,
+  set: (val) => {
+    if (val[0] > val[1]) {
+      priceRange.value = [val[1], val[1]];
+    } else {
+      priceRange.value = val;
+    }
+  },
+});
 
 const hasActiveExtraFilters = computed(() =>
   hasPriceRangeFilter.value ||
@@ -948,8 +995,8 @@ const filteredListings = computed(() => {
     result = result.filter((listing) => {
       const price = listingPriceValue(listing?.base_price);
       if (price === null) return false;
-      if (price < priceRange.value[0]) return false;
-      if (priceRange.value[1] < priceMax && price > priceRange.value[1]) return false;
+      if (price < priceRangeModel.value[0]) return false;
+      if (priceRangeModel.value[1] < priceMax && price > priceRangeModel.value[1]) return false;
       return true;
     });
   }
