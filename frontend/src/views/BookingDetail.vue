@@ -263,11 +263,12 @@
 
 <script setup>
 import { ref, computed, onMounted, shallowRef } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { bookingsAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
 
 const route = useRoute()
+const router = useRouter()
 const toastStore = useToastStore()
 
 const booking = ref(null)
@@ -368,9 +369,43 @@ function shouldShowCancellationReason(currentBooking) {
   )
 }
 
-function handlePaymentSuccess() {
+async function handlePaymentSuccess() {
   toastStore.show('Payment successful! Your booking is now confirmed.', 'success')
-  fetchBooking()
+
+  // Fetch all bookings to find the next pending one from the same itinerary
+  try {
+    const response = await bookingsAPI.getAll()
+    const allBookings = response.data || []
+
+    // Current booking's itinerary_id (from the freshly loaded booking)
+    const currentItineraryId = booking.value?.itinerary_id
+
+    // Find pending bookings from the same itinerary (excluding current one)
+    const currentId = booking.value?.id
+    let nextPendingBooking = null
+
+    for (const b of allBookings) {
+      if (
+        b.id !== currentId &&
+        normalizedStatus(b.status) === 'pending' &&
+        b.itinerary_id === currentItineraryId
+      ) {
+        nextPendingBooking = b
+        break
+      }
+    }
+
+    if (nextPendingBooking) {
+      // Navigate to the next pending booking from the same itinerary
+      window.location.href = `/bookings/${nextPendingBooking.id}`
+    } else {
+      // No more pending bookings in this itinerary, navigate to bookings list
+      window.location.href = '/bookings'
+    }
+  } catch (err) {
+    // On error, reload current page
+    window.location.reload()
+  }
 }
 
 function handlePaymentError(message) {

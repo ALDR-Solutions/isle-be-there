@@ -346,6 +346,7 @@ def booking_summary_query():
             BusinessType.name.label("listing_business_type_name"),
             confirmed_payment_events.c.paid_at.label("paid_at"),
             refund_events.c.refund_date.label("refund_date"),
+            ItineraryItem.itinerary_id.label("itinerary_id"),
         )
         .outerjoin(Service, Booking.service_id == Service.service_id)
         .outerjoin(Listing, Service.listing_id == Listing.id)
@@ -358,6 +359,10 @@ def booking_summary_query():
             refund_events,
             refund_events.c.booking_id == Booking.id,
         )
+        .outerjoin(
+            ItineraryItem,
+            Booking.itinerary_item_id == ItineraryItem.id,
+        )
     )
 
 
@@ -368,6 +373,7 @@ def build_booking_response(
     listing_business_type_name: Optional[str],
     paid_at: Optional[datetime],
     refund_date: Optional[datetime],
+    itinerary_id: Optional[UUID] = None,
 ) -> BookingResponse:
     return BookingResponse(
         **booking.model_dump(),
@@ -377,6 +383,7 @@ def build_booking_response(
         paid_at=paid_at,
         has_refund=refund_date is not None,
         refund_date=refund_date,
+        itinerary_id=itinerary_id,
     )
 
 
@@ -392,6 +399,7 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             listing_business_type_name,
             paid_at,
             refund_date,
+            itinerary_id,
         )
         for (
             booking,
@@ -400,6 +408,7 @@ def list_bookings(db: Session, user_id: UUID) -> List[BookingResponse]:
             listing_business_type_name,
             paid_at,
             refund_date,
+            itinerary_id,
         ) in results
     ]
 
@@ -433,6 +442,7 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
         listing_business_type_name,
         paid_at,
         refund_date,
+        itinerary_id,
     ) = result
 
     # Recalculate price to ensure it reflects current people count and stay duration
@@ -459,6 +469,7 @@ def get_booking_by_id(db: Session, booking_id: UUID, user_id: UUID) -> BookingRe
         listing_business_type_name,
         paid_at,
         refund_date,
+        itinerary_id,
     )
 
 
@@ -474,6 +485,7 @@ def list_bookings_for_listing(db: Session, listing_id: UUID) -> List[BookingResp
             listing_business_type_name,
             paid_at,
             refund_date,
+            itinerary_id,
         )
         for (
             booking,
@@ -482,6 +494,7 @@ def list_bookings_for_listing(db: Session, listing_id: UUID) -> List[BookingResp
             listing_business_type_name,
             paid_at,
             refund_date,
+            itinerary_id,
         ) in results
     ]
 

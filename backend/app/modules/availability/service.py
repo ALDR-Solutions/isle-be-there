@@ -361,6 +361,7 @@ def get_booked_count(
                 [
                     BookingStatus.cancelled,
                     BookingStatus.pending,
+                    BookingStatus.completed,
                 ]
             )
         )

@@ -422,6 +422,7 @@ const unavailableItems = computed(() => {
 
 // --- Helpers ---
 const isHotelItem = (item) => item.extra_metadata?.business_type_name?.toLowerCase() === 'hotel';
+const isRestaurantItem = (item) => item.extra_metadata?.business_type_name?.toLowerCase() === 'restaurant';
 
 const getServicesForItem = (item) => servicesByListing.value[item.listing_id] || [];
 const isServicesLoading = (item) => Boolean(servicesLoadingByListing.value[item.listing_id]);
@@ -599,6 +600,11 @@ const getHotelNights = (item) => {
 };
 
 const calculateItemTotal = (item) => {
+  // Restaurants are reservations only - no pre-payment required
+  if (isRestaurantItem(item)) {
+    return 0;
+  }
+
   const formData = formDataMap.value[item.itemKey];
   const services = getServicesForItem(item);
   const people = formData?.amount_of_people || 1;

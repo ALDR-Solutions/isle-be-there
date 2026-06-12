@@ -75,7 +75,7 @@ def create_bulk_bookings_endpoint(
 ):
     bookings = create_bulk_bookings(db, request.items, current_user.id)
     return BulkBookingCreateResponse(
-        bookings=[BookingCreateResponse.model_validate(b) for b in bookings]
+        bookings=[BookingCreateResponse.model_validate(b.model_dump()) for b in bookings]
     )
 
 
