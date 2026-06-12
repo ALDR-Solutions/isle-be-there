@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import desc
+from sqlalchemy import delete, desc
 from sqlmodel import Session, select
 
 from app.modules.bookings.schemas import BookingCreate
@@ -145,6 +145,11 @@ def delete_saved_itinerary(db: Session, user_id: UUID, itinerary_id: UUID) -> No
     itinerary = get_owned_itinerary_or_404(db, itinerary_id, user_id)
 
     try:
+        # Delete child rows first so SQLAlchemy does not attempt to null out
+        # itinerary_items.itinerary_id, which is a required foreign key.
+        db.exec(
+            delete(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary.id)
+        )
         db.delete(itinerary)
         db.commit()
     except Exception:

@@ -1,42 +1,65 @@
 <template>
   <div class="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
     <div class="mb-8">
-      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">Account</p>
+      <p
+        class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500"
+      >
+        Account
+      </p>
       <h1 class="mt-2 text-3xl font-bold text-slate-900">My Profile</h1>
-      <p class="mt-1 text-sm text-slate-500">Manage your personal information and account settings.</p>
+      <p class="mt-1 text-sm text-slate-500">
+        Manage your personal information and account settings.
+      </p>
     </div>
 
-    <div class="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+    <div
+      class="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8"
+    >
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <img
           v-if="avatarSrc"
           :src="avatarSrc"
           alt="Profile avatar"
-          class="h-16 w-16 rounded-2xl object-cover"/>
-        <div v-else class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl font-bold text-white select-none">
+          class="h-16 w-16 rounded-2xl object-cover"
+        />
+        <div
+          v-else
+          class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl font-bold text-white select-none"
+        >
           {{ initials }}
         </div>
         <div class="min-w-0">
-          <p class="font-semibold text-slate-900">{{ user?.first_name }} {{ user?.last_name }}</p>
+          <p class="font-semibold text-slate-900">
+            {{ user?.first_name }} {{ user?.last_name }}
+          </p>
           <p class="break-all text-sm text-slate-500">{{ user?.email }}</p>
           <span
             v-if="user?.user_type === 'business'"
             class="mt-1 inline-block rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-700"
-          >Business Account</span>
+            >Business Account</span
+          >
           <span
             v-else
             class="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
-          >Personal Account</span>
+            >Personal Account</span
+          >
         </div>
       </div>
       <div v-if="editing" class="space-y-2">
-        <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarFileChange" />
+        <input
+          ref="avatarInputRef"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="onAvatarFileChange"
+        />
         <button
           type="button"
           :disabled="avatarUploading"
           @click="openAvatarPicker"
-          class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
-          {{ avatarUploading ? 'Uploading...' : 'Upload Avatar' }}
+          class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {{ avatarUploading ? "Uploading..." : "Upload Avatar" }}
         </button>
       </div>
 
@@ -45,44 +68,57 @@
       <form class="space-y-5" @submit.prevent="promptSave">
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="mb-1.5 block text-sm font-medium text-slate-700">First name</label>
+            <label class="mb-1.5 block text-sm font-medium text-slate-700"
+              >First name</label
+            >
             <input
               v-model="form.first_name"
               type="text"
               :disabled="!editing"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"/>
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"
+            />
           </div>
           <div>
-            <label class="mb-1.5 block text-sm font-medium text-slate-700">Last name</label>
+            <label class="mb-1.5 block text-sm font-medium text-slate-700"
+              >Last name</label
+            >
             <input
               v-model="form.last_name"
               type="text"
               :disabled="!editing"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"/>
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"
+            />
           </div>
         </div>
 
         <div>
-          <label class="mb-1.5 block text-sm font-medium text-slate-700">Username</label>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700"
+            >Username</label
+          >
           <input
             v-model="form.username"
             type="text"
             :disabled="!editing"
-            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"/>
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"
+          />
         </div>
 
         <div>
-          <label class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700"
+            >Email</label
+          >
           <input
             v-model="form.email"
             type="email"
             :disabled="!editing"
-            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"/>
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-100 disabled:cursor-default disabled:text-slate-500"
+          />
         </div>
 
         <div
           v-if="formError"
-          class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           {{ formError }}
         </div>
 
@@ -91,7 +127,8 @@
             <button
               type="button"
               @click="startEditing"
-              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
+              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+            >
               Edit Profile
             </button>
           </template>
@@ -99,29 +136,38 @@
             <button
               type="submit"
               :disabled="saving"
-              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
-              {{ saving ? 'Saving...' : 'Save Changes' }}
+              class="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {{ saving ? "Saving..." : "Save Changes" }}
             </button>
             <button
               type="button"
               @click="cancelEditing"
-              class="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto">
+              class="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+            >
               Cancel
             </button>
           </template>
         </div>
       </form>
     </div>
-    <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      class="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8"
+    >
+      <div
+        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div>
           <h2 class="text-lg font-bold text-slate-900">My Itineraries</h2>
-          <p class="mt-1 text-sm text-slate-500">Trips you have saved from the itinerary planner.</p>
+          <p class="mt-1 text-sm text-slate-500">
+            Trips you have saved from the itinerary planner.
+          </p>
         </div>
 
         <RouterLink
           to="/itinerary"
-          class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
+          class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+        >
           Create Itinerary
         </RouterLink>
       </div>
@@ -130,11 +176,17 @@
         Loading itineraries...
       </div>
 
-      <div v-else-if="itinerariesError" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div
+        v-else-if="itinerariesError"
+        class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      >
         {{ itinerariesError }}
       </div>
 
-      <div v-else-if="!itineraries.length" class="mt-6 rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+      <div
+        v-else-if="!itineraries.length"
+        class="mt-6 rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500"
+      >
         You have not saved any itineraries yet.
       </div>
 
@@ -142,61 +194,113 @@
         <div
           v-for="itinerary in itineraries"
           :key="itinerary.id"
-          class="rounded-2xl border border-slate-200 p-4">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div class="min-w-0">
-              <h3 class="font-semibold text-slate-900">{{ itinerary.title }}</h3>
+          class="rounded-2xl border border-slate-200 p-4"
+        >
+          <div
+            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="min-w-0 flex-1">
+              <h3 class="font-semibold text-slate-900">
+                {{ itinerary.title }}
+              </h3>
               <p class="mt-1 text-sm text-slate-500">
                 {{ itinerary.start_date }} to {{ itinerary.end_date }}
               </p>
               <p class="mt-1 text-sm text-slate-500">
-                {{ itinerary.item_count }} stops | ${{ itinerary.total_estimated_cost }}
+                {{ itinerary.item_count }} stops | ${{
+                  itinerary.total_estimated_cost
+                }}
               </p>
             </div>
 
-            <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-              {{ itinerary.status }}
-            </span>
-
-            <RouterLink
-              :to="{ name: 'SavedItinerary', params: { id: itinerary.id } }"
-              class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
-              View
-            </RouterLink>
+            <div
+              class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
+            >
+              <span
+                class="inline-flex items-center justify-center self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-600 sm:min-w-[4.75rem] sm:self-auto"
+              >
+                {{ itinerary.status }}
+              </span>
+              <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <RouterLink
+                  :to="{ name: 'SavedItinerary', params: { id: itinerary.id } }"
+                  class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:min-w-[6.5rem]"
+                >
+                  View
+                </RouterLink>
+                <button
+                  @click="promptDeleteItinerary(itinerary)"
+                  class="inline-flex w-full items-center justify-center rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:min-w-[6.5rem]"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+    <div
+  v-if="showDeleteItineraryModal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+  @click.self="closeDeleteItineraryModal"
+>
+  <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+    <h3 class="text-lg font-bold text-slate-900">Delete itinerary?</h3>
+    <p class="mt-2 text-sm text-slate-500">
+      This will permanently remove
+      <span class="font-semibold text-slate-900">
+        {{ itineraryToDelete?.title || "this itinerary" }}
+      </span>.
+    </p>
 
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+      <button
+        @click="confirmDeleteItinerary"
+        :disabled="deleteItinerarySubmitting"
+        class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+      >
+        {{ deleteItinerarySubmitting ? "Deleting..." : "Delete Itinerary" }}
+      </button>
+      <button
+        @click="closeDeleteItineraryModal"
+        :disabled="deleteItinerarySubmitting"
+        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
 
     <div class="mt-6 rounded-3xl border border-red-200 bg-white p-5 sm:p-8">
       <h2 class="text-base font-semibold text-red-700">Danger Zone</h2>
       <p class="mt-1 text-sm text-slate-500">
-        Disabling your account will log you out immediately. An administrator will need to reactivate it.
+        Disabling your account will log you out immediately. An administrator
+        will need to reactivate it.
       </p>
       <button
         type="button"
         @click="showDisableModal = true"
-        class="mt-4 w-full rounded-xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto">
+        class="mt-4 w-full rounded-xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto"
+      >
         Disable Account
       </button>
     </div>
 
     <div
       v-if="showSaveModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    >
+      <div
+        class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+      >
         <h3 class="text-lg font-bold text-slate-900">Save Changes?</h3>
-        <p
-          v-if="emailChanged"
-          class="mt-2 text-sm text-slate-500"
-        >
-          You're updating your sign-in email. After saving, you'll be logged out and will need to verify the new email before you can sign in again.
+        <p v-if="emailChanged" class="mt-2 text-sm text-slate-500">
+          You're updating your sign-in email. After saving, you'll be logged out
+          and will need to verify the new email before you can sign in again.
         </p>
-        <p
-          v-else
-          class="mt-2 text-sm text-slate-500"
-        >
+        <p v-else class="mt-2 text-sm text-slate-500">
           Are you sure you want to update your profile details?
         </p>
         <div
@@ -209,12 +313,20 @@
           <button
             @click="confirmSave"
             :disabled="saving"
-            class="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
-            {{ saving ? 'Saving...' : emailChanged ? 'Update Email and Log Out' : 'Confirm' }}
+            class="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+          >
+            {{
+              saving
+                ? "Saving..."
+                : emailChanged
+                  ? "Update Email and Log Out"
+                  : "Confirm"
+            }}
           </button>
           <button
             @click="showSaveModal = false"
-            class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
             Cancel
           </button>
         </div>
@@ -223,37 +335,48 @@
 
     <div
       v-if="showDisableModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    >
+      <div
+        class="mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+      >
         <h3 class="text-lg font-bold text-slate-900">Disable Account?</h3>
         <p class="mt-2 text-sm text-slate-500">
-          This will deactivate your account and log you out immediately. You won't be able to sign in until an administrator reactivates your account.
+          This will deactivate your account and log you out immediately. You
+          won't be able to sign in until an administrator reactivates your
+          account.
         </p>
         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             @click="confirmDisable"
             :disabled="disabling"
-            class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60">
-            {{ disabling ? 'Disabling...' : 'Disable Account' }}
+            class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+          >
+            {{ disabling ? "Disabling..." : "Disable Account" }}
           </button>
           <button
             @click="showDisableModal = false"
-            class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
             Cancel
           </button>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter} from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import { useToastStore } from '../stores/toast';
-import { profileAPI, authAPI, uploadsAPI, itinerariesAPI } from '../services/api';
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { useToastStore } from "../stores/toast";
+import {
+  profileAPI,
+  authAPI,
+  uploadsAPI,
+  itinerariesAPI,
+} from "../services/api";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -266,66 +389,71 @@ const saving = ref(false);
 const disabling = ref(false);
 const showSaveModal = ref(false);
 const showDisableModal = ref(false);
-const formError = ref('');
+const formError = ref("");
 const avatarUploading = ref(false);
 const avatarInputRef = ref(null);
 
 const itineraries = ref([]);
 const itinerariesLoading = ref(false);
-const itinerariesError = ref('');
-
+const itinerariesError = ref("");
+const showDeleteItineraryModal = ref(false);
+const itineraryToDelete = ref(null);
+const deleteItinerarySubmitting = ref(false);
 
 const form = ref({
-  first_name: '',
-  last_name: '',
-  username: '',
-  email: '',
-  avatar_url: '',
+  first_name: "",
+  last_name: "",
+  username: "",
+  email: "",
+  avatar_url: "",
 });
 
 const initials = computed(() => {
-  const f = user.value?.first_name?.[0] ?? '';
-  const l = user.value?.last_name?.[0] ?? '';
-  return (f + l).toUpperCase() || user.value?.username?.[0]?.toUpperCase() || '?';
-
+  const f = user.value?.first_name?.[0] ?? "";
+  const l = user.value?.last_name?.[0] ?? "";
+  return (
+    (f + l).toUpperCase() || user.value?.username?.[0]?.toUpperCase() || "?"
+  );
 });
-const avatarSrc = computed(() => form.value.avatar_url || user.value?.avatar_url || '');
+const avatarSrc = computed(
+  () => form.value.avatar_url || user.value?.avatar_url || "",
+);
 const emailChanged = computed(() => {
-  return form.value.email.trim() !== (user.value?.email ?? '').trim();
+  return form.value.email.trim() !== (user.value?.email ?? "").trim();
 });
 
 onMounted(() => {
   form.value = {
-    first_name: user.value?.first_name ?? '',
-    last_name: user.value?.last_name ?? '',
-    username: user.value?.username ?? '',
-    email: user.value?.email ?? '',
-    avatar_url: user.value?.avatar_url ?? '',
+    first_name: user.value?.first_name ?? "",
+    last_name: user.value?.last_name ?? "",
+    username: user.value?.username ?? "",
+    email: user.value?.email ?? "",
+    avatar_url: user.value?.avatar_url ?? "",
   };
   loadItineraries();
 });
 
 function startEditing() {
   editing.value = true;
-  formError.value = '';
+  formError.value = "";
 }
 
 function cancelEditing() {
   editing.value = false;
-  formError.value = '';
+  formError.value = "";
   form.value = {
-    first_name: user.value?.first_name ?? '',
-    last_name: user.value?.last_name ?? '',
-    username: user.value?.username ?? '',
-    email: user.value?.email ?? '',
-    avatar_url: user.value?.avatar_url ?? '',
+    first_name: user.value?.first_name ?? "",
+    last_name: user.value?.last_name ?? "",
+    username: user.value?.username ?? "",
+    email: user.value?.email ?? "",
+    avatar_url: user.value?.avatar_url ?? "",
   };
 }
 
 function promptSave() {
-  formError.value = '';
-  if(!form.value.first_name || !form.value.last_name){
-    formError.value = 'First name and last name are required';
+  formError.value = "";
+  if (!form.value.first_name || !form.value.last_name) {
+    formError.value = "First name and last name are required";
     return;
   }
   showSaveModal.value = true;
@@ -342,22 +470,27 @@ async function onAvatarFileChange(event) {
   avatarUploading.value = true;
   try {
     const formData = new FormData();
-    formData.append('file', file);
-    const response = await uploadsAPI.uploadImage(formData, { folder: 'profiles' });
+    formData.append("file", file);
+    const response = await uploadsAPI.uploadImage(formData, {
+      folder: "profiles",
+    });
     form.value.avatar_url = response.data.url;
-    toastStore.show('Avatar uploaded.', 'success');
+    toastStore.show("Avatar uploaded.", "success");
   } catch (err) {
-    toastStore.show(err.response?.data?.detail || 'Failed to upload avatar.', 'error');
+    toastStore.show(
+      err.response?.data?.detail || "Failed to upload avatar.",
+      "error",
+    );
   } finally {
     avatarUploading.value = false;
-    event.target.value = '';
+    event.target.value = "";
   }
 }
 
 async function confirmSave() {
   saving.value = true;
   const nextEmail = form.value.email.trim();
-  const emailWasChanged = nextEmail !== (user.value?.email ?? '').trim();
+  const emailWasChanged = nextEmail !== (user.value?.email ?? "").trim();
   try {
     await profileAPI.update({
       ...form.value,
@@ -367,49 +500,85 @@ async function confirmSave() {
     showSaveModal.value = false;
     if (emailWasChanged) {
       authStore.logout({
-        redirectTo: { path: '/login', query: { email: nextEmail } },
+        redirectTo: { path: "/login", query: { email: nextEmail } },
       });
-      toastStore.show('Email updated. Verify your new email before signing in again.', 'info');
+      toastStore.show(
+        "Email updated. Verify your new email before signing in again.",
+        "info",
+      );
       return;
     }
     await authStore.fetchUser();
-    toastStore.show('Profile updated successfully.', 'success');
-  }catch (err) {
+    toastStore.show("Profile updated successfully.", "success");
+  } catch (err) {
     showSaveModal.value = false;
-    formError.value = err.response?.data?.detail || 'Failed to update profile.';
-    toastStore.show('Failed to update profile.', 'error');
-  }finally {
+    formError.value = err.response?.data?.detail || "Failed to update profile.";
+    toastStore.show("Failed to update profile.", "error");
+  } finally {
     saving.value = false;
   }
 }
 
 async function confirmDisable() {
   disabling.value = true;
-  try{
+  try {
     await authAPI.disableAccount();
-    authStore.logout({ redirectTo: '/' });
-    toastStore.show('Your account has been disabled.', 'success');
-    router.push('/');
-  }catch (err){
+    authStore.logout({ redirectTo: "/" });
+    toastStore.show("Your account has been disabled.", "success");
+    router.push("/");
+  } catch (err) {
     showDisableModal.value = false;
-    toastStore.show('Failed to disable account.', 'error');
-  }finally{
+    toastStore.show("Failed to disable account.", "error");
+  } finally {
     disabling.value = false;
   }
-  
 }
 
 async function loadItineraries() {
   itinerariesLoading.value = true;
-  itinerariesError.value = '';
+  itinerariesError.value = "";
 
   try {
     const response = await itinerariesAPI.getAll();
     itineraries.value = response.data || [];
-  }catch (err) {
-    itinerariesError.value = err.response?.data?.detail || 'Failed to load itineraries.';
-  }finally{
+  } catch (err) {
+    itinerariesError.value =
+      err.response?.data?.detail || "Failed to load itineraries.";
+  } finally {
     itinerariesLoading.value = false;
+  }
+}
+
+function promptDeleteItinerary(itinerary) {
+  itineraryToDelete.value = itinerary;
+  showDeleteItineraryModal.value = true;
+}
+
+function closeDeleteItineraryModal({ force = false } = {}) {
+  if (deleteItinerarySubmitting.value && !force) return;
+  showDeleteItineraryModal.value = false;
+  itineraryToDelete.value = null;
+}
+
+async function confirmDeleteItinerary() {
+  if (!itineraryToDelete.value) return;
+
+  deleteItinerarySubmitting.value = true;
+  try {
+    await itinerariesAPI.delete(itineraryToDelete.value.id);
+    itineraries.value = itineraries.value.filter(
+      (item) => item.id !== itineraryToDelete.value.id,
+    );
+    deleteItinerarySubmitting.value = false;
+    closeDeleteItineraryModal({ force: true });
+    toastStore.show("Itinerary deleted.", "success");
+  } catch (err) {
+    toastStore.show(
+      err.response?.data?.detail || "Failed to delete itinerary.",
+      "error",
+    );
+  } finally {
+    deleteItinerarySubmitting.value = false;
   }
 }
 </script>

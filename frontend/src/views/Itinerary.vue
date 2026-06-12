@@ -587,7 +587,7 @@
               <button
                 type="button"
                 class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="isSendingEmail"
+                :disabled="isSendingEmail "
                 @click="handleEmailItinerary"
               >
                 {{ isSendingEmail ? "Sending..." : "Send itinerary" }}
@@ -601,7 +601,7 @@
                 Adjust answers
               </button>
               <button
-                v-if="!savedItinerary"
+                v-if="!savedItinerary && authStore.isAuthenticated"
                 type="button"
                 class="shrink-0 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isSaving"
@@ -1364,11 +1364,6 @@ async function handleEmailItinerary() {
   } finally {
     isSendingEmail.value = false;
   }
-}
-
-function handleEmailSignIn() {
-  toastStore.show("Sign in to email your itinerary.", "info");
-  redirectToLogin();
 }
 
 function isValidEmail(value) {

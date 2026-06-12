@@ -28,6 +28,7 @@ from .service import (
     send_saved_itinerary_email,
     send_unsaved_itinerary_email,
     save_itinerary,
+    delete_saved_itinerary,
 )
 from .models import Itinerary
 from app.modules.users.models import User
@@ -102,3 +103,12 @@ def list_itineraries_endpoint(
 ):
     return list_saved_itineraries(db, current_user.id)
 
+
+@router.delete("/{itinerary_id}")
+def delete_itinerary_endpoint(
+    itinerary_id: uuid.UUID,
+    current_user: User = Depends(require_roles("regular", "admin")),
+    db: Session = Depends(get_db),
+):
+    delete_saved_itinerary(db, current_user.id, itinerary_id)
+    return {"detail": "Itinerary deleted."}

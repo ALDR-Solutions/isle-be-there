@@ -79,7 +79,7 @@ def get_owned_itinerary_or_404(
     user_id: UUID | str,
     *,
     load_items: bool = False,
-    detail: str = "Itinerary not found",
+    detail: str = "Itinerary not found or does not belong to this user",
 ) -> Itinerary:
     query = select(Itinerary).where(
         Itinerary.id == itinerary_id,
