@@ -16,6 +16,8 @@ from app.shared.dependencies.permissions import (
 )
 
 from .schemas import (
+    BulkServiceAvailabilityRequest,
+    BulkServiceAvailabilityResponse,
     ListingHoursCreate,
     ListingHoursResponse,
     ListingHoursUpdate,
@@ -142,6 +144,20 @@ def delete_service_slot(
 # ============================================================================
 # Service Availability Endpoint
 # ============================================================================
+
+
+@router.post("/services/bulk", response_model=BulkServiceAvailabilityResponse)
+def get_bulk_service_availability_endpoint(
+    payload: BulkServiceAvailabilityRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        return availability_service.get_bulk_service_availability(db, payload.requests)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unexpected failure while loading bulk service availability")
+        raise HTTPException(500, "Unable to load bulk service availability")
 
 
 @router.get("/services/{service_id}/available", response_model=ServiceAvailableResponse)

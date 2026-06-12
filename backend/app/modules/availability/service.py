@@ -11,6 +11,9 @@ from sqlmodel import Session, col
 
 from app.modules.availability.models import ListingHours, ServiceSlots
 from app.modules.availability.schemas import (
+    BulkServiceAvailabilityRequestItem,
+    BulkServiceAvailabilityResponse,
+    BulkServiceAvailabilityResult,
     ListingHoursCreate,
     ListingHoursUpdate,
     ListingHoursResponse,
@@ -358,6 +361,7 @@ def get_booked_count(
                 [
                     BookingStatus.cancelled,
                     BookingStatus.pending,
+                    BookingStatus.completed,
                 ]
             )
         )
@@ -660,6 +664,25 @@ def get_service_availability(
         slots=slot_availabilities,
         closed_reason=closed_reason,
     )
+
+
+def get_bulk_service_availability(
+    db: Session,
+    requests: list[BulkServiceAvailabilityRequestItem],
+) -> BulkServiceAvailabilityResponse:
+    results = [
+        BulkServiceAvailabilityResult(
+            key=request.key,
+            availability=get_service_availability(
+                db,
+                request.service_id,
+                request.date,
+                request.people,
+            ),
+        )
+        for request in requests
+    ]
+    return BulkServiceAvailabilityResponse(results=results)
 
 
 def get_mass_availability(

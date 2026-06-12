@@ -306,7 +306,7 @@ async function triggerAddListing() {
 }
 
 function handleLogout() {
-  authStore.logout()
+  authStore.logout({ redirectTo: '/' })
   businessStore.reset()
   toastStore.show('You have been logged out.', 'info')
   desktopDropdownOpen.value = false

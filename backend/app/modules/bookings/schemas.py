@@ -70,6 +70,7 @@ class BookingResponse(BaseModel):
     paid_at: Optional[datetime] = None  # Populated from payment_events for approved bookings
     has_refund: bool = False  # True if booking has refund.* PaymentEvent
     refund_date: Optional[datetime] = None  # Populated from refund.* PaymentEvent
+    itinerary_id: Optional[UUID] = None  # Populated via join with ItineraryItem
     model_config = {"from_attributes": True}
 
 

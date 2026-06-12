@@ -139,14 +139,31 @@
     >
       <div class="mx-4 w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
         <h3 class="text-lg font-bold text-slate-900">Save Changes?</h3>
-        <p class="mt-2 text-sm text-slate-500">Are you sure you want to update your account details?</p>
+        <p
+          v-if="emailChanged"
+          class="mt-2 text-sm text-slate-500"
+        >
+          You're updating your sign-in email. After saving, you'll be logged out and will need to verify the new email before you can sign in again.
+        </p>
+        <p
+          v-else
+          class="mt-2 text-sm text-slate-500"
+        >
+          Are you sure you want to update your account details?
+        </p>
+        <div
+          v-if="emailChanged"
+          class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          We'll send a verification link to your new email address.
+        </div>
         <div class="mt-6 flex gap-3">
           <button
             @click="confirmSave"
             :disabled="saving"
             class="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
           >
-            {{ saving ? 'Saving...' : 'Confirm' }}
+            {{ saving ? 'Saving...' : emailChanged ? 'Update Email and Log Out' : 'Confirm' }}
           </button>
           <button
             @click="showSaveModal = false"
@@ -224,6 +241,9 @@ const initials = computed(() => {
 });
 
 const avatarSrc = computed(() => form.value.avatar_url || user.value?.avatar_url || '');
+const emailChanged = computed(() => {
+  return form.value.email.trim() !== (user.value?.email ?? '').trim();
+});
 
 onMounted(() => {
   form.value = {
@@ -286,11 +306,23 @@ async function onAvatarFileChange(event) {
 
 async function confirmSave() {
   saving.value = true;
+  const nextEmail = form.value.email.trim();
+  const emailWasChanged = nextEmail !== (user.value?.email ?? '').trim();
   try {
-    await profileAPI.update(form.value);
-    await authStore.fetchUser();
+    await profileAPI.update({
+      ...form.value,
+      email: nextEmail,
+    });
     editing.value = false;
     showSaveModal.value = false;
+    if (emailWasChanged) {
+      authStore.logout({
+        redirectTo: { path: '/login', query: { email: nextEmail } },
+      });
+      toastStore.show('Email updated. Verify your new email before signing in again.', 'info');
+      return;
+    }
+    await authStore.fetchUser();
     toastStore.show('Account updated successfully.', 'success');
   } catch (err) {
     showSaveModal.value = false;
@@ -305,7 +337,7 @@ async function confirmDisable() {
   disabling.value = true;
   try {
     await authAPI.disableAccount();
-    authStore.logout();
+    authStore.logout({ redirectTo: '/' });
     toastStore.show('Your account has been disabled.', 'success');
     router.push('/');
   } catch (err) {

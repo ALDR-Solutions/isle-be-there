@@ -165,11 +165,11 @@
             v-if="showVerificationHelp"
             class="block rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
           >
-            Email not verified yet?
+            Email not verified? Can't find the verification email?
             <button
               type="button"
               @click="resendVerificationEmail"
-              class="ml-2 text-cyan-600 hover:text-cyan-500"
+              class=" text-cyan-600 hover:text-cyan-500"
             >
               Click here to resend
             </button>
@@ -216,7 +216,7 @@ const showPassword = ref(false);
 const error = ref("");
 const loading = ref(false);
 const showVerificationHelp = computed(() => {
-  return ["Email not verified"].some((term) => error.value.includes(term));
+  return ["Email not verified"].some((term) => authStore.error?.includes(term));
 });
 
 async function handleLogin() {
@@ -238,8 +238,8 @@ async function handleLogin() {
       router.push(route.query.redirect || "/");
     }
   } else {
-    error.value = authStore.error || "Login failed";
-    toastStore.show(error.value, "error");
+    // error.value = authStore.error || "Login failed";
+    toastStore.show(authStore.error || "Login failed", "error");
   }
 
   loading.value = false;

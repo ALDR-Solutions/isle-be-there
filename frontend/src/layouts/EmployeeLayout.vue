@@ -230,7 +230,7 @@ function switchListing(id) {
 }
 
 function handleLogout() {
-  authStore.logout()
+  authStore.logout({ redirectTo: '/' })
   employeeStore.reset()
   toastStore.show('You have been logged out.', 'info')
   desktopDropdownOpen.value = false

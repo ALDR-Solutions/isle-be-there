@@ -135,7 +135,6 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { availabilityAPI } from '../services/api'
 
 const props = defineProps({
   item: {
@@ -175,45 +174,10 @@ const errors = reactive({
 
 const availabilityData = ref(null)
 
-// Selected service computed from services array
-const selectedService = computed(() => {
-  if (!formData.value.service_id) return null
-  return props.services.find(s => s.service_id === formData.value.service_id) || null
-})
-
 const formData = computed(() => props.modelValue)
 
-// Fetch availability internally when no external availability provided
-async function fetchAvailability(date) {
-  if (!date || !selectedService.value?.service_id) {
-    availabilityData.value = null
-    return
-  }
-
-  try {
-    const response = await availabilityAPI.getServiceAvailability(selectedService.value.service_id, date, 1)
-    availabilityData.value = response.data
-  } catch (err) {
-    console.error('Failed to fetch availability:', err)
-    availabilityData.value = null
-  }
-}
-
-// Watch check-in date, selected service, and availability prop
-watch([() => formData.value.booking_from_time, () => props.availability, () => selectedService.value?.service_id], ([newCheckIn, externalAvailability]) => {
-  // Use external availability from parent if provided
-  if (externalAvailability) {
-    availabilityData.value = externalAvailability
-    return
-  }
-
-  if (!newCheckIn) {
-    availabilityData.value = null
-    return
-  }
-
-  const date = newCheckIn.slice(0, 10)
-  fetchAvailability(date)
+watch(() => props.availability, (externalAvailability) => {
+  availabilityData.value = externalAvailability || null
 }, { immediate: true })
 
 // Format check-in date for display

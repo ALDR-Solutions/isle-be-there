@@ -219,6 +219,15 @@ export const employeesAPI = {
 export const servicesAPI = {
   getById: (serviceId) => api.get(`/api/services/${serviceId}`),
   getAll: (params) => api.get("/api/services", { params }),
+  getAllForListings: (listingIds) =>
+    api.get("/api/services", {
+      params: { listing_ids: listingIds },
+      paramsSerializer: () => {
+        const searchParams = new URLSearchParams();
+        listingIds.forEach((listingId) => searchParams.append("listing_ids", listingId));
+        return searchParams.toString();
+      },
+    }),
   create: (data) => api.post("/api/services", data),
   update: (serviceId, data) => api.put(`/api/services/${serviceId}`, data),
   deactivate: (serviceId) => api.patch(`/api/services/${serviceId}/archive`),
@@ -276,6 +285,8 @@ export const availabilityAPI = {
   // Service Availability
   getServiceAvailability: (serviceId, date, people = 1) =>
     api.get(`/api/availability/services/${serviceId}/available`, { params: { date_param: date, people } }),
+  getBulkServiceAvailability: (data) =>
+    api.post("/api/availability/services/bulk", data),
   getMassAvailability: (serviceId, startDate, endDate, people = 1) =>
     api.get(`/api/availability/services/${serviceId}/available/mass`, { params: { start_date: startDate, end_date: endDate, people } }),
 };

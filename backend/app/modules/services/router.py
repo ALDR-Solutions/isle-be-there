@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 from typing import List
 from uuid import UUID
@@ -21,6 +21,7 @@ from .service import (
     deactivate_service,
     get_services,
     get_services_by_listing,
+    get_services_by_listing_ids,
 )
 
 router = APIRouter(prefix="/api/services", tags=["Services"])
@@ -30,13 +31,22 @@ router = APIRouter(prefix="/api/services", tags=["Services"])
 @router.get("", response_model=List[ServiceResponse])
 def get_services_endpoint(
     listing_id: UUID | None = None,
+    listing_ids: list[UUID] | None = Query(default=None),
     user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
+    if listing_id is not None and listing_ids:
+        raise HTTPException(400, "Use either listing_id or listing_ids, not both")
+
     if user is None:
+        if listing_ids:
+            return get_services_by_listing_ids(db, listing_ids, "regular")
         if listing_id is None:
             return get_services(db)
         return get_services_by_listing(db, listing_id, "regular")
+
+    if listing_ids:
+        return get_services_by_listing_ids(db, listing_ids, user.user_type)
 
     if listing_id is None:
         return get_services(db) if user.user_type == "regular" else get_services_by_listing(db, listing_id, user.user_type)
