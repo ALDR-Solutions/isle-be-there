@@ -151,7 +151,6 @@
             <input v-model="addForm.phone" type="tel" placeholder="+1 246 555 0100"
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400" />
           </div>
-          <p v-if="addError" class="text-sm text-red-500 text-center">{{ addError }}</p>
           <div class="flex gap-3 pt-2">
             <button type="button" @click="closeAddModal"
               class="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
@@ -259,13 +258,11 @@ onMounted(() => {
 
 const showAddModal = ref(false)
 const addSubmitting = ref(false)
-const addError = ref('')
 const blankAddForm = () => ({ first_name: '', last_name: '', username: '', email: '', password: '', phone: '' })
 const addForm = ref(blankAddForm())
 
 function openAddModal() {
   addForm.value = blankAddForm()
-  addError.value = ''
   showAddModal.value = true
 }
 
@@ -274,7 +271,6 @@ function closeAddModal() {
 }
 
 async function submitAdd() {
-  addError.value = ''
   addSubmitting.value = true
   try {
     const res = await employeesAPI.create({
@@ -289,7 +285,7 @@ async function submitAdd() {
     toastStore.show('Employee added successfully.', 'success')
     closeAddModal()
   } catch (e) {
-    addError.value = e.response?.data?.detail || 'Failed to add employee. Please try again.'
+    toastStore.show(e.response?.data?.detail || 'Failed to add employee. Please try again.', 'error')
   } finally {
     addSubmitting.value = false
   }

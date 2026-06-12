@@ -70,7 +70,7 @@ def reset_authenticated_user_password(db: Session, user_id: str, data: ResetPass
         raise HTTPException(status_code=404, detail="User not found")
 
     user.hashed_password = get_password_hash(data.password)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
 
@@ -81,7 +81,7 @@ def disable_user_account(db: Session, user_id: str) -> None:
         raise HTTPException(status_code=404, detail="User not found")
 
     user.is_active = False
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()   
 
@@ -96,7 +96,7 @@ def verify_email(token: str, db: Session):
 
     user.is_verified = True
     user.verification_token = None
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
 
@@ -110,7 +110,7 @@ def resend_verification_email_for_user(db: Session, email: str) -> None:
         raise HTTPException(status_code=400, detail="Email is already verified")
 
     user.verification_token = secrets.token_urlsafe(32)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
     db.refresh(user)
