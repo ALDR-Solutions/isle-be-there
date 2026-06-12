@@ -15,7 +15,7 @@
             Hotel
           </span>
           <p class="text-sm font-bold text-slate-950">
-            ${{ item.estimated_cost?.toFixed(2) || '0.00' }}
+            ${{ displayPrice.toFixed(2) }}
           </p>
         </div>
       </div>
@@ -79,8 +79,8 @@
         <input
           :value="checkInDateValue"
           type="date"
-          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          @input="updateCheckInDate($event.target.value)"
+          readonly
+          class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none"
         />
         <p v-if="errors.check_in_date" class="mt-1 text-xs text-red-500">{{ errors.check_in_date }}</p>
       </label>
@@ -93,14 +93,20 @@
         <input
           :value="checkOutDateValue"
           type="date"
-          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          @input="updateCheckOutDate($event.target.value)"
+          readonly
+          class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none"
         />
         <p v-if="errors.check_out_date" class="mt-1 text-xs text-red-500">{{ errors.check_out_date }}</p>
       </label>
 
       <div
-        v-if="checkInDateValue && availabilityData && availabilityData.is_open === false"
+        v-if="checkInDateValue && availabilityLoading"
+        class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+      >
+        Checking availability...
+      </div>
+      <div
+        v-else-if="checkInDateValue && availabilityData && availabilityData.is_open === false"
         class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
       >
         This room or stay option is unavailable for the selected check-in date. Try another date.
@@ -108,7 +114,7 @@
 
       <!-- Number of People -->
       <label class="block">
-        <span class="text-sm font-semibold text-slate-700">Number of people</span>
+        <span class="text-sm font-semibold text-slate-700">Number of rooms</span>
         <input
           :value="formData.amount_of_people"
           type="number"
@@ -157,6 +163,10 @@ const props = defineProps({
     type: Object,
     default: null
   },
+  availabilityLoading: {
+    type: Boolean,
+    default: false
+  },
   isSelected: {
     type: Boolean,
     default: false
@@ -175,6 +185,20 @@ const errors = reactive({
 const availabilityData = ref(null)
 
 const formData = computed(() => props.modelValue)
+
+// Display price - use selected service price if available, otherwise fall back to item estimated cost
+const displayPrice = computed(() => {
+  if (selectedService.value?.price !== null && selectedService.value?.price !== undefined) {
+    return Number(selectedService.value.price)
+  }
+  return props.item?.estimated_cost || 0
+})
+
+// Selected service computed from services array
+const selectedService = computed(() => {
+  if (!formData.value.service_id) return null
+  return props.services.find(s => s.service_id === formData.value.service_id) || null
+})
 
 watch(() => props.availability, (externalAvailability) => {
   availabilityData.value = externalAvailability || null
@@ -287,8 +311,9 @@ function validate() {
   return isValid
 }
 
-// Expose validate method for parent components
+// Expose validate method and getErrors for parent components
 defineExpose({
-  validate
+  validate,
+  getErrors: () => ({ ...errors })
 })
 </script>

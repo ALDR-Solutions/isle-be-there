@@ -77,8 +77,8 @@
         <input
           :value="dateValue"
           type="date"
-          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          @input="updateDateField($event.target.value)"
+          readonly
+          class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none"
         />
       </label>
 
@@ -129,8 +129,8 @@
           <input
             :value="timeStartValue"
             type="time"
-            class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-            @input="updateTimeStartField($event.target.value)"
+            readonly
+            class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none"
           />
         </label>
         <label class="block">
@@ -138,8 +138,8 @@
           <input
             :value="timeEndValue"
             type="time"
-            class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-            @input="updateTimeEndField($event.target.value)"
+            readonly
+            class="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none"
           />
         </label>
       </div>
@@ -439,8 +439,9 @@ function validate() {
   return !errors.service_id && !errors.bookers_name && !errors.time_slot
 }
 
-// Expose validate method for parent components
+// Expose validate method and getErrors for parent components
 defineExpose({
-  validate
+  validate,
+  getErrors: () => ({ ...errors })
 })
 </script>

@@ -278,6 +278,7 @@ const clientSecret = ref('')
 
 const isRestaurantBooking = computed(() => booking.value?.listing_business_type_name === 'Restaurant')
 const isHotelBooking = computed(() => booking.value?.listing_business_type_name === 'Hotel')
+const isBulkBooking = computed(() => route.query.bulk === '1')
 const displayTotal = computed(() => {
   if (!booking.value) return 0
   if (isRestaurantBooking.value) {
@@ -372,6 +373,13 @@ function shouldShowCancellationReason(currentBooking) {
 async function handlePaymentSuccess() {
   toastStore.show('Payment successful! Your booking is now confirmed.', 'success')
 
+  // Only continue to next booking if this is part of a bulk booking flow
+  if (!isBulkBooking.value) {
+    // For single bookings, just redirect to bookings list
+    window.location.href = '/bookings'
+    return
+  }
+
   // Fetch all bookings to find the next pending one from the same itinerary
   try {
     const response = await bookingsAPI.getAll()
@@ -396,8 +404,8 @@ async function handlePaymentSuccess() {
     }
 
     if (nextPendingBooking) {
-      // Navigate to the next pending booking from the same itinerary
-      window.location.href = `/bookings/${nextPendingBooking.id}`
+      // Navigate to the next pending booking from the same itinerary with bulk flag
+      window.location.href = `/bookings/${nextPendingBooking.id}?bulk=1`
     } else {
       // No more pending bookings in this itinerary, navigate to bookings list
       window.location.href = '/bookings'

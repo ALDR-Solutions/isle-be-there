@@ -529,7 +529,8 @@ def get_service_availability(
             start_dt,
             end_dt,
         )
-        is_open = remaining >= 1
+        # For hotels, people represents number of rooms needed
+        is_open = remaining >= people
         return ServiceAvailableResponse(
             service_id=service_id,
             date=date.isoformat(),
@@ -632,8 +633,8 @@ def get_service_availability(
         else:
             remaining = get_slot_remaining_capacity(db, service_id, slot.id, slot_date)
 
-        # 7. Set is_available: for hotels remaining >= 1, for non-hotels remaining >= people
-        required = 1 if is_hotel else people
+        # 7. Set is_available: remaining >= people (for both hotels and non-hotels)
+        required = people
         is_available = remaining >= required
 
         if is_available:

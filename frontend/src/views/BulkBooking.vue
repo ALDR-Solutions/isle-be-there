@@ -124,11 +124,14 @@
           <div
             v-for="item in filteredItems"
             :key="item.itemKey"
+            :data-item-key="item.itemKey"
             :class="[
               'rounded-[1.9rem] border bg-white transition-all',
-              isItemSelected(item.itemKey)
-                ? 'border-cyan-300 bg-cyan-50/70 ring-1 ring-cyan-100'
-                : 'border-transparent bg-transparent'
+              itemsWithErrors.has(item.itemKey)
+                ? 'border-red-400 bg-red-50/50 ring-2 ring-red-200'
+                : isItemSelected(item.itemKey)
+                  ? 'border-cyan-300 bg-cyan-50/70 ring-1 ring-cyan-100'
+                  : 'border-transparent bg-transparent'
             ]"
           >
             <div class="flex items-center justify-end px-4 pt-4 pb-3">
@@ -155,6 +158,14 @@
               </label>
             </div>
 
+            <!-- Error Banner for this item -->
+            <div v-if="itemsWithErrors.has(item.itemKey)" class="mx-4 mb-3 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+              <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Please fill in all required fields below</span>
+            </div>
+
             <HotelBookingFormCard
               v-if="item.isHotel"
               :ref="el => { if (el) formCardRefs[item.itemKey] = el }"
@@ -163,8 +174,9 @@
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
               :availability="serviceAvailability[item.itemKey]"
+              :availability-loading="serviceAvailabilityLoading[item.itemKey]"
               :is-selected="isItemSelected(item.itemKey)"
-              @update:modelValue="val => formDataMap[item.itemKey] = val"
+              @update:modelValue="val => { formDataMap[item.itemKey] = val; itemsWithErrors.delete(item.itemKey); }"
             />
             <BookingFormCard
               v-else
@@ -174,7 +186,8 @@
               :services="getServicesForItem(item)"
               :services-loading="isServicesLoading(item)"
               :availability="serviceAvailability[item.itemKey]"
-              @update:modelValue="val => formDataMap[item.itemKey] = val"
+              :availability-loading="serviceAvailabilityLoading[item.itemKey]"
+              @update:modelValue="val => { formDataMap[item.itemKey] = val; itemsWithErrors.delete(item.itemKey); }"
             />
           </div>
         </div>
@@ -203,11 +216,16 @@
               </button>
               <button
                 type="button"
-                @click="openReceiptModal"
-                :disabled="confirming || selectedItemsIds.size === 0"
+                @click="handleReviewAndBookClick"
+                :disabled="receiptGenerating || confirming || selectedItemsIds.size === 0 || selectedItemsAvailabilityIssue || selectedItemsLoadingAvailability"
                 class="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {{ confirming ? 'Processing...' : (selectedItemsIds.size === 0 ? 'Select items to book' : `Review & Book (${selectedItemsIds.size})`) }}
+                <template v-if="receiptGenerating">Generating receipt...</template>
+                <template v-else-if="confirming">Processing...</template>
+                <template v-else-if="selectedItemsIds.size === 0">Select items to book</template>
+                <template v-else-if="selectedItemsLoadingAvailability">Checking availability...</template>
+                <template v-else-if="selectedItemsAvailabilityIssue">Unavailable items selected</template>
+                <template v-else>Review & Book ({{ selectedItemsIds.size }})</template>
               </button>
             </div>
           </div>
@@ -374,8 +392,11 @@ const selectedItemsIds = ref(new Set());
 const servicesByListing = ref({});
 const servicesLoadingByListing = ref({});
 const serviceAvailability = ref({});
+const serviceAvailabilityLoading = ref({});
 const receiptDiscountLoading = ref(false);
 const receiptPricingLoading = ref(false);
+const receiptGenerating = ref(false);
+const itemsWithErrors = ref(new Set());
 const currentServiceFeePercent = ref(0.10);
 const servicesCache = new Map();
 const availabilityCache = new Map();
@@ -418,6 +439,39 @@ const unavailableItems = computed(() => {
     const services = getServicesForItem(item);
     return services.length === 0;
   });
+});
+
+// Check if any selected item has availability issues
+const selectedItemsAvailabilityIssue = computed(() => {
+  for (const item of selectedItems.value) {
+    const availability = serviceAvailability.value[item.itemKey];
+    // For hotels, check if availability is explicitly false
+    if (isHotelItem(item) && availability && availability.is_open === false) {
+      return true;
+    }
+    // For non-hotels with slots, check if the selected slot has enough capacity
+    if (!isHotelItem(item) && !isRestaurantItem(item) && availability?.slots) {
+      const formData = formDataMap.value[item.itemKey];
+      const selectedSlotId = formData?.selected_slot_id;
+      if (selectedSlotId) {
+        const slot = availability.slots.find(s => String(s.slot_id) === String(selectedSlotId));
+        if (slot && slot.remaining_capacity < (formData?.amount_of_people || 1)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+});
+
+// Check if any selected item is still loading availability
+const selectedItemsLoadingAvailability = computed(() => {
+  for (const item of selectedItems.value) {
+    if (serviceAvailabilityLoading.value[item.itemKey]) {
+      return true;
+    }
+  }
+  return false;
 });
 
 // --- Helpers ---
@@ -483,9 +537,10 @@ const bookableItems = computed(() => {
     if (isHotelItem(item)) {
       const key = item.listing_id;
       if (!hotelGroups[key]) {
-        hotelGroups[key] = { ...item, itemKey: `hotel-${key}`, isHotel: true, check_in_date: item.day_date, check_out_date: item.day_date, originalItems: [item] };
+        hotelGroups[key] = { ...item, itemKey: `hotel-${key}`, isHotel: true, start_at: item.day_date, end_at: item.day_date, check_in_date: item.day_date, check_out_date: item.day_date, originalItems: [item] };
       } else {
         const existing = hotelGroups[key];
+        existing.end_at = item.day_date;
         existing.check_out_date = item.day_date;
         existing.estimated_cost = (existing.estimated_cost || 0) + (item.estimated_cost || 0);
         existing.originalItems.push(item);
@@ -625,7 +680,8 @@ const calculateItemTotal = (item) => {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           nights = diffDays > 0 ? diffDays : 1;
         }
-        return service.price * nights;
+        // Hotels: price per room per night * rooms (people) * nights
+        return service.price * people * nights;
       }
       return service.price * people;
     }
@@ -677,6 +733,7 @@ watch(itinerary, (newItinerary) => {
   servicesByListing.value = {};
   servicesLoadingByListing.value = {};
   serviceAvailability.value = {};
+  serviceAvailabilityLoading.value = {};
   servicesCache.clear();
   availabilityCache.clear();
 }, { immediate: true });
@@ -800,12 +857,14 @@ function reconcileServiceSelections(items, availableServicesByListing) {
 
 async function syncAvailabilityTargets(targets, requestToken) {
   const nextAvailability = { ...serviceAvailability.value };
+  const nextLoading = { ...serviceAvailabilityLoading.value };
   const requestItems = [];
   const itemKeysByRequestKey = {};
 
   targets.forEach((target) => {
     if (!target.serviceId || !target.date) {
       nextAvailability[target.itemKey] = null;
+      nextLoading[target.itemKey] = false;
       return;
     }
 
@@ -813,8 +872,12 @@ async function syncAvailabilityTargets(targets, requestToken) {
     const cachedAvailability = availabilityCache.get(cacheKey);
     if (cachedAvailability) {
       nextAvailability[target.itemKey] = cachedAvailability;
+      nextLoading[target.itemKey] = false;
       return;
     }
+
+    // Mark as loading while we fetch
+    nextLoading[target.itemKey] = true;
 
     if (!itemKeysByRequestKey[cacheKey]) {
       itemKeysByRequestKey[cacheKey] = [];
@@ -829,6 +892,7 @@ async function syncAvailabilityTargets(targets, requestToken) {
   });
 
   serviceAvailability.value = nextAvailability;
+  serviceAvailabilityLoading.value = nextLoading;
 
   if (requestItems.length === 0) {
     return;
@@ -841,39 +905,79 @@ async function syncAvailabilityTargets(targets, requestToken) {
     }
 
     const resolvedAvailability = { ...serviceAvailability.value };
+    const resolvedLoading = { ...serviceAvailabilityLoading.value };
     (response.data?.results || []).forEach((result) => {
       availabilityCache.set(result.key, result.availability);
       (itemKeysByRequestKey[result.key] || []).forEach((itemKey) => {
         resolvedAvailability[itemKey] = result.availability;
+        resolvedLoading[itemKey] = false;
       });
     });
     serviceAvailability.value = resolvedAvailability;
+    serviceAvailabilityLoading.value = resolvedLoading;
   } catch (err) {
     if (requestToken !== availabilityRequestToken) {
       return;
     }
     console.error('Failed to load bulk availability', err);
     const resolvedAvailability = { ...serviceAvailability.value };
+    const resolvedLoading = { ...serviceAvailabilityLoading.value };
     requestItems.forEach((requestItem) => {
       (itemKeysByRequestKey[requestItem.key] || []).forEach((itemKey) => {
         resolvedAvailability[itemKey] = null;
+        resolvedLoading[itemKey] = false;
       });
     });
     serviceAvailability.value = resolvedAvailability;
+    serviceAvailabilityLoading.value = resolvedLoading;
   }
+}
+
+function handleReviewAndBookClick() {
+  // Guard against disabled button being clicked
+  if (receiptGenerating.value || confirming.value || selectedItemsIds.value.size === 0 || selectedItemsAvailabilityIssue.value || selectedItemsLoadingAvailability.value) {
+    return;
+  }
+  openReceiptModal();
 }
 
 async function openReceiptModal() {
   if (!validateSelectedItems()) return;
 
+  // Collect all validation errors first
+  const validationErrors = [];
   for (const item of selectedItems.value) {
     const card = formCardRefs.value[item.itemKey];
-    if (card?.validate && !card.validate()) {
-      toastStore.show('Please fix validation errors in the forms.', 'error');
-      return;
+    if (card?.validate) {
+      const isValid = card.validate();
+      if (!isValid && card.getErrors) {
+        const errs = card.getErrors();
+        validationErrors.push({ item, errors: errs });
+      }
     }
   }
 
+  if (validationErrors.length > 0) {
+    // Track which items have errors for visual highlighting
+    itemsWithErrors.value = new Set(validationErrors.map(e => e.item.itemKey));
+
+    // Show detailed error toast
+    const firstError = validationErrors[0];
+    const errorCount = validationErrors.reduce((sum, e) => {
+      return sum + Object.values(e.errors).filter(v => v).length;
+    }, 0);
+    toastStore.show(`${errorCount} validation error${errorCount > 1 ? 's' : ''} found. Please fix the highlighted fields.`, 'error');
+
+    // Scroll to first item with errors
+    await nextTick();
+    const firstErrorEl = document.querySelector(`[data-item-key="${firstError.item.itemKey}"]`);
+    if (firstErrorEl) {
+      firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+
+  receiptGenerating.value = true;
   const firstSelectedItem = selectedItems.value[0];
   const firstSelectedForm = firstSelectedItem ? formDataMap.value[firstSelectedItem.itemKey] : null;
 
@@ -928,6 +1032,7 @@ async function openReceiptModal() {
   } finally {
     receiptDiscountLoading.value = false;
     receiptPricingLoading.value = false;
+    receiptGenerating.value = false;
   }
 }
 
@@ -1017,7 +1122,7 @@ async function handleConfirmBooking() {
 
     if (createdBookings.length > 0) {
       const firstBookingId = createdBookings[0].booking_id || createdBookings[0].id;
-      router.push(`/bookings/${firstBookingId}`);
+      router.push(`/bookings/${firstBookingId}?bulk=1`);
     } else {
       router.back();
     }
