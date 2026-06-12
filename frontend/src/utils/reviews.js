@@ -5,3 +5,11 @@ export function getPublicReviewComment(review) {
 
   return review.censored_comment || review.comment || ""
 }
+
+export function canReplyToReview(listing) {
+  if (!listing) {
+    return false
+  }
+
+  return ["active", "pending"].includes(listing.status)
+}

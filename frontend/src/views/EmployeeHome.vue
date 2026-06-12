@@ -102,7 +102,7 @@
 
           <ListingReviewsPanel
             :listing-id="employeeStore.activeListing?.id"
-            :can-reply="true"
+            :can-reply="canReplyToReview(employeeStore.activeListing)"
             :can-manage-reply="true"
             empty-subtext="Customer feedback for this listing will appear here."
           />
@@ -120,24 +120,10 @@ import { useEmployeeStore } from '../stores/employee'
 import ListingBookingsSection from '../components/bookings/ListingBookingsSection.vue'
 import ListingServicesSection from '../components/services/ListingServicesSection.vue'
 import ListingReviewsPanel from '../components/reviews/ListingReviewsPanel.vue'
+import { canReplyToReview } from '../utils/reviews'
+import { statusLabel, statusBadgeClass } from '../utils/listingStatus'
 
 const employeeStore = useEmployeeStore()
-
-function statusLabel(status) {
-  if (status === 'active') return 'Active'
-  if (status === 'pending') return 'Pending Approval'
-  if (status === 'inactive') return 'Archived'
-  if (status === 'suspended') return 'Suspended'
-  return status ?? ''
-}
-
-function statusBadgeClass(status) {
-  if (status === 'active') return 'bg-emerald-500 text-white'
-  if (status === 'pending') return 'bg-amber-400 text-slate-900'
-  if (status === 'inactive') return 'bg-slate-500 text-white'
-  if (status === 'suspended') return 'bg-orange-500 text-white'
-  return 'bg-slate-300 text-slate-900'
-}
 
 // Services
 const services = ref([])
