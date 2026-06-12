@@ -266,7 +266,7 @@
                     {{ formatServiceName(getServicesForItem(item), formDataMap[item.itemKey]?.service_id) || (item.title || item.name) }}
                   </p>
                   <p class="mt-1 text-slate-500">
-                    <template v-if="isHotelItem(item)">1 room × {{ getHotelNights(item) }} night{{ getHotelNights(item) > 1 ? 's' : '' }}</template>
+                    <template v-if="isHotelItem(item)">{{ formDataMap[item.itemKey]?.amount_of_people || 1 }} room × {{ getHotelNights(item) }} night{{ getHotelNights(item) > 1 ? 's' : '' }}</template>
                     <template v-else>{{ formDataMap[item.itemKey]?.amount_of_people || 1 }} person{{ (formDataMap[item.itemKey]?.amount_of_people || 1) > 1 ? 's' : '' }}</template>
                   </p>
                 </div>
