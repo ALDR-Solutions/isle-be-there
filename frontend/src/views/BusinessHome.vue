@@ -544,18 +544,12 @@
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
               Street Address
-              <span
-                v-if="isEditing"
-                class="ml-1.5 text-xs font-normal text-slate-400"
-                >(locked after creation)</span
-              >
             </label>
             <input
               v-model="form.street"
               type="text"
               placeholder="e.g. 12 Bay Street"
-              :disabled="isEditing"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
             />
           </div>
 
@@ -568,8 +562,7 @@
                 v-model="form.city"
                 type="text"
                 placeholder="e.g. Bridgetown"
-                :disabled="isEditing"
-                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
                 :class="
                   formErrors.city
                     ? 'border-red-300 bg-red-50 focus:border-red-400'
@@ -587,7 +580,7 @@
               <div class="relative">
                 <select
                   v-model="form.state"
-                  :disabled="isEditing || !showParishDropdown"
+                  :disabled="!showParishDropdown"
                   class="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                 >
                   <option value="">
@@ -632,8 +625,7 @@
                 v-model="form.postal_code"
                 type="text"
                 placeholder="e.g. BB11000"
-                :disabled="isEditing"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
               />
             </div>
             <div>
@@ -643,8 +635,7 @@
               <div class="relative">
                 <select
                   v-model="form.country"
-                  :disabled="isEditing"
-                  class="w-full appearance-none rounded-2xl border px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-50"
+                  class="w-full appearance-none rounded-2xl border px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition"
                   :class="
                     formErrors.country
                       ? 'border-red-300 bg-red-50 focus:border-red-400'
@@ -678,34 +669,6 @@
               <p v-if="formErrors.country" class="mt-1.5 text-xs text-red-500">
                 {{ formErrors.country }}
               </p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1.5"
-                >Phone Number</label
-              >
-              <vue-tel-input
-                v-model="form.phone_number"
-                :style-classes="phoneInputWrapperClasses"
-                :input-options="phoneInputOptions"
-                style-classes="w-full bg-transparent px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none"
-                mode="international"
-               
-              >
-              </vue-tel-input>
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1.5"
-                >Email Address</label
-              >
-              <input
-                v-model="form.email_address"
-                type="email"
-                placeholder="e.g. contact@resort.com"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
-              />
             </div>
           </div>
 
@@ -767,6 +730,33 @@
               ref="mapContainerRef"
               class="mt-4 h-72 overflow-hidden rounded-2xl border border-slate-200 bg-slate-200"
             ></div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1.5"
+                >Phone Number</label
+              >
+              <vue-tel-input
+                v-model="form.phone_number"
+                :style-classes="phoneInputWrapperClasses"
+                :input-options="phoneInputOptions"
+                style-classes="w-full bg-transparent px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none"
+                mode="international"
+              >
+              </vue-tel-input>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1.5"
+                >Email Address</label
+              >
+              <input
+                v-model="form.email_address"
+                type="email"
+                placeholder="e.g. contact@resort.com"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-cyan-400"
+              />
+            </div>
           </div>
 
           <div>
@@ -897,8 +887,8 @@
                 <span class="font-semibold">Requires approval.</span>
                 {{
                   isEditing
-                    ? "Title, description, image_urls, address, or location edits will need to be reviewed before the listing updates publicly."
-                    : "New listings are marked as Pending Approval until reviewed by a moderator."
+                    ? "Changes to the title, description, images, address, or map location will send this listing back for review before the updates appear publicly."
+                    : "New listings are marked as Pending Approval until reviewed by a moderator. Later changes to the title, description, images, address, or map location will also require review."
                 }}
               </p>
             </div>
@@ -1170,6 +1160,8 @@ import ListingBookingsSection from "../components/bookings/ListingBookingsSectio
 import ListingServicesSection from "../components/services/ListingServicesSection.vue";
 import ListingReviewsPanel from "../components/reviews/ListingReviewsPanel.vue";
 import { useImageManager } from "../composables/useImageManager";
+import { canReplyToReview } from "../utils/reviews";
+import {statusLabel, statusBadgeClass} from "../utils/listingStatus";
 
 const toastStore = useToastStore();
 const businessStore = useBusinessStore();
@@ -1199,22 +1191,6 @@ async function fetchBusinessTypes() {
   } catch (error) {
     console.error("Error fetching business types:", error);
   }
-}
-
-function statusLabel(status) {
-  if (status === "active") return "Active";
-  if (status === "pending") return "Pending Approval";
-  if (status === "inactive") return "Archived";
-  if (status === "suspended") return "Suspended";
-  return status ?? "";
-}
-
-function statusBadgeClass(status) {
-  if (status === "active") return "bg-emerald-500 text-white";
-  if (status === "pending") return "bg-amber-400 text-slate-900";
-  if (status === "inactive") return "bg-slate-500 text-white";
-  if (status === "suspended") return "bg-orange-500 text-white";
-  return "bg-slate-300 text-slate-900";
 }
 
 function isListingSuspended(listing) {
@@ -1560,13 +1536,6 @@ function normalizeListingHoursMap(hours) {
   }
   return normalized;
 }
-
-function canReplyToReview(listing) {
-  if (!listing) return false;
-  if (!["active", "pending"].includes(listing.status)) return false;
-  return true;
-}
-
 
 function listingHoursPayload(listingId, dayNum, hours) {
   return {
