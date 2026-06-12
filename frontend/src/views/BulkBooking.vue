@@ -346,7 +346,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { itinerariesAPI, bookingsAPI, discountsAPI, servicesAPI, availabilityAPI, pricingAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
@@ -377,6 +377,11 @@ const serviceAvailability = ref({});
 const receiptDiscountLoading = ref(false);
 const receiptPricingLoading = ref(false);
 const currentServiceFeePercent = ref(0.10);
+const servicesCache = new Map();
+const availabilityCache = new Map();
+let servicesRequestToken = 0;
+let availabilityRequestToken = 0;
+let availabilityDebounceHandle = null;
 
 // --- Selection Logic ---
 function isItemSelected(key) {
@@ -463,6 +468,8 @@ const formatPercent = (value) => {
   if (!Number.isFinite(numeric)) return '-';
   return `${(numeric * 100).toFixed(2).replace(/\.00$/, '')}%`;
 };
+
+const buildAvailabilityCacheKey = (serviceId, date, people) => `${serviceId}|${date}|${people}`;
 
 // --- Computed: Bookable Items ---
 const bookableItems = computed(() => {
@@ -625,6 +632,20 @@ const calculateItemTotal = (item) => {
   return (item.estimated_cost || 0) * people;
 };
 
+const availabilityTargets = computed(() => {
+  const targets = new Map();
+  [...filteredItems.value, ...selectedItems.value].forEach((item) => {
+    const formData = formDataMap.value[item.itemKey];
+    targets.set(item.itemKey, {
+      itemKey: item.itemKey,
+      serviceId: formData?.service_id || null,
+      date: formData?.booking_from_time?.slice(0, 10) || null,
+      people: Math.max(1, Number(formData?.amount_of_people || 1)),
+    });
+  });
+  return Array.from(targets.values());
+});
+
 // --- Watchers ---
 watch(itinerary, (newItinerary) => {
   if (!newItinerary?.items) return;
@@ -646,72 +667,193 @@ watch(itinerary, (newItinerary) => {
   }
   formDataMap.value = newMap;
   formCardRefs.value = {};
+  selectedItemsIds.value = new Set();
+  servicesByListing.value = {};
+  servicesLoadingByListing.value = {};
+  serviceAvailability.value = {};
+  servicesCache.clear();
+  availabilityCache.clear();
 }, { immediate: true });
 
 watch(bookableItems, async (items) => {
   const listingIds = [...new Set(items.map((item) => item.listing_id).filter(Boolean))];
-  if (listingIds.length === 0) return;
-
-  servicesLoadingByListing.value = listingIds.reduce((acc, id) => {
-    acc[id] = true;
-    return acc;
-  }, {});
-
-  const results = await Promise.allSettled(listingIds.map(async (listingId) => {
-    const response = await servicesAPI.getAll({ listing_id: listingId });
-    return { listingId, services: Array.isArray(response.data) ? response.data : [] };
-  }));
-
-  const nextServices = {};
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      nextServices[result.value.listingId] = result.value.services;
-    }
-  }
-  servicesByListing.value = nextServices;
-
-  const nextFormDataMap = { ...formDataMap.value };
-  for (const item of items) {
-    const availableServices = nextServices[item.listing_id] || [];
-    const currentServiceId = nextFormDataMap[item.itemKey]?.service_id;
-    if (availableServices.length === 1) {
-      nextFormDataMap[item.itemKey] = { ...nextFormDataMap[item.itemKey], service_id: availableServices[0].service_id };
-    } else if (!availableServices.some((s) => s.service_id === currentServiceId)) {
-      nextFormDataMap[item.itemKey] = { ...nextFormDataMap[item.itemKey], service_id: null };
-    }
-  }
-  formDataMap.value = nextFormDataMap;
-
-  const nextLoading = {};
-  listingIds.forEach((id) => {
-    nextLoading[id] = false;
-  });
-  servicesLoadingByListing.value = nextLoading;
-}, { immediate: true });
-
-watch(formDataMap, (newMap) => {
-  for (const [itemKey, formData] of Object.entries(newMap)) {
-    const item = bookableItems.value.find((i) => i.itemKey === itemKey);
-    if (!item) continue;
-    const serviceId = formData?.service_id;
-    const date = formData?.booking_from_time?.slice(0, 10);
-    // Fetch availability - don't skip even if selected_slot_id changes (availability needs to be loaded)
-    fetchAvailabilityForItem(itemKey, serviceId, date);
-  }
-}, { deep: true });
-
-// --- Methods ---
-async function fetchAvailabilityForItem(itemKey, serviceId, date) {
-  if (!serviceId || !date) {
-    serviceAvailability.value[itemKey] = null;
+  if (listingIds.length === 0) {
+    servicesByListing.value = {};
+    servicesLoadingByListing.value = {};
     return;
   }
+
+  const nextServices = {};
+  const nextLoading = {};
+  const missingListingIds = [];
+
+  listingIds.forEach((listingId) => {
+    if (servicesCache.has(listingId)) {
+      nextServices[listingId] = servicesCache.get(listingId);
+      nextLoading[listingId] = false;
+    } else {
+      nextLoading[listingId] = true;
+      missingListingIds.push(listingId);
+    }
+  });
+
+  servicesByListing.value = nextServices;
+  servicesLoadingByListing.value = nextLoading;
+  reconcileServiceSelections(items, nextServices);
+
+  if (missingListingIds.length === 0) {
+    return;
+  }
+
+  const requestToken = ++servicesRequestToken;
   try {
-    // Don't pass people count to get all slots - capacity handled in UI
-    const response = await availabilityAPI.getServiceAvailability(serviceId, date);
-    serviceAvailability.value[itemKey] = response.data;
-  } catch {
-    serviceAvailability.value[itemKey] = null;
+    const response = await servicesAPI.getAllForListings(missingListingIds);
+    if (requestToken !== servicesRequestToken) {
+      return;
+    }
+
+    const groupedServices = missingListingIds.reduce((acc, listingId) => {
+      acc[listingId] = [];
+      return acc;
+    }, {});
+    (Array.isArray(response.data) ? response.data : []).forEach((service) => {
+      if (!service?.listing_id) return;
+      (groupedServices[service.listing_id] ||= []).push(service);
+    });
+
+    Object.entries(groupedServices).forEach(([listingId, listingServices]) => {
+      servicesCache.set(listingId, listingServices);
+    });
+
+    const mergedServices = { ...servicesByListing.value };
+    missingListingIds.forEach((listingId) => {
+      mergedServices[listingId] = groupedServices[listingId] || [];
+    });
+    servicesByListing.value = mergedServices;
+    reconcileServiceSelections(items, mergedServices);
+  } catch (err) {
+    console.error('Failed to load services for bulk booking', err);
+  } finally {
+    if (requestToken === servicesRequestToken) {
+      const resolvedLoading = { ...servicesLoadingByListing.value };
+      missingListingIds.forEach((listingId) => {
+        resolvedLoading[listingId] = false;
+      });
+      servicesLoadingByListing.value = resolvedLoading;
+    }
+  }
+}, { immediate: true });
+
+watch(availabilityTargets, (targets) => {
+  if (availabilityDebounceHandle) {
+    clearTimeout(availabilityDebounceHandle);
+  }
+
+  const requestToken = ++availabilityRequestToken;
+  availabilityDebounceHandle = setTimeout(() => {
+    void syncAvailabilityTargets(targets, requestToken);
+  }, 150);
+}, { immediate: true });
+
+// --- Methods ---
+function reconcileServiceSelections(items, availableServicesByListing) {
+  const nextFormDataMap = { ...formDataMap.value };
+  let didUpdate = false;
+
+  items.forEach((item) => {
+    const currentFormData = nextFormDataMap[item.itemKey];
+    if (!currentFormData) return;
+
+    const availableServices = availableServicesByListing[item.listing_id] || [];
+    const currentServiceId = currentFormData.service_id;
+
+    if (availableServices.length === 1 && currentServiceId !== availableServices[0].service_id) {
+      nextFormDataMap[item.itemKey] = {
+        ...currentFormData,
+        service_id: availableServices[0].service_id,
+        selected_slot_id: null,
+      };
+      didUpdate = true;
+      return;
+    }
+
+    if (currentServiceId && !availableServices.some((service) => service.service_id === currentServiceId)) {
+      nextFormDataMap[item.itemKey] = {
+        ...currentFormData,
+        service_id: null,
+        selected_slot_id: null,
+      };
+      didUpdate = true;
+    }
+  });
+
+  if (didUpdate) {
+    formDataMap.value = nextFormDataMap;
+  }
+}
+
+async function syncAvailabilityTargets(targets, requestToken) {
+  const nextAvailability = { ...serviceAvailability.value };
+  const requestItems = [];
+  const itemKeysByRequestKey = {};
+
+  targets.forEach((target) => {
+    if (!target.serviceId || !target.date) {
+      nextAvailability[target.itemKey] = null;
+      return;
+    }
+
+    const cacheKey = buildAvailabilityCacheKey(target.serviceId, target.date, target.people);
+    const cachedAvailability = availabilityCache.get(cacheKey);
+    if (cachedAvailability) {
+      nextAvailability[target.itemKey] = cachedAvailability;
+      return;
+    }
+
+    if (!itemKeysByRequestKey[cacheKey]) {
+      itemKeysByRequestKey[cacheKey] = [];
+      requestItems.push({
+        key: cacheKey,
+        service_id: target.serviceId,
+        date: target.date,
+        people: target.people,
+      });
+    }
+    itemKeysByRequestKey[cacheKey].push(target.itemKey);
+  });
+
+  serviceAvailability.value = nextAvailability;
+
+  if (requestItems.length === 0) {
+    return;
+  }
+
+  try {
+    const response = await availabilityAPI.getBulkServiceAvailability({ requests: requestItems });
+    if (requestToken !== availabilityRequestToken) {
+      return;
+    }
+
+    const resolvedAvailability = { ...serviceAvailability.value };
+    (response.data?.results || []).forEach((result) => {
+      availabilityCache.set(result.key, result.availability);
+      (itemKeysByRequestKey[result.key] || []).forEach((itemKey) => {
+        resolvedAvailability[itemKey] = result.availability;
+      });
+    });
+    serviceAvailability.value = resolvedAvailability;
+  } catch (err) {
+    if (requestToken !== availabilityRequestToken) {
+      return;
+    }
+    console.error('Failed to load bulk availability', err);
+    const resolvedAvailability = { ...serviceAvailability.value };
+    requestItems.forEach((requestItem) => {
+      (itemKeysByRequestKey[requestItem.key] || []).forEach((itemKey) => {
+        resolvedAvailability[itemKey] = null;
+      });
+    });
+    serviceAvailability.value = resolvedAvailability;
   }
 }
 
@@ -847,9 +989,10 @@ async function handleConfirmBooking() {
   confirming.value = true;
   let createdBookings = [];
   try {
-    const results = await Promise.all(selectedItems.value.map((item) => {
+    const response = await bookingsAPI.createBulk({
+      items: selectedItems.value.map((item) => {
       const formData = formDataMap.value[item.itemKey];
-      return bookingsAPI.create({
+      return {
         service_id: formData.service_id,
         service_slot_id: formData.selected_slot_id || null,
         itinerary_item_id: item.originalItems?.[0]?.id || item.id,
@@ -858,10 +1001,11 @@ async function handleConfirmBooking() {
         bookers_name: formData.bookers_name,
         amount_of_people: formData.amount_of_people || 1,
         special_requests: formData.special_requests || null,
-      }).then((response) => response.data);
-    }));
+      };
+    }),
+    });
 
-    createdBookings = results;
+    createdBookings = Array.isArray(response.data?.bookings) ? response.data.bookings : [];
     toastStore.show(`Confirmed ${createdBookings.length} bookings!`, 'success');
     showReceiptModal.value = false;
 
@@ -893,6 +1037,12 @@ onMounted(async () => {
     toastStore.show('Failed to load itinerary.', 'error');
   } finally {
     loading.value = false;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (availabilityDebounceHandle) {
+    clearTimeout(availabilityDebounceHandle);
   }
 });
 </script>

@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 from typing import Optional
 from uuid import UUID
 
@@ -27,6 +27,26 @@ class ServiceAvailableResponse(BaseModel):
     is_open: bool
     slots: list[SlotAvailability]
     closed_reason: Optional[str] = None
+
+
+class BulkServiceAvailabilityRequestItem(BaseModel):
+    key: str
+    service_id: UUID
+    date: date
+    people: int = Field(default=1, ge=1)
+
+
+class BulkServiceAvailabilityRequest(BaseModel):
+    requests: list[BulkServiceAvailabilityRequestItem]
+
+
+class BulkServiceAvailabilityResult(BaseModel):
+    key: str
+    availability: ServiceAvailableResponse
+
+
+class BulkServiceAvailabilityResponse(BaseModel):
+    results: list[BulkServiceAvailabilityResult]
 
 
 class MassAvailabilityItem(BaseModel):

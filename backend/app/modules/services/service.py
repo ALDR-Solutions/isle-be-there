@@ -41,6 +41,21 @@ def get_services_by_listing(db: Session, listing_id: UUID, user_type: str) -> li
     return db.exec(query.order_by(asc(Service.created_at))).scalars().all()
 
 
+def get_services_by_listing_ids(
+    db: Session,
+    listing_ids: list[UUID],
+    user_type: str,
+) -> list[Service]:
+    query = select(Service).where(Service.listing_id.in_(listing_ids))
+
+    if user_type == "regular":
+        query = query.where(Service.status == StatusTypes.active)
+    elif user_type == "business" or user_type == "employee":
+        query = query.where(Service.status != StatusTypes.deleted)
+
+    return db.exec(query.order_by(asc(Service.created_at))).scalars().all()
+
+
 def create_service(db: Session, data: ServiceCreate, user_id: UUID) -> Service:
     if not data.listing_id:
         raise HTTPException(400, "listing_id is required")
