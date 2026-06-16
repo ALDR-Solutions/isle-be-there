@@ -19,13 +19,6 @@
         </div>
       </div>
 
-      <div v-if="details.available_rooms != null || details.total_rooms != null" class="flex items-center gap-3">
-        <span class="w-36 text-sm text-slate-500">Availability</span>
-        <span class="text-sm font-medium text-slate-800">
-          {{ details.available_rooms ?? '—' }} / {{ details.total_rooms ?? '—' }} rooms available
-        </span>
-      </div>
-
       <div v-if="details.cancellation_until_hours != null" class="flex items-center gap-3">
         <span class="w-36 text-sm text-slate-500">Cancellation</span>
         <span class="text-sm font-medium text-slate-800">

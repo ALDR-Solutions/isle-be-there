@@ -289,9 +289,6 @@
               <div class="flex items-center justify-between gap-4">
                 <div>
                   <p class="text-sm font-semibold text-slate-900">Discount</p>
-                  <p class="mt-1 text-sm text-slate-500">
-                    Eligible itinerary discounts are applied automatically from the active admin setting.
-                  </p>
                 </div>
                 <span
                   v-if="packageDiscountEligibility?.eligible && packageDiscount"
