@@ -16,12 +16,34 @@ DEFAULT_CORS_ORIGINS = (
     "http://localhost:4173",
     "http://127.0.0.1:4173",
 )
+DEFAULT_PRODUCTION_CORS_ORIGINS = (
+    "https://islebthere.com",
+    "https://www.islebthere.com",
+)
 DEFAULT_ALLOWED_IMAGE_MIME_TYPES = (
     "image/jpeg",
     "image/png",
     "image/webp",
     "image/gif",
 )
+
+
+def _normalize_origin(value: str) -> str:
+    return value.strip().rstrip("/")
+
+
+def _dedupe_origins(origins: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+
+    for origin in origins:
+        normalized = _normalize_origin(origin)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+
+    return deduped
 
 
 class AppSettings(BaseSettings):
@@ -74,12 +96,17 @@ class AppSettings(BaseSettings):
     def cors_allow_origins(self) -> list[str]:
         configured = self.CORS_ALLOW_ORIGINS.strip()
         if configured:
-            return [
+            return _dedupe_origins([
                 origin.strip()
                 for origin in configured.split(",")
                 if origin.strip()
-            ]
-        return list(DEFAULT_CORS_ORIGINS)
+            ])
+        return _dedupe_origins([
+            *DEFAULT_CORS_ORIGINS,
+            *DEFAULT_PRODUCTION_CORS_ORIGINS,
+            self.FRONTEND_URL,
+            self.FRONTEND_BASE_URL,
+        ])
 
     @property
     def resolved_frontend_url(self) -> str:

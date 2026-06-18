@@ -4,5 +4,12 @@ services:
   env: python
   plan: free
   healthCheckPath: /health
+  envVars:
+    - key: FRONTEND_URL
+      value: https://islebthere.com
+    - key: FRONTEND_BASE_URL
+      value: https://islebthere.com
+    - key: CORS_ALLOW_ORIGINS
+      value: https://islebthere.com,https://www.islebthere.com
   buildCommand: "pip install -r requirements.txt"
   startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
