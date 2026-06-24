@@ -102,7 +102,7 @@ def cancel_booking_endpoint(
     return Response(status_code=204)
 
 
-@router.post("/{booking_id}/cancel-by-business", status_code=204)
+@router.put("/{booking_id}/cancel-by-business", status_code=204)
 def cancel_booking_by_business_endpoint(
     payload: BusinessBookingCancelRequest,
     current_user: User = Depends(require_roles("business", "employee", "admin")),
@@ -121,7 +121,7 @@ def cancel_booking_by_business_endpoint(
     return Response(status_code=204)
 
 
-@router.post("/{booking_id}/payment-intent", response_model=PaymentIntentResponse)
+@router.put("/{booking_id}/payment-intent", response_model=PaymentIntentResponse)
 def create_payment_intent_endpoint(
     current_user: User = Depends(require_roles("regular", "admin")),
     booking: Booking = Depends(require_booking_owner),
@@ -131,7 +131,7 @@ def create_payment_intent_endpoint(
     return PaymentIntentResponse(**result)
 
 
-@router.post("/{booking_id}/confirm-payment")
+@router.put("/{booking_id}/confirm-payment")
 def confirm_payment_endpoint(
     current_user: User = Depends(require_roles("regular", "admin")),
     booking: Booking = Depends(require_booking_owner),
