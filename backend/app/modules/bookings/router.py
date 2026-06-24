@@ -91,7 +91,7 @@ def update_booking_endpoint(
     return update_booking(db, booking, update_data)
 
 
-@router.post("/{booking_id}/cancel", status_code=204)
+@router.put("/{booking_id}/cancel", status_code=204)
 def cancel_booking_endpoint(
     current_user: User = Depends(require_roles("regular", "admin")),
     booking: Booking = Depends(require_booking_owner),
